@@ -1,0 +1,7 @@
+.{
+    .name = .zigma,
+    .fingerprint = 0x94102e7b3887e5a6,
+    .version = "0.0.1",
+    .dependencies = .{},
+    .paths = .{""},
+}

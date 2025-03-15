@@ -1,0 +1,117 @@
+# ziglang.org llms.txt
+
+- [Zig Language Downloads](https://ziglang.org/download/): Facilitates downloading various versions of the Zig programming language for different operating systems.
+- [Zig Programming Language](https://ziglang.org/): Showcases Zig programming language features, documentation, and community support for developers.
+- [Zig Standard Library Docs](https://ziglang.org/documentation/master/std/): Documentation for the Zig programming language's standard library.
+- [Zig Programming Language Overview](https://ziglang.org/learn/overview/): To educate users about the Zig programming language and its features.
+- [Learning Zig Language](https://ziglang.org/learn/): Provides resources for learning the Zig programming language, catering to various backgrounds and experience levels.
+- [Getting Started with Zig](https://ziglang.org/learn/getting-started/): Guide beginners on installing and starting with the Zig programming language.
+- [Zig Language Samples](https://ziglang.org/learn/samples/): Showcase sample code snippets for learning the Zig programming language.
+- [Zig Build System Guide](https://ziglang.org/learn/build-system/): Learn how to use the Zig Build System for building and managing Zig projects effectively.
+- [Learning Zig Language](https://ziglang.org/learn/): Provides resources for learning the Zig programming language, catering to various backgrounds and experience levels.
+
+
+# zig.guide llms.txt
+
+> This website serves as a comprehensive guide for using the Zig programming language, offering resources and instructions for developers familiar with low-level programming concepts to create robust and efficient software.
+
+- [Zig Async Features Overview](https://zig.guide/master/async/introduction): Explains the features and concepts of asynchronous programming in Zig 0.14.0 development version.
+- [Zig 0.12.0 Build Modes](https://zig.guide/0.12/build-system/build-modes): This documentation outlines the build modes available in Zig 0.12.0, including their features and recommendations.
+- [Zig Structs Overview](https://zig.guide/language-basics/structs): Explains how to use structs in the Zig programming language.
+- [Zig 0.12.0 Installation Guide](https://zig.guide/0.12/getting-started/installation): Instructions for installing Zig programming language version 0.12.0 on various operating systems.
+- [Zig Formatting Specifiers](https://zig.guide/standard-library/formatting-specifiers): Explains formatting specifiers in Zig's standard library for various data types.
+- [Zig Programming Guide](https://zig.guide/): Guide for learning the Zig programming language and its tools.
+- [Zig Build Commands Overview](https://zig.guide/build-system/emitting-an-executable): Guidance on using Zig commands to create executables, libraries, and object files.
+- [Zig Functions Overview](https://zig.guide/language-basics/functions): Explain the basics of functions in Zig programming language.
+- [Zig Defer Statement](https://zig.guide/language-basics/defer): Explains the usage of the 'defer' statement in Zig programming for resource management.
+- [Many-item Pointers in Zig](https://zig.guide/language-basics/many-item-pointers): Explain the use and characteristics of many-item pointers in the Zig programming language.
+- [Understanding C ABI in Zig](https://zig.guide/master/working-with-c/abi): Explains application binary interfaces (ABIs) in Zig programming language, including C ABI support and interoperability.
+- [Zig Optionals Explained](https://zig.guide/language-basics/optionals): Explains the concept and usage of optionals in the Zig programming language.
+- [Sentinel Termination in Zig](https://zig.guide/language-basics/sentinel-termination): Explains sentinel termination in the Zig programming language with examples and syntax details.
+- [Zig For Loops Overview](https://zig.guide/language-basics/for-loops): Explains the syntax and usage of for loops in the Zig programming language.
+- [Guide to @cImport](https://zig.guide/working-with-c/c-import): Explains the usage of Zig's @cImport for integrating C code.
+- [Zig Inline Loops](https://zig.guide/language-basics/inline-loops): Explains the concept and usage of inline loops in the Zig programming language.
+- [Zig Pointer-Sized Integers](https://zig.guide/language-basics/pointer-sized-integers): Explains pointer-sized integers in Zig programming language.
+- [Zig Build System Guide](https://zig.guide/build-system/zig-build): Guide for using the Zig build system for project configuration and management.
+- [Zig Build Modes](https://zig.guide/master/build-system/build-modes): Explains build modes available in Zig 0.14.0 and their implications.
+- [Zig 0.11.0 Installation Guide](https://zig.guide/0.11/getting-started/installation): Guide for installing Zig 0.11.0 on different operating systems.
+- [Zig Memory Allocators](https://zig.guide/0.12/standard-library/allocators): This documentation explains memory allocation patterns in the Zig programming language's standard library version 0.12.0.
+- [Zig Loops as Expressions](https://zig.guide/language-basics/loops-as-expressions): Explains the use of loops as expressions in Zig programming.
+- [Zig Value Assignment Guide](https://zig.guide/master/language-basics/assignment): Explains the syntax and usage of value assignment in the Zig programming language.
+- [Zig Value Assignment](https://zig.guide/language-basics/assignment): Explains value assignment syntax in Zig programming language, including constants, variables, and type annotations.
+- [Zig Cross-Compilation Guide](https://zig.guide/build-system/cross-compilation): Guide for cross-compiling applications using Zig for various CPU architectures and operating systems.
+- [Zig Imports Explained](https://zig.guide/language-basics/imports): Explains the usage of the `@import` function in the Zig programming language.
+- [Anonymous Structs in Zig](https://zig.guide/language-basics/anonymous-structs): Explains the usage and characteristics of anonymous structs and tuples in the Zig programming language.
+- [Labelled Blocks in Zig](https://zig.guide/language-basics/labelled-blocks): Explains the concept of labelled blocks in the Zig programming language.
+- [ABI Documentation for Zig](https://zig.guide/0.11/working-with-c/abi): This page documents ABI standards in Zig 0.11.0 for interoperation with C code.
+- [Running Tests in Zig](https://zig.guide/0.12/getting-started/running-tests): Guide for running tests in Zig 0.12.0 with examples for success and failure.
+- [Packed Structs in Zig](https://zig.guide/working-with-c/packed-structs): Explains the use of packed structs in Zig for precise field layout control.
+- [Zig 0.11.0 Async Features](https://zig.guide/0.11/async/introduction): Explanation of Zig 0.11.0's async features and their limitations compared to later versions.
+- [Zig 0.12 Documentation](https://zig.guide/0.12/): Documentation for the Zig programming language version 0.12.0, which is no longer actively maintained.
+- [Zig JSON Library Guide](https://zig.guide/standard-library/json): This page explains how to parse and stringify JSON using Zig's standard library with examples.
+- [Zig Vectors Overview](https://zig.guide/language-basics/vectors): Explains Zig's vector types and operations for SIMD programming.
+- [Zig 0.11.0 Assignment Guide](https://zig.guide/0.11/language-basics/assignment): Offers a guide on value assignment syntax in Zig programming language version 0.11.0.
+- [Zig Enums Overview](https://zig.guide/language-basics/enums): This page explains the use of enums in the Zig programming language.
+- [Zig 0.12.0 Tutorial](https://zig.guide/0.12/getting-started/hello-world): Guide for creating a basic Hello World program in Zig 0.12.0.
+- [Zig Random Numbers](https://zig.guide/standard-library/random-numbers): Explains how to generate random numbers in Zig using the standard library.
+- [Zig Programming Tutorials](https://zig.guide/posts): Provide tutorials and examples for programming in Zig.
+- [C Pointers in Zig](https://zig.guide/working-with-c/c-pointers): Explains the differences and usage of C pointers in Zig programming.
+- [Zig Threads Overview](https://zig.guide/standard-library/threads): Explaining how to use threads in Zig programming language.
+- [Zig Slices Explained](https://zig.guide/language-basics/slices): Explains slices in Zig programming language and their usage compared to Go.
+- [Zig C Primitive Types](https://zig.guide/working-with-c/c-primitive-types): Explaining Zig's C primitive types and their size related to the C ABI.
+- [Zig std.ArrayList Documentation](https://zig.guide/standard-library/arraylist): Explains the usage and features of the std.ArrayList in Zig programming.
+- [Zig Integer Rules](https://zig.guide/language-basics/integer-rules): Explains integer rules and operations in the Zig programming language.
+- [Zig Readers and Writers](https://zig.guide/standard-library/readers-and-writers): Explains usage of readers and writers in the Zig programming language standard library.
+- [Zig Standard Library: Crypto](https://zig.guide/standard-library/crypto): Documenting cryptographic utilities available in Zig programming language.
+- [Zig Async/Await Guide](https://zig.guide/async/async-await): Explaining the use of async and await in Zig programming language.
+- [Zig 0.12.0 Async Guide](https://zig.guide/0.12/async/introduction): Documentation on Zig 0.12.0's async features and their limitations.
+- [Memory Alignment in Zig](https://zig.guide/working-with-c/alignment): Explains memory alignment of data types in Zig programming language.
+- [Allocators | zig.guide](https://zig.guide/standard-library/allocators)
+- [Zig Language: Unions](https://zig.guide/language-basics/unions): Explains Zig programming language unions and their usage.
+- [Zig While Loops Guide](https://zig.guide/language-basics/while-loops): Explains the syntax and usage of while loops in Zig programming language.
+- [Zig 0.11 Allocators](https://zig.guide/0.11/standard-library/allocators): Documentation on memory allocation in Zig 0.11.0 standard library.
+- [Zig If Statements](https://zig.guide/language-basics/if): Explains the use of if statements in the Zig programming language.
+- [Hello World | zig.guide](https://zig.guide/master/getting-started/hello-world)
+- [Zig 0.11.0 Testing Guide](https://zig.guide/0.11/getting-started/running-tests): Guidance on running tests in Zig 0.11.0 programming language.
+- [Zig Memory Allocators](https://zig.guide/master/standard-library/allocators): Explains various memory allocators in Zig programming language and their usage patterns.
+- [Linking libc in Zig](https://zig.guide/working-with-c/linking-libc): Guide on linking the libc library in Zig programming.
+- [Zig 0.12.0 ABI Documentation](https://zig.guide/0.12/working-with-c/abi): Explains the application binary interface (ABI) for Zig 0.12.0 and its interoperation with C code.
+- [Zig: Labelled Loops](https://zig.guide/language-basics/labelled-loops): Explain the use of labelled loops in Zig programming.
+- [Running Tests in Zig](https://zig.guide/master/getting-started/running-tests): This page guides users on running tests in Zig 0.14.0 with practical code examples.
+- [Zig Opaque Types](https://zig.guide/language-basics/opaque): Explains the use and implementation of opaque types in Zig programming language for type safety and interoperability.
+- [Zig Hash Maps Guide](https://zig.guide/standard-library/hashmaps): Explains the usage of hash maps in the Zig programming language's standard library.
+- [Zig Build Modes](https://zig.guide/0.11/build-system/build-modes): Describes build modes in Zig 0.11.0 for developers.
+- [Zig Filesystem Guide](https://zig.guide/standard-library/filesystem): Demonstrates Zig standard library functions for file operations and directory management.
+- [Zig Async Functions](https://zig.guide/async/suspend-resume): Explains the concepts of suspend and resume in Zig's async functions.
+- [Zig Float Basics](https://zig.guide/language-basics/floats): Explains float data types and their usage in Zig programming language.
+- [Zig Extern Structs Guide](https://zig.guide/working-with-c/extern-structs): Explains how to use extern structs in Zig for compatibility with C's ABI.
+- [Zig Comptime Overview](https://zig.guide/language-basics/comptime): Explains the usage of the 'comptime' keyword in Zig programming for compile-time code execution.
+- [Zig Installation Guide](https://zig.guide/getting-started/installation): Guide for installing Zig programming language on various operating systems.
+- [Zig Calling Conventions](https://zig.guide/working-with-c/calling-conventions): Explains calling conventions in Zig for interoperability with C.
+- [Zig Iterators Overview](https://zig.guide/standard-library/iterators): Explains the usage and implementation of iterators in Zig programming language.
+- [Zig Pointers Guide](https://zig.guide/language-basics/pointers): Explains pointer usage and behavior in the Zig programming language.
+- [Zig 0.12 Assignment Syntax](https://zig.guide/0.12/language-basics/assignment): Explains the assignment syntax in Zig programming language version 0.12.
+- [Zig Async Event Loop](https://zig.guide/async/basic-event-loop): Learn how to implement a basic event loop using Zig's async features.
+- [Zig Build Modes](https://zig.guide/build-system/build-modes): Explains the different build modes in Zig and their characteristics.
+- [Zig Stack Implementation](https://zig.guide/standard-library/stacks): Explain how to use Zig's standard library for stack implementation with examples.
+- [Generating Zig Documentation](https://zig.guide/build-system/generating-documentation): Explain how to generate documentation using Zig's compiler features.
+- [Zig 0.11.0 Documentation](https://zig.guide/0.11/): Offers outdated documentation for Zig programming language version 0.11.0.
+- [Bit-Aligned Pointers in Zig](https://zig.guide/working-with-c/bit-aligned-pointers): Explain the concept and usage of bit-aligned pointers in Zig programming.
+- [Zig 0.14.0 Documentation](https://zig.guide/master/): Guide for using the unreleased Zig 0.14.0 programming language documentation.
+- [Zig Async Frames](https://zig.guide/async/frames-suspend): This page explains the use of frame and suspend concepts for async functions in Zig programming language.
+- [Zig Payload Captures](https://zig.guide/language-basics/payload-captures): Explains the use of payload captures in the Zig programming language.
+- [Zig Formatting Guide](https://zig.guide/standard-library/formatting): To explain formatting data in Zig programming using std.fmt features.
+- [Zig Installation Guide](https://zig.guide/master/getting-started/installation): Guide for installing Zig programming language on various operating systems.
+- [Zig Runtime Safety](https://zig.guide/language-basics/runtime-safety): Explains Zig's runtime safety features and best practices for developers.
+- [Zig Arrays Guide](https://zig.guide/language-basics/arrays): Explain how to use arrays in the Zig programming language.
+- [Cross-Compiling with Zig](https://zig.guide/working-with-c/zig-cc): Detailed guide on using Zig's embedded Clang for cross-compiling C and C++ code.
+- [Zig nosuspend functionality](https://zig.guide/async/nosuspend): Explains the usage of the nosuspend keyword in Zig for calling async functions without making the caller async.
+- [Translate C to Zig](https://zig.guide/working-with-c/translate-c): Guide on using Zig's translation capabilities to convert C code to Zig.
+- [Understanding ABI in Zig](https://zig.guide/working-with-c/abi): Explains the concept of ABI and its significance for interoperability in Zig programming.
+- [Zig Language Error Handling](https://zig.guide/language-basics/errors): Explains error handling and types in the Zig programming language.
+- [Zig Switch Basics](https://zig.guide/language-basics/switch): Explain the usage and functionality of the switch statement and expression in Zig programming language.
+- [Zig Testing Guide](https://zig.guide/getting-started/running-tests): This guide teaches how to run tests in the Zig programming language.
+- [Zig Hello World Guide](https://zig.guide/getting-started/hello-world): Guide to creating a simple Hello World program in Zig programming language.
+- [Zig Async Introduction](https://zig.guide/async/introduction): Explain the async features in Zig programming and their implications on control flow and call stack management.
+- [Zig Sorting Utilities](https://zig.guide/standard-library/sorting): Explain how to use Zig's standard library for sorting slices of data.
+- [Zig 0.11 Hello World](https://zig.guide/0.11/getting-started/hello-world): Guide for creating a simple Hello World program in Zig 0.11.0.

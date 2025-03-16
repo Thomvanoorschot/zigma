@@ -2,6 +2,19 @@
     .name = .zigma,
     .fingerprint = 0x94102e7b3887e5a6,
     .version = "0.0.1",
-    .dependencies = .{},
-    .paths = .{""},
+    .dependencies = .{
+        .alphazig = .{
+            .url = "https://github.com/Thomvanoorschot/alphazig/archive/main.tar.gz",
+            .hash = "alphazig-0.1.0-JcDK8ADrCwDIuPV-s3LzElmc38NoaviOdFTi9Den5lUi",
+        },
+        .websocket = .{
+            .url = "https://github.com/karlseguin/websocket.zig/archive/master.tar.gz",
+            .hash = "websocket-0.1.0-ZPISdXNIAwCXG7oHBj4zc1CfmZcDeyR6hfTEOo8_YI4r",
+        },
+    },
+    .paths = .{
+        "src",
+        "build.zig",
+        "build.zig.zon",
+    },
 }

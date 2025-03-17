@@ -11,6 +11,7 @@ const Request = alphazig.Request;
 const BrokerType = brkr_impl.BrokerType;
 const BrokerActor = brkr_actr.BrokerActor;
 const BrokerMessage = brkr_actr.BrokerMessage;
+const Envelope = alphazig.Envelope;
 const OrderbookUpdate = brkr_impl.OrderbookUpdate;
 
 pub const OrderbookMessage = union(enum) {
@@ -55,8 +56,8 @@ pub const OrderbookActor = struct {
         self.arena.deinit();
     }
 
-    pub fn receive(self: *Self, message: *const OrderbookMessage) !void {
-        switch (message.*) {
+    pub fn receive(self: *Self, message: *const Envelope(OrderbookMessage)) !void {
+        switch (message.payload) {
             .init => |_| {
                 const broker_actor = try self.ctx.spawnActor(BrokerActor, BrokerMessage, .{
                     .id = "broker_actor",
@@ -67,7 +68,7 @@ pub const OrderbookActor = struct {
             },
             .start => |m| {
                 self.ticker = m.ticker;
-                try self.broker_actor.?.send(BrokerMessage{ .subscribe = .{ .ticker = m.ticker, .actor = self.ctx.self } });
+                try self.broker_actor.?.send(BrokerMessage{ .subscribe = .{ .ticker = m.ticker } });
             },
             .orderbook_update => |m| {
                 if (m.data.len > 0) {

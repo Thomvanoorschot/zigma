@@ -5,7 +5,7 @@
     .dependencies = .{
         .alphazig = .{
             .url = "https://github.com/Thomvanoorschot/alphazig/archive/main.tar.gz",
-            .hash = "alphazig-0.1.0-JcDK8ADrCwDIuPV-s3LzElmc38NoaviOdFTi9Den5lUi",
+            .hash = "alphazig-0.1.0-JcDK8DTsCwBhWIucCKanXnES7ulLaREvPc3qUoooLXuG",
         },
         .websocket = .{
             .url = "https://github.com/karlseguin/websocket.zig/archive/master.tar.gz",

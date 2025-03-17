@@ -8,6 +8,7 @@ const Context = alphazig.Context;
 const Coroutine = concurrency.Coroutine;
 const BrokerImpl = brkr_impl.BrokerImpl;
 const BrokerType = brkr_impl.BrokerType;
+const Envelope = alphazig.Envelope;
 const ActorInterface = alphazig.ActorInterface;
 const OrderbookMessage = orderbook_actor.OrderbookMessage;
 pub const BrokerMessage = union(enum) {
@@ -21,15 +22,13 @@ pub const BrokerInitRequest = struct {
 
 pub const BrokerSubscribeRequest = struct {
     ticker: []const u8,
-    // TODO Probably add a sender field in a wrapper for a request?
-    actor: *ActorInterface,
 };
 
 pub const BrokerActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context,
     broker: ?BrokerImpl = null,
-    subscriptions: std.ArrayList(*ActorInterface),
+    subscriptions: std.ArrayList(*const ActorInterface),
 
     const Self = @This();
     pub fn init(ctx: *Context, allocator: std.mem.Allocator) !*Self {
@@ -39,14 +38,14 @@ pub const BrokerActor = struct {
         self.* = .{
             .ctx = ctx,
             .allocator = allocator,
-            .subscriptions = std.ArrayList(*ActorInterface).init(allocator),
+            .subscriptions = std.ArrayList(*const ActorInterface).init(allocator),
         };
 
         return self;
     }
 
-    pub fn receive(self: *Self, message: *const BrokerMessage) !void {
-        switch (message.*) {
+    pub fn receive(self: *Self, message: *const Envelope(BrokerMessage)) !void {
+        switch (message.payload) {
             .init => |m| {
                 self.broker = try BrokerImpl.init(self.allocator, m.broker);
                 Coroutine(readMessages).go(self);
@@ -54,12 +53,13 @@ pub const BrokerActor = struct {
             .subscribe => |m| {
                 // TODO Split this up into seperate messages?
                 try self.broker.?.subscribeToOrderbook(m.ticker);
-                try self.subscriptions.append(m.actor);
+                try self.subscriptions.append(message.sender.?);
             },
         }
     }
     fn readMessages(self: *Self) !void {
         while (true) {
+            std.debug.print("AAAAAAAAAAA\n", .{});
             const message = try self.broker.?.readMessage();
             if (message) |m| {
                 switch (m) {

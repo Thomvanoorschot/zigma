@@ -3,9 +3,12 @@ const ws = @import("websocket");
 const json_utils = @import("../utils/json_utils.zig");
 const ws_messages = @import("./ws_messages.zig");
 const alphazig = @import("alphazig");
+const brkr_impl = @import("../trading/broker_impl.zig");
 
 const concurrency = alphazig.concurrency;
 const Coroutine = concurrency.Coroutine;
+const BrokerMessage = brkr_impl.BrokerMessage;
+const OrderbookUpdate = brkr_impl.OrderbookUpdate;
 const WsSubsribeRequest = ws_messages.WsSubsribeRequest;
 const parseOrderbookMessage = ws_messages.parseOrderbookMessage;
 pub const Broker = struct {
@@ -45,7 +48,7 @@ pub const Broker = struct {
         // Coroutine(listenToOrderbook).go(self);
     }
 
-    pub fn readMessages(self: *Self) !void {
+    pub fn readMessage(self: *Self) !?BrokerMessage {
         const ws_msg = try self.ws_client.read();
         if (ws_msg) |msg| {
             const orderbook_message = try parseOrderbookMessage(msg.data, self.allocator);
@@ -53,12 +56,48 @@ pub const Broker = struct {
                 switch (message) {
                     .snapshot => |snapshot| {
                         std.debug.print("Orderbook message: {}\n", .{snapshot});
+                        return BrokerMessage{ .orderbook_update = .{ .data = undefined } };
                     },
                     .update => |update| {
-                        std.debug.print("Update message: {}\n", .{update});
+                        // Convert kraken.ws_messages.UpdateData to trading.broker_impl.UpdateData
+                        var converted_data = try self.allocator.alloc(brkr_impl.UpdateData, update.data.len);
+                        for (update.data, 0..) |item, i| {
+                            // Convert bids
+                            var converted_bids = try self.allocator.alloc(brkr_impl.PriceLevel, item.bids.len);
+                            for (item.bids, 0..) |bid, bid_idx| {
+                                converted_bids[bid_idx] = brkr_impl.PriceLevel{
+                                    .price = bid.price,
+                                    .qty = bid.qty,
+                                    // Add any other fields needed
+                                };
+                            }
+
+                            // Convert asks
+                            var converted_asks = try self.allocator.alloc(brkr_impl.PriceLevel, item.asks.len);
+                            for (item.asks, 0..) |ask, ask_idx| {
+                                converted_asks[ask_idx] = brkr_impl.PriceLevel{
+                                    .price = ask.price,
+                                    .qty = ask.qty,
+                                    // Add any other fields needed
+                                };
+                            }
+
+                            converted_data[i] = brkr_impl.UpdateData{
+                                .symbol = item.symbol,
+                                .bids = converted_bids,
+                                .asks = converted_asks,
+                                .timestamp = item.timestamp,
+                            };
+                        }
+
+                        const orderbook_update = brkr_impl.OrderbookUpdate{
+                            .data = converted_data,
+                        };
+                        return BrokerMessage{ .orderbook_update = orderbook_update };
                     },
                 }
             }
         }
+        return null;
     }
 };

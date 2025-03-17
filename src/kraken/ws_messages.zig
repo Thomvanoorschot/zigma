@@ -15,15 +15,15 @@ pub const WsResponseMessage = union(WsResponseMessageType) {
     update: UpdateMessage,
 };
 
-pub const Order = struct {
+pub const PriceLevel = struct {
     price: f64,
     qty: f64,
 };
 
 pub const UpdateData = struct {
     symbol: []const u8,
-    bids: []const Order,
-    asks: []const Order,
+    bids: []const PriceLevel,
+    asks: []const PriceLevel,
     checksum: u64,
     timestamp: ?[]const u8 = null,
 };

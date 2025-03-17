@@ -10,6 +10,30 @@ pub const BrokerType = enum {
     kraken,
 };
 
+pub const BrokerMessageType = enum {
+    orderbook_update,
+};
+
+pub const BrokerMessage = union(BrokerMessageType) {
+    orderbook_update: OrderbookUpdate,
+};
+
+pub const OrderbookUpdate = struct {
+    data: []const UpdateData,
+};
+
+pub const PriceLevel = struct {
+    price: f64,
+    qty: f64,
+};
+
+pub const UpdateData = struct {
+    symbol: []const u8,
+    bids: []const PriceLevel,
+    asks: []const PriceLevel,
+    timestamp: ?[]const u8 = null,
+};
+
 pub const BrokerImpl = union(BrokerType) {
     kraken: *krkn.Broker,
     // Add more brokers as needed
@@ -33,10 +57,9 @@ pub const BrokerImpl = union(BrokerType) {
             inline else => |broker| return try broker.subscribeToOrderbook(ticker),
         }
     }
-
-    pub fn readMessages(self: *Self) !void {
+    pub fn readMessage(self: *Self) !?BrokerMessage {
         switch (self.*) {
-            inline else => |broker| return try broker.readMessages(),
+            inline else => |broker| return try broker.readMessage(),
         }
     }
 };

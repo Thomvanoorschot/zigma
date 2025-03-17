@@ -11,13 +11,13 @@ const Request = alphazig.Request;
 const BrokerType = brkr_impl.BrokerType;
 const BrokerActor = brkr_actr.BrokerActor;
 const BrokerMessage = brkr_actr.BrokerMessage;
+const OrderbookUpdate = brkr_impl.OrderbookUpdate;
 
 pub const OrderbookMessage = union(enum) {
     init: OrderbookInitRequest,
     start: OrderbookStartRequest,
-    request: OrderbookRequest,
+    orderbook_update: OrderbookUpdate,
 };
-
 pub const OrderbookInitRequest = struct {
     broker: BrokerType,
 };
@@ -67,12 +67,11 @@ pub const OrderbookActor = struct {
             },
             .start => |m| {
                 self.ticker = m.ticker;
-                try self.broker_actor.?.send(BrokerMessage{ .subscribe = .{ .ticker = m.ticker } });
+                try self.broker_actor.?.send(BrokerMessage{ .subscribe = .{ .ticker = m.ticker, .actor = self.ctx.self } });
             },
-            .request => |_| {
-                while (true) {
-                    try self.broker_actor.?.send(BrokerMessage{ .request = .{} });
-                    self.ctx.yield();
+            .orderbook_update => |m| {
+                if (m.data.len > 0) {
+                    std.debug.print("Orderbook update: {?s}\n", .{m.data[0].timestamp});
                 }
             },
         }

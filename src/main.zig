@@ -30,7 +30,6 @@ pub fn mainRoutine(_: EmptyArgs) !void {
 
     try engine.send("orderbook_actor", OrderbookMessage{ .init = .{ .broker = .kraken } });
     try engine.send("orderbook_actor", OrderbookMessage{ .start = .{ .ticker = "BTC/USD" } });
-    try engine.send("orderbook_actor", OrderbookMessage{ .request = .{} });
     std.debug.print("Hello, world!\n", .{});
     scheduler.suspend_routine();
 }

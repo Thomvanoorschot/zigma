@@ -59,13 +59,13 @@ pub const BrokerActor = struct {
     }
     fn readMessages(self: *Self) !void {
         while (true) {
-            std.debug.print("AAAAAAAAAAA\n", .{});
             const message = try self.broker.?.readMessage();
             if (message) |m| {
                 switch (m) {
                     .orderbook_update => |update| {
                         for (self.subscriptions.items) |actor| {
-                            try actor.send(OrderbookMessage{ .orderbook_update = update });
+                            // TODO This sends *self in the actor interface, but this should be the sender and not the receiver!
+                            try actor.send(self.ctx.actor, OrderbookMessage{ .orderbook_update = update });
                         }
                     },
                 }

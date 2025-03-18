@@ -45,7 +45,6 @@ pub const Broker = struct {
             },
         }, &buffer);
         try self.ws_client.write(req);
-        // Coroutine(listenToOrderbook).go(self);
     }
 
     pub fn readMessage(self: *Self) !?BrokerMessage {

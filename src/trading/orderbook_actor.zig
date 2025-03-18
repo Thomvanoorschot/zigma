@@ -63,12 +63,12 @@ pub const OrderbookActor = struct {
                     .id = "broker_actor",
                 });
 
-                try broker_actor.send(BrokerMessage{ .init = .{ .broker = .kraken } });
+                try broker_actor.send(self.ctx.actor, BrokerMessage{ .init = .{ .broker = .kraken } });
                 self.broker_actor = broker_actor;
             },
             .start => |m| {
                 self.ticker = m.ticker;
-                try self.broker_actor.?.send(BrokerMessage{ .subscribe = .{ .ticker = m.ticker } });
+                try self.broker_actor.?.send(self.ctx.actor, BrokerMessage{ .subscribe = .{ .ticker = m.ticker } });
             },
             .orderbook_update => |m| {
                 if (m.data.len > 0) {

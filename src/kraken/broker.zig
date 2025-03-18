@@ -11,16 +11,12 @@ const BrokerMessage = brkr_impl.BrokerMessage;
 const OrderbookUpdate = brkr_impl.OrderbookUpdate;
 const WsSubsribeRequest = ws_messages.WsSubsribeRequest;
 const parseOrderbookMessage = ws_messages.parseOrderbookMessage;
-const WsResponseMessage = ws_messages.WsResponseMessage;
 pub const Broker = struct {
     allocator: std.mem.Allocator,
     ws_client: ws.Client,
-    ws_message_pool: std.heap.MemoryPool(WsResponseMessage),
     const Self = @This();
     pub fn init(allocator: std.mem.Allocator) !*Self {
         const self = try allocator.create(Self);
-
-        const ws_message_pool = std.heap.MemoryPool(WsResponseMessage).init(allocator);
 
         var client = try ws.Client.init(allocator, .{ .host = "ws.kraken.com", .port = 443, .tls = true });
         try client.handshake("/v2", .{
@@ -29,18 +25,13 @@ pub const Broker = struct {
         });
         errdefer client.deinit();
 
-        self.* = .{
-            .allocator = allocator,
-            .ws_client = client,
-            .ws_message_pool = ws_message_pool,
-        };
+        self.* = .{ .allocator = allocator, .ws_client = client };
         return self;
     }
 
     pub fn deinit(self: *Self) void {
         self.allocator.destroy(self);
         self.ws_client.deinit();
-        self.ws_message_pool.deinit();
     }
 
     pub fn subscribeToOrderbook(self: *Self, ticker: []const u8) !void {
@@ -59,11 +50,12 @@ pub const Broker = struct {
     pub fn readMessage(self: *Self) !?BrokerMessage {
         const ws_msg = try self.ws_client.read();
         if (ws_msg) |msg| {
-            const orderbook_message = try parseOrderbookMessage(msg.data, self.allocator);
+            var arena_state = std.heap.ArenaAllocator.init(self.allocator);
+            defer arena_state.deinit();
+            const orderbook_message = try parseOrderbookMessage(msg.data, arena_state.allocator());
             if (orderbook_message) |message| {
                 switch (message) {
                     .snapshot => |snapshot| {
-                        std.debug.print("Orderbook message: {}\n", .{snapshot});
                         return BrokerMessage{ .orderbook_update = try self.convertUpdateData(snapshot) };
                     },
                     .update => |update| {
@@ -77,10 +69,17 @@ pub const Broker = struct {
 
     fn convertUpdateData(self: *Self, update: ws_messages.UpdateMessage) !OrderbookUpdate {
         var orderbook_update = try brkr_impl.OrderbookUpdate.init(self.allocator, update.data.len);
-
-        var converted_data = try self.allocator.alloc(brkr_impl.UpdateData, update.data.len);
+        var arena = orderbook_update.arena_state.allocator();
+        var converted_data = try arena.alloc(brkr_impl.UpdateData, update.data.len);
         for (update.data, 0..) |item, i| {
-            var converted_bids = try self.allocator.alloc(brkr_impl.PriceLevel, item.bids.len);
+            var symbol_copy: []const u8 = undefined;
+            if (item.symbol.len > 0) {
+                symbol_copy = try arena.dupe(u8, item.symbol);
+            } else {
+                symbol_copy = "";
+            }
+
+            var converted_bids = try arena.alloc(brkr_impl.PriceLevel, item.bids.len);
             for (item.bids, 0..) |bid, bid_idx| {
                 converted_bids[bid_idx] = brkr_impl.PriceLevel{
                     .price = bid.price,
@@ -88,7 +87,7 @@ pub const Broker = struct {
                 };
             }
 
-            var converted_asks = try self.allocator.alloc(brkr_impl.PriceLevel, item.asks.len);
+            var converted_asks = try arena.alloc(brkr_impl.PriceLevel, item.asks.len);
             for (item.asks, 0..) |ask, ask_idx| {
                 converted_asks[ask_idx] = brkr_impl.PriceLevel{
                     .price = ask.price,
@@ -96,11 +95,16 @@ pub const Broker = struct {
                 };
             }
 
+            var timestamp_copy: ?[]const u8 = null;
+            if (item.timestamp) |ts| {
+                timestamp_copy = try arena.dupe(u8, ts);
+            }
+
             converted_data[i] = brkr_impl.UpdateData{
-                .symbol = item.symbol,
+                .symbol = symbol_copy,
                 .bids = converted_bids,
                 .asks = converted_asks,
-                .timestamp = item.timestamp,
+                .timestamp = timestamp_copy,
             };
         }
         orderbook_update.data = converted_data;

@@ -48,7 +48,6 @@ pub fn parseOrderbookMessage(json_str: []const u8, allocator: std.mem.Allocator)
     const message_type: WsResponseMessageType = std.meta.stringToEnum(WsResponseMessageType, type_str) orelse
         return null;
 
-    std.debug.print("Message type: {}\n", .{message_type});
     return switch (message_type) {
         .snapshot => {
             const snapshot_json = try std.json.parseFromValue(UpdateMessage, allocator, raw_value, .{});

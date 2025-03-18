@@ -64,7 +64,6 @@ pub const BrokerActor = struct {
                 switch (m) {
                     .orderbook_update => |update| {
                         for (self.subscriptions.items) |actor| {
-                            // TODO This sends *self in the actor interface, but this should be the sender and not the receiver!
                             try actor.send(self.ctx.actor, OrderbookMessage{ .orderbook_update = update });
                         }
                     },

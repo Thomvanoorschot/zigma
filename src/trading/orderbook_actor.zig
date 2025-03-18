@@ -74,6 +74,7 @@ pub const OrderbookActor = struct {
                 if (m.data.len > 0) {
                     std.debug.print("Orderbook update: {?s}\n", .{m.data[0].timestamp});
                 }
+                m.deinit();
             },
         }
     }

@@ -11,12 +11,16 @@ const BrokerMessage = brkr_impl.BrokerMessage;
 const OrderbookUpdate = brkr_impl.OrderbookUpdate;
 const WsSubsribeRequest = ws_messages.WsSubsribeRequest;
 const parseOrderbookMessage = ws_messages.parseOrderbookMessage;
+const WsResponseMessage = ws_messages.WsResponseMessage;
 pub const Broker = struct {
     allocator: std.mem.Allocator,
     ws_client: ws.Client,
+    ws_message_pool: std.heap.MemoryPool(WsResponseMessage),
     const Self = @This();
     pub fn init(allocator: std.mem.Allocator) !*Self {
         const self = try allocator.create(Self);
+
+        const ws_message_pool = std.heap.MemoryPool(WsResponseMessage).init(allocator);
 
         var client = try ws.Client.init(allocator, .{ .host = "ws.kraken.com", .port = 443, .tls = true });
         try client.handshake("/v2", .{
@@ -25,13 +29,18 @@ pub const Broker = struct {
         });
         errdefer client.deinit();
 
-        self.* = .{ .allocator = allocator, .ws_client = client };
+        self.* = .{
+            .allocator = allocator,
+            .ws_client = client,
+            .ws_message_pool = ws_message_pool,
+        };
         return self;
     }
 
     pub fn deinit(self: *Self) void {
         self.allocator.destroy(self);
         self.ws_client.deinit();
+        self.ws_message_pool.deinit();
     }
 
     pub fn subscribeToOrderbook(self: *Self, ticker: []const u8) !void {
@@ -55,48 +64,46 @@ pub const Broker = struct {
                 switch (message) {
                     .snapshot => |snapshot| {
                         std.debug.print("Orderbook message: {}\n", .{snapshot});
-                        return BrokerMessage{ .orderbook_update = .{ .data = undefined } };
+                        return BrokerMessage{ .orderbook_update = try self.convertUpdateData(snapshot) };
                     },
                     .update => |update| {
-                        // Convert kraken.ws_messages.UpdateData to trading.broker_impl.UpdateData
-                        var converted_data = try self.allocator.alloc(brkr_impl.UpdateData, update.data.len);
-                        for (update.data, 0..) |item, i| {
-                            // Convert bids
-                            var converted_bids = try self.allocator.alloc(brkr_impl.PriceLevel, item.bids.len);
-                            for (item.bids, 0..) |bid, bid_idx| {
-                                converted_bids[bid_idx] = brkr_impl.PriceLevel{
-                                    .price = bid.price,
-                                    .qty = bid.qty,
-                                    // Add any other fields needed
-                                };
-                            }
-
-                            // Convert asks
-                            var converted_asks = try self.allocator.alloc(brkr_impl.PriceLevel, item.asks.len);
-                            for (item.asks, 0..) |ask, ask_idx| {
-                                converted_asks[ask_idx] = brkr_impl.PriceLevel{
-                                    .price = ask.price,
-                                    .qty = ask.qty,
-                                    // Add any other fields needed
-                                };
-                            }
-
-                            converted_data[i] = brkr_impl.UpdateData{
-                                .symbol = item.symbol,
-                                .bids = converted_bids,
-                                .asks = converted_asks,
-                                .timestamp = item.timestamp,
-                            };
-                        }
-
-                        const orderbook_update = brkr_impl.OrderbookUpdate{
-                            .data = converted_data,
-                        };
-                        return BrokerMessage{ .orderbook_update = orderbook_update };
+                        return BrokerMessage{ .orderbook_update = try self.convertUpdateData(update) };
                     },
                 }
             }
         }
         return null;
+    }
+
+    fn convertUpdateData(self: *Self, update: ws_messages.UpdateMessage) !OrderbookUpdate {
+        var orderbook_update = try brkr_impl.OrderbookUpdate.init(self.allocator, update.data.len);
+
+        var converted_data = try self.allocator.alloc(brkr_impl.UpdateData, update.data.len);
+        for (update.data, 0..) |item, i| {
+            var converted_bids = try self.allocator.alloc(brkr_impl.PriceLevel, item.bids.len);
+            for (item.bids, 0..) |bid, bid_idx| {
+                converted_bids[bid_idx] = brkr_impl.PriceLevel{
+                    .price = bid.price,
+                    .qty = bid.qty,
+                };
+            }
+
+            var converted_asks = try self.allocator.alloc(brkr_impl.PriceLevel, item.asks.len);
+            for (item.asks, 0..) |ask, ask_idx| {
+                converted_asks[ask_idx] = brkr_impl.PriceLevel{
+                    .price = ask.price,
+                    .qty = ask.qty,
+                };
+            }
+
+            converted_data[i] = brkr_impl.UpdateData{
+                .symbol = item.symbol,
+                .bids = converted_bids,
+                .asks = converted_asks,
+                .timestamp = item.timestamp,
+            };
+        }
+        orderbook_update.data = converted_data;
+        return orderbook_update;
     }
 };

@@ -19,7 +19,20 @@ pub const BrokerMessage = union(BrokerMessageType) {
 };
 
 pub const OrderbookUpdate = struct {
-    data: []const UpdateData,
+    allocator: std.mem.Allocator,
+    data: []UpdateData,
+
+    const Self = @This();
+    pub fn init(allocator: std.mem.Allocator, count: usize) !Self {
+        return Self{
+            .allocator = allocator,
+            .data = try allocator.alloc(UpdateData, count),
+        };
+    }
+
+    pub fn deinit(self: Self) void {
+        self.allocator.free(self.data);
+    }
 };
 
 pub const PriceLevel = struct {

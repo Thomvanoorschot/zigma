@@ -29,7 +29,13 @@ pub fn mainRoutine(_: EmptyArgs) !void {
     _ = orderbook_actor;
 
     try engine.send(null, "orderbook_actor", OrderbookMessage{ .init = .{ .broker = .kraken } });
-    try engine.send(null,"orderbook_actor", OrderbookMessage{ .start = .{ .ticker = "BTC/USD" } });
-    std.debug.print("Hello, world!\n", .{});
+    try engine.send(null, "orderbook_actor", OrderbookMessage{ .start = .{ .ticker = "BTC/USD" } });
+
+    const test_second_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
+        .id = "test_second_actor",
+    });
+    _ = test_second_actor;
+    try engine.send(null, "test_second_actor", OrderbookMessage{ .init = .{ .broker = .kraken } });
+    try engine.send(null, "test_second_actor", OrderbookMessage{ .start = .{ .ticker = "ETH/USD" } });
     scheduler.suspend_routine();
 }

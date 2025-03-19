@@ -74,9 +74,9 @@ pub const OrderbookActor = struct {
             },
             .orderbook_update => |m| {
                 // std.debug.print("Orderbook update: {?d}\n", .{m.data.checksum});
-                // m.deinit();
                 _ = try updateOrderbook(&self.orderbook.?, m);
                 self.orderbook.?.display();
+                m.deinit();
             },
         }
     }

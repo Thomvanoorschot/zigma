@@ -7,7 +7,6 @@ const ActorInterface = alphazig.ActorInterface;
 const Coroutine = concurrency.Coroutine;
 const Allocator = std.mem.Allocator;
 const Context = alphazig.Context;
-const Request = alphazig.Request;
 const BrokerType = brkr_impl.BrokerType;
 const BrokerActor = brkr_actr.BrokerActor;
 const BrokerMessage = brkr_actr.BrokerMessage;

@@ -68,46 +68,44 @@ pub const Broker = struct {
     }
 
     fn convertUpdateData(self: *Self, update: ws_messages.UpdateMessage) !OrderbookUpdate {
-        var orderbook_update = try brkr_impl.OrderbookUpdate.init(self.allocator, update.data.len);
+        var orderbook_update = try brkr_impl.OrderbookUpdate.init(self.allocator);
         var arena = orderbook_update.arena_state.allocator();
-        var converted_data = try arena.alloc(brkr_impl.UpdateData, update.data.len);
-        for (update.data, 0..) |item, i| {
-            var symbol_copy: []const u8 = undefined;
-            if (item.symbol.len > 0) {
-                symbol_copy = try arena.dupe(u8, item.symbol);
-            } else {
-                symbol_copy = "";
-            }
+        var symbol_copy: []const u8 = undefined;
+        const item = update.data[0];
+        if (item.symbol.len > 0) {
+            symbol_copy = try arena.dupe(u8, item.symbol);
+        } else {
+            symbol_copy = "";
+        }
 
-            var converted_bids = try arena.alloc(brkr_impl.PriceLevel, item.bids.len);
-            for (item.bids, 0..) |bid, bid_idx| {
-                converted_bids[bid_idx] = brkr_impl.PriceLevel{
-                    .price = bid.price,
-                    .qty = bid.qty,
-                };
-            }
-
-            var converted_asks = try arena.alloc(brkr_impl.PriceLevel, item.asks.len);
-            for (item.asks, 0..) |ask, ask_idx| {
-                converted_asks[ask_idx] = brkr_impl.PriceLevel{
-                    .price = ask.price,
-                    .qty = ask.qty,
-                };
-            }
-
-            var timestamp_copy: ?[]const u8 = null;
-            if (item.timestamp) |ts| {
-                timestamp_copy = try arena.dupe(u8, ts);
-            }
-
-            converted_data[i] = brkr_impl.UpdateData{
-                .symbol = symbol_copy,
-                .bids = converted_bids,
-                .asks = converted_asks,
-                .timestamp = timestamp_copy,
+        var converted_bids = try arena.alloc(brkr_impl.PriceLevel, item.bids.len);
+        for (item.bids, 0..) |bid, bid_idx| {
+            converted_bids[bid_idx] = brkr_impl.PriceLevel{
+                .price = bid.price,
+                .qty = bid.qty,
             };
         }
-        orderbook_update.data = converted_data;
+
+        var converted_asks = try arena.alloc(brkr_impl.PriceLevel, item.asks.len);
+        for (item.asks, 0..) |ask, ask_idx| {
+            converted_asks[ask_idx] = brkr_impl.PriceLevel{
+                .price = ask.price,
+                .qty = ask.qty,
+            };
+        }
+
+        var timestamp_copy: ?[]const u8 = null;
+        if (item.timestamp) |ts| {
+            timestamp_copy = try arena.dupe(u8, ts);
+        }
+
+        orderbook_update.data.* = brkr_impl.UpdateData{
+            .symbol = symbol_copy,
+            .bids = converted_bids,
+            .asks = converted_asks,
+            .timestamp = timestamp_copy,
+            .checksum = item.checksum,
+        };
         return orderbook_update;
     }
 };

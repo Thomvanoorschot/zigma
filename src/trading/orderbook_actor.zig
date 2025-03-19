@@ -2,6 +2,7 @@ const std = @import("std");
 const alphazig = @import("alphazig");
 const brkr_impl = @import("broker_impl.zig");
 const brkr_actr = @import("broker_actor.zig");
+const orderbook = @import("orderbook.zig");
 const concurrency = alphazig.concurrency;
 const ActorInterface = alphazig.ActorInterface;
 const Coroutine = concurrency.Coroutine;
@@ -12,7 +13,8 @@ const BrokerActor = brkr_actr.BrokerActor;
 const BrokerMessage = brkr_actr.BrokerMessage;
 const Envelope = alphazig.Envelope;
 const OrderbookUpdate = brkr_impl.OrderbookUpdate;
-
+const Orderbook = orderbook.OrderBook;
+const updateOrderbook = orderbook.updateOrderbook;
 pub const OrderbookMessage = union(enum) {
     init: OrderbookInitRequest,
     start: OrderbookStartRequest,
@@ -35,7 +37,7 @@ pub const OrderbookActor = struct {
     ticker: []const u8 = "",
     ctx: *Context,
     broker_actor: ?*ActorInterface = null,
-
+    orderbook: ?Orderbook = null,
     const Self = @This();
     pub fn init(ctx: *Context, allocator: Allocator) !*Self {
         const self = try allocator.create(Self);
@@ -64,16 +66,17 @@ pub const OrderbookActor = struct {
 
                 try broker_actor.send(self.ctx.actor, BrokerMessage{ .init = .{ .broker = .kraken } });
                 self.broker_actor = broker_actor;
+                self.orderbook = try Orderbook.init(self.allocator, "kraken", self.ticker, 10);
             },
             .start => |m| {
                 self.ticker = m.ticker;
                 try self.broker_actor.?.send(self.ctx.actor, BrokerMessage{ .subscribe = .{ .ticker = m.ticker } });
             },
             .orderbook_update => |m| {
-                if (m.data.len > 0) {
-                    std.debug.print("Orderbook update: {?s}\n", .{m.data[0].timestamp});
-                }
-                m.deinit();
+                // std.debug.print("Orderbook update: {?d}\n", .{m.data.checksum});
+                // m.deinit();
+                _ = try updateOrderbook(&self.orderbook.?, m);
+                self.orderbook.?.display();
             },
         }
     }

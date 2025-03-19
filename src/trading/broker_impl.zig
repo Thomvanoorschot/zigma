@@ -20,14 +20,14 @@ pub const BrokerMessage = union(BrokerMessageType) {
 
 pub const OrderbookUpdate = struct {
     arena_state: std.heap.ArenaAllocator,
-    data: []UpdateData,
+    data: *UpdateData,
 
     const Self = @This();
-    pub fn init(allocator: std.mem.Allocator, count: usize) !Self {
+    pub fn init(allocator: std.mem.Allocator) !Self {
         var arena_state = std.heap.ArenaAllocator.init(allocator);
         return Self{
             .arena_state = arena_state,
-            .data = try arena_state.allocator().alloc(UpdateData, count),
+            .data = try arena_state.allocator().create(UpdateData),
         };
     }
 
@@ -45,6 +45,7 @@ pub const UpdateData = struct {
     symbol: []const u8,
     bids: []const PriceLevel,
     asks: []const PriceLevel,
+    checksum: u64,
     timestamp: ?[]const u8 = null,
 };
 

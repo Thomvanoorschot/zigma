@@ -1,13 +1,11 @@
 const std = @import("std");
-const skgui = @import("skgui");
+const sokol = @import("sokol");
+const implot = @import("implot");
+const imgui = @import("imgui");
 
-const sokol = skgui.sokol;
-const imp = skgui.implot;
-const ig = skgui.imgui;
-
-const slog = sokol.log;
-const sg = sokol.gfx;
 const sapp = sokol.app;
+const sg = sokol.gfx;
+const slog = sokol.log;
 const sglue = sokol.glue;
 
 const State = struct {
@@ -41,7 +39,8 @@ pub const App = struct {
         // if (State.actor_manager) |manager| {
         //     candlestick_chart.plotCandlestickWindow(manager);
         // }
-        imp.ImPlot_ShowDemoWindow(null);
+
+        _ = implot.ImPlot_ShowDemoWindow(null);
 
         sg.beginPass(.{ .action = State.pass_action, .swapchain = sglue.swapchain() });
         sokol.imgui.render();
@@ -57,11 +56,11 @@ pub const App = struct {
 
         const desc: sokol.imgui.Desc = .{};
         sokol.imgui.setup(desc);
-        _ = imp.ImPlot_CreateContext();
+        _ = implot.ImPlot_CreateContext();
 
-        var io: *ig.ImGuiIO = @ptrCast(ig.igGetIO());
-        io.ConfigFlags |= ig.ImGuiConfigFlags_NavEnableKeyboard;
-        io.ConfigFlags |= ig.ImGuiConfigFlags_DockingEnable;
+        var io: *imgui.ImGuiIO = @ptrCast(imgui.igGetIO());
+        io.ConfigFlags |= imgui.ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags |= imgui.ImGuiConfigFlags_DockingEnable;
         io.FontGlobalScale = 1.0 / io.DisplayFramebufferScale.y;
 
         State.pass_action.colors[0] = .{
@@ -71,7 +70,7 @@ pub const App = struct {
     }
 
     export fn sCleanup() void {
-        imp.ImPlot_DestroyContext(null);
+        _ = implot.ImPlot_DestroyContext(null);
         sokol.imgui.shutdown();
         sg.shutdown();
     }

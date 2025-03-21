@@ -1,0 +1,21 @@
+.{
+    .name = .zigma_server,
+    .fingerprint = 0x2255339327ca2d18,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.0-dev.45+24db007cd",
+    .dependencies = .{
+        .websocket = .{
+            .url = "https://github.com/karlseguin/websocket.zig/archive/master.tar.gz",
+            .hash = "websocket-0.1.0-ZPISdXNIAwCXG7oHBj4zc1CfmZcDeyR6hfTEOo8_YI4r",
+        },
+        .backstage = .{
+            .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
+            .hash = "backstage-0.1.0-Lti6bKHsCwAGDPg2ke2UDXbzYOSenIyHF0aPTPXYSc7P",
+        },
+    },
+    .paths = .{
+        "src",
+        "build.zig",
+        "build.zig.zon",
+    },
+}

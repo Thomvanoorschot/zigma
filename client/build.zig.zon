@@ -1,0 +1,12 @@
+.{
+    .name = .zigma_client,
+    .fingerprint = 0xbf7ce230d3d6466c,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.0-dev.45+24db007cd",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}

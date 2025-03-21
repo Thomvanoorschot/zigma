@@ -1,9 +1,9 @@
 const std = @import("std");
 const krkn = @import("../kraken/broker.zig");
-const alphazig = @import("alphazig");
+const backstage = @import("backstage");
 
-const concurrency = alphazig.concurrency;
-const Context = alphazig.Context;
+const concurrency = backstage.concurrency;
+const Context = backstage.Context;
 const Coroutine = concurrency.Coroutine;
 
 pub const BrokerType = enum {

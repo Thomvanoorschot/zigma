@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const alphazig_dep = b.dependency("alphazig", .{
+    const backstage_dep = b.dependency("backstage", .{
         .target = target,
         .optimize = optimize,
     });
@@ -20,7 +20,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    exe.root_module.addImport("alphazig", alphazig_dep.module("alphazig"));
+    exe.root_module.addImport("backstage", backstage_dep.module("backstage"));
     exe.root_module.addImport("websocket", websocket_dep.module("websocket"));
 
     b.installArtifact(exe);

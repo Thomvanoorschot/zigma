@@ -50,6 +50,7 @@ pub const Broker = struct {
     pub fn readMessage(self: *Self) !?BrokerMessage {
         const ws_msg = try self.ws_client.read();
         if (ws_msg) |msg| {
+            defer self.ws_client.done(msg);
             var arena_state = std.heap.ArenaAllocator.init(self.allocator);
             defer arena_state.deinit();
             const orderbook_message = try parseOrderbookMessage(msg.data, arena_state.allocator());

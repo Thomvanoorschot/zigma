@@ -73,7 +73,6 @@ pub const OrderbookActor = struct {
                 try self.broker_actor.?.send(self.ctx.actor, BrokerMessage{ .subscribe = .{ .ticker = m.ticker } });
             },
             .orderbook_update => |m| {
-                // std.debug.print("Orderbook update: {?d}\n", .{m.data.checksum});
                 _ = try updateOrderbook(&self.orderbook.?, m);
                 self.orderbook.?.display();
                 m.deinit();

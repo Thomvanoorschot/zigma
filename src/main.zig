@@ -36,5 +36,12 @@ pub fn mainRoutine(_: EmptyArgs) !void {
     _ = test_second_actor;
     try engine.send(null, "test_second_actor", OrderbookMessage{ .init = .{ .broker = .kraken } });
     try engine.send(null, "test_second_actor", OrderbookMessage{ .start = .{ .ticker = "ETH/USD" } });
+
+    const test_third_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
+        .id = "test_third_actor",
+    });
+    _ = test_third_actor;
+    try engine.send(null, "test_third_actor", OrderbookMessage{ .init = .{ .broker = .kraken } });
+    try engine.send(null, "test_third_actor", OrderbookMessage{ .start = .{ .ticker = "XRP/USD" } });
     scheduler.suspend_routine();
 }

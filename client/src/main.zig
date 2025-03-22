@@ -6,9 +6,7 @@ pub fn main() !void {
     App.init(800, 500, "Market Visualization");
 }
 
-
-
-// QUIC:            
+// QUIC:
 // QUIC offers low latency, built-in encryption, and efficient multiplexing
 // without head‐of‐line blocking. This makes it well-suited for streaming
 // multiple data feeds concurrently, which is critical for real-time trading data.

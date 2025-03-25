@@ -5,12 +5,11 @@ const ws_messages = @import("./ws_messages.zig");
 const backstage = @import("backstage");
 const brkr_impl = @import("../trading/broker_impl.zig");
 
-const concurrency = backstage.concurrency;
-const Coroutine = concurrency.Coroutine;
 const BrokerMessage = brkr_impl.BrokerMessage;
 const OrderbookUpdate = brkr_impl.OrderbookUpdate;
 const WsSubsribeRequest = ws_messages.WsSubsribeRequest;
 const parseOrderbookMessage = ws_messages.parseOrderbookMessage;
+
 pub const Broker = struct {
     allocator: std.mem.Allocator,
     ws_client: ws.Client,

@@ -12,11 +12,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    const httpz_dep = b.dependency("httpz", .{
-        .target = target,
-        .optimize = optimize,
-    });
-
     const exe = b.addExecutable(.{
         .name = "zigma_server",
         .root_source_file = .{ .cwd_relative = "src/main.zig" },
@@ -26,7 +21,6 @@ pub fn build(b: *std.Build) void {
 
     exe.root_module.addImport("backstage", backstage_dep.module("backstage"));
     exe.root_module.addImport("websocket", websocket_dep.module("websocket"));
-    exe.root_module.addImport("httpz", httpz_dep.module("httpz"));
     b.installArtifact(exe);
     // Add a run step
     const run_cmd = b.addRunArtifact(exe);

@@ -3,9 +3,8 @@ const backstage = @import("backstage");
 const brkr_impl = @import("broker_impl.zig");
 const brkr_actr = @import("broker_actor.zig");
 const orderbook = @import("orderbook.zig");
-const concurrency = backstage.concurrency;
+
 const ActorInterface = backstage.ActorInterface;
-const Coroutine = concurrency.Coroutine;
 const Allocator = std.mem.Allocator;
 const Context = backstage.Context;
 const BrokerType = brkr_impl.BrokerType;
@@ -15,6 +14,7 @@ const Envelope = backstage.Envelope;
 const OrderbookUpdate = brkr_impl.OrderbookUpdate;
 const Orderbook = orderbook.OrderBook;
 const updateOrderbook = orderbook.updateOrderbook;
+
 pub const OrderbookMessage = union(enum) {
     init: OrderbookInitRequest,
     start: OrderbookStartRequest,

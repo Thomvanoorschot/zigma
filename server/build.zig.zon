@@ -10,11 +10,7 @@
         },
         .backstage = .{
             .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
-            .hash = "backstage-0.1.0-Lti6bKHsCwAGDPg2ke2UDXbzYOSenIyHF0aPTPXYSc7P",
-        },
-        .httpz = .{
-            .url = "git+https://github.com/karlseguin/http.zig?ref=master#0ce9038e13c138423f68d95a475159039458e798",
-            .hash = "httpz-0.0.0-PNVzrJ-0BgAp8WPkVfsFGNPRlRpBoU-8w0LxMDXBp37t",
+            .hash = "backstage-0.1.0-Lti6bKXQCwBe7GAxEvmnRaHFW3RpQYOFlwQjlFoBDGpw",
         },
     },
     .paths = .{

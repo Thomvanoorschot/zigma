@@ -48,7 +48,7 @@ pub fn main() !void {
         .id = "test_third_actor",
     });
     try test_third_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
-    try test_third_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "XRP/USD" } });
+    try test_third_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "OMNI/USD" } });
 
     // Stopping doesn't quite work yet
     // var cc = xev.Completion{};

@@ -6,7 +6,7 @@ const backstage = @import("backstage");
 const brkr_impl = @import("../trading/broker_impl.zig");
 const Loop = backstage.xev.Loop;
 const xev = backstage.xev;
-const BrokerMessage = brkr_impl.BrokerPayload;
+const BrokerPayload = brkr_impl.BrokerPayload;
 const OrderbookUpdate = brkr_impl.OrderbookUpdate;
 const WsSubsribeRequest = ws_messages.WsSubsribeRequest;
 const parseOrderbookMessage = ws_messages.parseOrderbookMessage;
@@ -16,13 +16,13 @@ pub const Broker = struct {
     allocator: std.mem.Allocator,
     ws_client: ws.Client,
     callback_context: *anyopaque,
-    read_callback: *const fn (*anyopaque, anyerror!?BrokerMessage) anyerror!void,
+    read_callback: *const fn (*anyopaque, anyerror!?BrokerPayload) anyerror!void,
     const Self = @This();
     pub fn init(
         allocator: std.mem.Allocator,
         loop: *Loop,
         callback_context: *anyopaque,
-        comptime read_callback: *const fn (*anyopaque, anyerror!?BrokerMessage) anyerror!void,
+        comptime read_callback: *const fn (*anyopaque, anyerror!?BrokerPayload) anyerror!void,
     ) !*Self {
         const self = try allocator.create(Self);
 
@@ -72,34 +72,13 @@ pub const Broker = struct {
         if (orderbook_message) |message| {
             switch (message) {
                 .snapshot => |snapshot| {
-                    try self.read_callback(self.callback_context, BrokerMessage{ .orderbook_update = try self.convertUpdateData(snapshot) });
+                    try self.read_callback(self.callback_context, BrokerPayload{ .orderbook_update = try self.convertUpdateData(snapshot) });
                 },
                 .update => |update| {
-                    try self.read_callback(self.callback_context, BrokerMessage{ .orderbook_update = try self.convertUpdateData(update) });
+                    try self.read_callback(self.callback_context, BrokerPayload{ .orderbook_update = try self.convertUpdateData(update) });
                 },
             }
         }
-    }
-
-    pub fn readMessage(_: *Self) !?BrokerMessage {
-        // const ws_msg = try self.ws_client.read();
-        // if (ws_msg) |msg| {
-        //     defer self.ws_client.done(msg);
-        //     var arena_state = std.heap.ArenaAllocator.init(self.allocator);
-        //     defer arena_state.deinit();
-        //     const orderbook_message = try parseOrderbookMessage(msg.data, arena_state.allocator());
-        //     if (orderbook_message) |message| {
-        //         switch (message) {
-        //             .snapshot => |snapshot| {
-        //                 return BrokerMessage{ .orderbook_update = try self.convertUpdateData(snapshot) };
-        //             },
-        //             .update => |update| {
-        //                 return BrokerMessage{ .orderbook_update = try self.convertUpdateData(update) };
-        //             },
-        //         }
-        //     }
-        // }
-        return null;
     }
 
     fn convertUpdateData(self: *Self, update: ws_messages.UpdateMessage) !OrderbookUpdate {

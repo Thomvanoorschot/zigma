@@ -86,17 +86,4 @@ pub const BrokerActor = struct {
             }
         }
     }
-
-    // fn readMessages(self: *Self) !void {
-    //     const message = try self.broker.?.readMessage();
-    //     if (message) |m| {
-    //         switch (m) {
-    //             .orderbook_update => |update| {
-    //                 for (self.subscriptions.items) |actor| {
-    //                     try actor.send(self.ctx.actor, OrderbookMessage{ .orderbook_update = update });
-    //                 }
-    //             },
-    //         }
-    //     }
-    // }
 };

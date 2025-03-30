@@ -2,17 +2,18 @@ const std = @import("std");
 const krkn = @import("../kraken/broker.zig");
 const backstage = @import("backstage");
 
+const Loop = backstage.xev.Loop;
 const Context = backstage.Context;
 
 pub const BrokerType = enum {
     kraken,
 };
 
-pub const BrokerMessageType = enum {
+pub const BrokerPayloadType = enum {
     orderbook_update,
 };
 
-pub const BrokerMessage = union(BrokerMessageType) {
+pub const BrokerPayload = union(BrokerPayloadType) {
     orderbook_update: OrderbookUpdate,
 };
 
@@ -51,10 +52,21 @@ pub const BrokerImpl = union(BrokerType) {
     kraken: *krkn.Broker,
     // Add more brokers as needed
     const Self = @This();
-    pub fn init(allocator: std.mem.Allocator, broker_type: BrokerType) !Self {
+    pub fn init(
+        allocator: std.mem.Allocator,
+        loop: *Loop,
+        broker_type: BrokerType,
+        callback_context: *anyopaque,
+        comptime read_callback: *const fn (*anyopaque, anyerror!?BrokerPayload) anyerror!void,
+    ) !Self {
         switch (broker_type) {
             .kraken => {
-                return .{ .kraken = try krkn.Broker.init(allocator) };
+                return .{ .kraken = try krkn.Broker.init(
+                    allocator,
+                    loop,
+                    callback_context,
+                    read_callback,
+                ) };
             },
         }
     }
@@ -68,11 +80,6 @@ pub const BrokerImpl = union(BrokerType) {
     pub fn subscribeToOrderbook(self: *Self, ticker: []const u8) !void {
         switch (self.*) {
             inline else => |broker| return try broker.subscribeToOrderbook(ticker),
-        }
-    }
-    pub fn readMessage(self: *Self) !?BrokerMessage {
-        switch (self.*) {
-            inline else => |broker| return try broker.readMessage(),
         }
     }
 };

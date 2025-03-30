@@ -8,7 +8,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    const websocket_dep = b.dependency("websocket", .{
+    const xevzocket_dep = b.dependency("xevzocket", .{
         .target = target,
         .optimize = optimize,
     });
@@ -20,7 +20,7 @@ pub fn build(b: *std.Build) void {
     });
 
     exe.root_module.addImport("backstage", backstage_dep.module("backstage"));
-    exe.root_module.addImport("websocket", websocket_dep.module("websocket"));
+    exe.root_module.addImport("xevzocket", xevzocket_dep.module("xevzocket"));
     b.installArtifact(exe);
     // Add a run step
     const run_cmd = b.addRunArtifact(exe);

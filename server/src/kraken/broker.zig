@@ -1,30 +1,44 @@
 const std = @import("std");
-const ws = @import("websocket");
+const ws = @import("xevzocket");
 const json_utils = @import("../utils/json_utils.zig");
 const ws_messages = @import("./ws_messages.zig");
 const backstage = @import("backstage");
 const brkr_impl = @import("../trading/broker_impl.zig");
-
-const BrokerMessage = brkr_impl.BrokerMessage;
+const Loop = backstage.xev.Loop;
+const xev = backstage.xev;
+const BrokerMessage = brkr_impl.BrokerPayload;
 const OrderbookUpdate = brkr_impl.OrderbookUpdate;
 const WsSubsribeRequest = ws_messages.WsSubsribeRequest;
 const parseOrderbookMessage = ws_messages.parseOrderbookMessage;
+const BrokerImpl = brkr_impl.BrokerImpl;
 
 pub const Broker = struct {
     allocator: std.mem.Allocator,
     ws_client: ws.Client,
+    callback_context: *anyopaque,
+    read_callback: *const fn (*anyopaque, anyerror!?BrokerMessage) anyerror!void,
     const Self = @This();
-    pub fn init(allocator: std.mem.Allocator) !*Self {
+    pub fn init(
+        allocator: std.mem.Allocator,
+        loop: *Loop,
+        callback_context: *anyopaque,
+        comptime read_callback: *const fn (*anyopaque, anyerror!?BrokerMessage) anyerror!void,
+    ) !*Self {
         const self = try allocator.create(Self);
 
-        var client = try ws.Client.init(allocator, .{ .host = "ws.kraken.com", .port = 443, .tls = true });
-        try client.handshake("/v2", .{
-            .timeout_ms = 5000,
-            .headers = "Host: ws.kraken.com\r\nOrigin: https://www.kraken.com",
-        });
-        errdefer client.deinit();
-
-        self.* = .{ .allocator = allocator, .ws_client = client };
+        self.* = .{
+            .allocator = allocator,
+            .ws_client = try ws.Client.init(
+                allocator,
+                loop,
+                try std.net.Address.parseIp4("127.0.0.1", 8080),
+                wsReadCb,
+                @ptrCast(self),
+            ),
+            .callback_context = callback_context,
+            .read_callback = read_callback,
+        };
+        try self.ws_client.start();
         return self;
     }
 
@@ -43,27 +57,48 @@ pub const Broker = struct {
                 .symbol = &[_][]const u8{ticker},
             },
         }, &buffer);
+
         try self.ws_client.write(req);
     }
-
-    pub fn readMessage(self: *Self) !?BrokerMessage {
-        const ws_msg = try self.ws_client.read();
-        if (ws_msg) |msg| {
-            defer self.ws_client.done(msg);
-            var arena_state = std.heap.ArenaAllocator.init(self.allocator);
-            defer arena_state.deinit();
-            const orderbook_message = try parseOrderbookMessage(msg.data, arena_state.allocator());
-            if (orderbook_message) |message| {
-                switch (message) {
-                    .snapshot => |snapshot| {
-                        return BrokerMessage{ .orderbook_update = try self.convertUpdateData(snapshot) };
-                    },
-                    .update => |update| {
-                        return BrokerMessage{ .orderbook_update = try self.convertUpdateData(update) };
-                    },
-                }
+    fn wsReadCb(context: *anyopaque, payload: []const u8) !void {
+        const self: *Self = @ptrCast(@alignCast(context));
+        try self.read(payload);
+    }
+    fn read(self: *Self, payload: []const u8) !void {
+        // std.debug.print("Received text: {s}\n", .{payload});
+        var arena_state = std.heap.ArenaAllocator.init(self.allocator);
+        defer arena_state.deinit();
+        const orderbook_message = try parseOrderbookMessage(payload, arena_state.allocator());
+        if (orderbook_message) |message| {
+            switch (message) {
+                .snapshot => |snapshot| {
+                    try self.read_callback(self.callback_context, BrokerMessage{ .orderbook_update = try self.convertUpdateData(snapshot) });
+                },
+                .update => |update| {
+                    try self.read_callback(self.callback_context, BrokerMessage{ .orderbook_update = try self.convertUpdateData(update) });
+                },
             }
         }
+    }
+
+    pub fn readMessage(_: *Self) !?BrokerMessage {
+        // const ws_msg = try self.ws_client.read();
+        // if (ws_msg) |msg| {
+        //     defer self.ws_client.done(msg);
+        //     var arena_state = std.heap.ArenaAllocator.init(self.allocator);
+        //     defer arena_state.deinit();
+        //     const orderbook_message = try parseOrderbookMessage(msg.data, arena_state.allocator());
+        //     if (orderbook_message) |message| {
+        //         switch (message) {
+        //             .snapshot => |snapshot| {
+        //                 return BrokerMessage{ .orderbook_update = try self.convertUpdateData(snapshot) };
+        //             },
+        //             .update => |update| {
+        //                 return BrokerMessage{ .orderbook_update = try self.convertUpdateData(update) };
+        //             },
+        //         }
+        //     }
+        // }
         return null;
     }
 

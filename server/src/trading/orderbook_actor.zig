@@ -66,10 +66,10 @@ pub const OrderbookActor = struct {
 
                 try broker_actor.send(self.ctx.actor, BrokerMessage{ .init = .{ .broker = .kraken } });
                 self.broker_actor = broker_actor;
-                self.orderbook = try Orderbook.init(self.allocator, "kraken", self.ticker, 10);
             },
             .start => |m| {
                 self.ticker = m.ticker;
+                self.orderbook = try Orderbook.init(self.allocator, "kraken", self.ticker, 10);
                 try self.broker_actor.?.send(self.ctx.actor, BrokerMessage{ .subscribe = .{ .ticker = m.ticker } });
             },
             .orderbook_update => |m| {

@@ -8,13 +8,15 @@ const xev = backstage.xev;
 const Context = backstage.Context;
 const BrokerImpl = brkr_impl.BrokerImpl;
 const BrokerType = brkr_impl.BrokerType;
+const BrokerPayload = brkr_impl.BrokerPayload;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
 const OrderbookMessage = orderbook_actor.OrderbookMessage;
-
+const OrderbookUpdate = brkr_impl.OrderbookUpdate;
 pub const BrokerMessage = union(enum) {
     init: BrokerInitRequest,
     subscribe: BrokerSubscribeRequest,
+    orderbook_update: OrderbookUpdate,
 };
 
 pub const BrokerInitRequest = struct {
@@ -49,19 +51,32 @@ pub const BrokerActor = struct {
     pub fn receive(self: *Self, message: *const Envelope(BrokerMessage)) !void {
         switch (message.payload) {
             .init => |m| {
-                self.broker = try BrokerImpl.init(self.allocator, m.broker);
-                try self.ctx.runContinuously(Self, readMessages, &self.completion, @ptrCast(self));
+                // TODO Fetch loop straight from context
+                self.broker = try BrokerImpl.init(
+                    self.allocator,
+                    &self.ctx.engine.loop,
+                    m.broker,
+                    @ptrCast(self),
+                    readMessage,
+                );
+                // try self.ctx.runContinuously(Self, readMessages, &self.completion, @ptrCast(self));
             },
             .subscribe => |m| {
                 // TODO Split this up into seperate messages?
                 try self.broker.?.subscribeToOrderbook(m.ticker);
                 try self.subscriptions.append(message.sender.?);
             },
+            .orderbook_update => |m| {
+                std.debug.print("Received orderbook update\n", .{});
+                _ = m;
+            },
         }
     }
-    fn readMessages(self: *Self) !void {
-        const message = try self.broker.?.readMessage();
-        if (message) |m| {
+
+    fn readMessage(context: *anyopaque, message: anyerror!?BrokerPayload) !void {
+        const self: *Self = @ptrCast(@alignCast(context));
+
+        if (try message) |m| {
             switch (m) {
                 .orderbook_update => |update| {
                     for (self.subscriptions.items) |actor| {
@@ -71,4 +86,17 @@ pub const BrokerActor = struct {
             }
         }
     }
+
+    // fn readMessages(self: *Self) !void {
+    //     const message = try self.broker.?.readMessage();
+    //     if (message) |m| {
+    //         switch (m) {
+    //             .orderbook_update => |update| {
+    //                 for (self.subscriptions.items) |actor| {
+    //                     try actor.send(self.ctx.actor, OrderbookMessage{ .orderbook_update = update });
+    //                 }
+    //             },
+    //         }
+    //     }
+    // }
 };

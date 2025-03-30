@@ -5,6 +5,8 @@ const brkr_impl = @import("trading/broker_impl.zig");
 const ob_actr = @import("trading/orderbook_actor.zig");
 const server_actr = @import("http/server_actor.zig");
 
+const xev = backstage.xev;
+const Timer = xev.Timer;
 const BrokerActor = brkr_actr.BrokerActor;
 const BrokerType = brkr_impl.BrokerType;
 const Engine = backstage.Engine;
@@ -14,6 +16,12 @@ const ServerActor = server_actr.ServerActor;
 const ServerMessage = server_actr.ServerMessage;
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer {
+        const leaked = gpa.detectLeaks();
+        if (leaked) {
+            std.log.err("Main application leaked memory!", .{});
+        }
+    }
     const allocator = gpa.allocator();
 
     var engine = try Engine.init(allocator);
@@ -42,5 +50,22 @@ pub fn main() !void {
     try test_third_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
     try test_third_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "XRP/USD" } });
 
+    // Stopping doesn't quite work yet
+    // var cc = xev.Completion{};
+    // engine.loop.timer(&cc, 2000, @ptrCast(&engine), listenForMessagesFn);
     try engine.run();
 }
+const listenForMessagesFn = struct {
+    fn inner(
+        ud: ?*anyopaque,
+        _: *xev.Loop,
+        _: *xev.Completion,
+        _: xev.Result,
+    ) xev.CallbackAction {
+        const s: *Engine = @as(*Engine, @ptrCast(@alignCast(ud.?)));
+        std.debug.print("Timer fired: Signaling engine loop to stop.\n", .{});
+        s.deinit();
+
+        return .disarm;
+    }
+}.inner;

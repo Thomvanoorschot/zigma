@@ -59,7 +59,6 @@ pub const BrokerActor = struct {
                     @ptrCast(self),
                     readMessage,
                 );
-                // try self.ctx.runContinuously(Self, readMessages, &self.completion, @ptrCast(self));
             },
             .subscribe => |m| {
                 // TODO Split this up into seperate messages?

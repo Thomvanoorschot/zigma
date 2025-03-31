@@ -74,7 +74,7 @@ pub const OrderbookActor = struct {
             },
             .orderbook_update => |m| {
                 _ = try updateOrderbook(&self.orderbook.?, m);
-                self.orderbook.?.display();
+                // self.orderbook.?.display();
                 m.deinit();
             },
         }

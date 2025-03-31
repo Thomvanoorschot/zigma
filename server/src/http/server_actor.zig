@@ -12,18 +12,21 @@ pub const ServerMessage = union(enum) {
 
 pub const ServerListenRequest = struct {};
 
+pub const ServerConnection = struct {
+    socket: xev.TCP,
+    read_completion: xev.Completion = undefined,
+    write_completion: xev.Completion = undefined,
+    close_completion: xev.Completion = undefined,
+    io_buf: [8192]u8 = std.mem.zeroes([8192]u8),
+};
+
 pub const ServerActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context,
-    listener: xev.TCP,
+    socket: xev.TCP,
     accept_completion: xev.Completion = undefined,
 
-    client_stream: ?xev.TCP = null,
-    client_read_completion: xev.Completion = undefined,
-    client_write_completion: xev.Completion = undefined,
-    client_close_completion: xev.Completion = undefined,
-
-    io_buf: [8192]u8 = std.mem.zeroes([8192]u8),
+    connections: std.ArrayList(*ServerConnection),
 
     const Self = @This();
 
@@ -36,9 +39,13 @@ pub const ServerActor = struct {
             .ctx = ctx,
             .allocator = allocator,
             .listener = try xev.TCP.init(addr),
+            .connections = try std.ArrayList(*ServerConnection).initCapacity(
+                allocator,
+                1024,
+            )
         };
-        try self.listener.bind(addr);
-        try self.listener.listen(10);
+        try self.socket.bind(addr);
+        try self.socket.listen(10);
 
         self.start_accept();
 
@@ -46,23 +53,31 @@ pub const ServerActor = struct {
     }
 
     fn start_accept(self: *Self) void {
-        self.listener.accept(&self.ctx.engine.loop, &self.accept_completion, Self, self, accept_callback);
+        const conn = try self.connections.allocator.create(ServerConnection);
+        conn.* = .{
+            .socket = self.socket,
+            .read_completion = xev.Completion{},
+            .write_completion = xev.Completion{},
+            .close_completion = xev.Completion{},
+            // TODO Add relevant functions to the connection
+        };
+        self.connections.appendAssumeCapacity(conn);
+        self.socket.accept(&self.ctx.engine.loop, &self.accept_completion, ServerConnection, conn, accept_callback);
     }
 
     fn accept_callback(
-        self: ?*Self,
+        server_conn: ?*ServerConnection,
         loop: *xev.Loop,
         _: *xev.Completion,
         result: xev.AcceptError!xev.TCP,
     ) xev.CallbackAction {
-        const s = self orelse unreachable;
-
+        const c = server_conn orelse unreachable;
         const client = result catch |err| {
             std.log.err("Failed to accept connection: {any}", .{err});
             return .rearm;
         };
 
-        if (s.client_stream != null) {
+        if (c.socket != null) {
             std.log.warn("Server busy, rejecting new connection", .{});
             var temp_close_completion: xev.Completion = undefined;
             client.close(loop, &temp_close_completion, void, null, close_rejected_callback);
@@ -70,9 +85,8 @@ pub const ServerActor = struct {
         }
 
         std.log.info("Accepted new connection", .{});
-        s.client_stream = client;
 
-        s.start_read();
+        c.socket.start_read();
 
         return .rearm;
     }
@@ -205,7 +219,7 @@ pub const ServerActor = struct {
         }
 
         // Synchronously close the listener stream's FD
-        posix.close(self.listener.fd);
+        posix.close(self.socket.fd);
         // Destroy the actor's memory
         self.allocator.destroy(self);
     }

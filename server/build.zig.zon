@@ -10,11 +10,11 @@
         },
         .backstage = .{
             .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
-            .hash = "backstage-0.1.0-Lti6bFVvAACpYQ0y7Uwzkr_zUak8HJOhDchXySdWG4Mz",
+            .hash = "backstage-0.1.0-Lti6bLBwAADG74NX-ATvZJHMigjoAzZlJafpCKpXcvZ1",
         },
         .xevzocket = .{
             .url = "https://github.com/Thomvanoorschot/xevzocket/archive/main.tar.gz",
-            .hash = "xevzocket-0.0.1-6kfuPid6AADKlH5QPJ3cfyxQNt7Q9v7Y8OURk03nPR8g",
+            .hash = "xevzocket-0.0.1-6kfuPt54AAArqlQsJkNRkUCGUxQdhpWr0zNVpUHTizyh",
         },
     },
     .paths = .{

@@ -54,7 +54,7 @@ pub const BrokerActor = struct {
                 // TODO Fetch loop straight from context
                 self.broker = try BrokerImpl.init(
                     self.allocator,
-                    &self.ctx.engine.loop,
+                    self.ctx.getLoop(),
                     m.broker,
                     @ptrCast(self),
                     readMessage,

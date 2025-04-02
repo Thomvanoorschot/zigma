@@ -30,6 +30,10 @@ pub fn main() !void {
     const server_actor = try engine.spawnActor(ServerActor, ServerMessage, .{
         .id = "server_actor",
     });
+    try server_actor.send(null, ServerMessage{ .init = .{
+        .address = try std.net.Address.parseIp4("127.0.0.1", 8081),
+        .max_connections = 1024,
+    } });
     try server_actor.send(null, ServerMessage{ .listen = .{} });
 
     const orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{

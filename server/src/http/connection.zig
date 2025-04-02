@@ -51,7 +51,7 @@ pub const Connection = struct {
         const bytes_read = result catch |err| {
             std.log.err("Read error for fd={d}, closing connection: {any}", .{ s.socket.fd, err });
             s.close_callback(s.close_context, s) catch unreachable;
-            return .disarm; 
+            return .disarm;
         };
         var it = std.mem.tokenizeAny(u8, buf.slice[0..bytes_read], "\r\n");
 
@@ -72,7 +72,7 @@ pub const Connection = struct {
         s.write(response);
 
         if (s.keep_alive) {
-            return .rearm; 
+            return .rearm;
         } else {
             return .disarm;
         }

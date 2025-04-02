@@ -31,7 +31,7 @@ pub const ServerActor = struct {
             .allocator = allocator,
             .server = try Server.init(allocator, ctx.getLoop(), .{
                 .address = try std.net.Address.parseIp4("127.0.0.1", 8081),
-                .max_connections = 2,
+                .max_connections = 1024,
             }),
         };
         return self;

@@ -1,6 +1,7 @@
 const std = @import("std");
 const backstage = @import("backstage");
-const Connection = @import("connection.zig").Connection;
+const ConnectionActor = @import("connection_actor.zig").ConnectionActor;
+const ConnectionMessage = @import("connection_actor.zig").ConnectionMessage;
 const xev = backstage.xev;
 const Context = backstage.Context;
 const Envelope = backstage.Envelope;
@@ -21,7 +22,7 @@ pub const ServerActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context,
     socket: ?xev.TCP = null,
-    connections: std.AutoHashMap(std.posix.socket_t, *Connection),
+    connections: std.AutoHashMap(std.posix.socket_t, *ConnectionActor),
     max_connections: usize = 1024,
     accept_completion: xev.Completion = undefined,
 
@@ -34,7 +35,7 @@ pub const ServerActor = struct {
         self.* = .{
             .ctx = ctx,
             .allocator = allocator,
-            .connections = std.AutoHashMap(std.posix.socket_t, *Connection).init(allocator),
+            .connections = std.AutoHashMap(std.posix.socket_t, *ConnectionActor).init(allocator),
         };
         return self;
     }
@@ -55,49 +56,57 @@ pub const ServerActor = struct {
     }
 
     fn acceptCallback(
-        self: ?*Self,
-        l: *xev.Loop,
+        self_: ?*Self,
+        _: *xev.Loop,
         _: *xev.Completion,
         result: xev.AcceptError!xev.TCP,
     ) xev.CallbackAction {
+        const self = self_ orelse unreachable;
         // This is a socket per connection -- DO NOT FORGET
         const socket: xev.TCP = result catch {
             return .rearm;
         };
 
-        const conn = Connection.init(
-            self.?.connections.allocator,
-            socket,
-            l,
-            @ptrCast(self),
-            closeConnection,
-        ) catch |err| {
-            std.log.err("Failed to initialize connection: {any}", .{err});
-            return .rearm;
-        };
+        const conna = self.ctx.spawnChildActor(ConnectionActor, ConnectionMessage, .{
+            .id = "connection_actor",
+        }) catch unreachable;
+        const tt: *ConnectionActor = @as(*ConnectionActor, @ptrCast(@alignCast(conna.ptr)));
+        tt.socket = socket;
+        tt.close_context = self;
+        tt.close_callback = closeConnection;
+        // const conn = Connection.init(
+        //     self.allocator,
+        //     socket,
+        //     l,
+        //     @ptrCast(self),
+        //     closeConnection,
+        // ) catch |err| {
+        //     std.log.err("Failed to initialize connection: {any}", .{err});
+        //     return .rearm;
+        // };
 
-        std.debug.print("connections: {d}\n", .{self.?.connections.count()});
-        if (self.?.connections.count() >= self.?.max_connections) {
-            std.log.warn("Connection limit reached ({d}), rejecting new connection", .{self.?.max_connections});
-            closeConnection(self.?, conn) catch unreachable;
+        std.debug.print("connections: {d}\n", .{self.connections.count()});
+        if (self.connections.count() >= self.max_connections) {
+            std.log.warn("Connection limit reached ({d}), rejecting new connection", .{self.max_connections});
+            closeConnection(self, tt) catch unreachable;
             return .rearm;
         }
 
-        self.?.connections.put(socket.fd, conn) catch |err| {
+        self.connections.put(socket.fd, tt) catch |err| {
             std.log.err("Failed to append connection to list: {any}", .{err});
-            closeConnection(self.?, conn) catch unreachable;
+            closeConnection(self, tt) catch unreachable;
             return .rearm;
         };
-        conn.read();
+        tt.read();
         return .rearm;
     }
 
     const closeContext = struct {
         self: *Self,
-        conn: *Connection,
+        conn: *ConnectionActor,
     };
 
-    fn closeConnection(self_: *anyopaque, conn: *Connection) !void {
+    fn closeConnection(self_: *anyopaque, conn: *ConnectionActor) !void {
         const self: *Self = @ptrCast(@alignCast(self_));
 
         const close_context = try self.allocator.create(closeContext);

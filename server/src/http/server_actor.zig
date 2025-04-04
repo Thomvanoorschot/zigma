@@ -67,13 +67,13 @@ pub const ServerActor = struct {
             return .rearm;
         };
 
-        const conna = self.ctx.spawnChildActor(ConnectionActor, ConnectionMessage, .{
+        const actor_interface = self.ctx.spawnChildActor(ConnectionActor, ConnectionMessage, .{
             .id = "connection_actor",
         }) catch unreachable;
-        const tt: *ConnectionActor = @as(*ConnectionActor, @ptrCast(@alignCast(conna.ptr)));
-        tt.socket = socket;
-        tt.close_context = self;
-        tt.close_callback = closeConnection;
+        const actor: *ConnectionActor = @as(*ConnectionActor, @ptrCast(@alignCast(actor_interface.ptr)));
+        actor.socket = socket;
+        actor.close_context = self;
+        actor.close_callback = closeConnection;
         // const conn = Connection.init(
         //     self.allocator,
         //     socket,
@@ -88,16 +88,16 @@ pub const ServerActor = struct {
         std.debug.print("connections: {d}\n", .{self.connections.count()});
         if (self.connections.count() >= self.max_connections) {
             std.log.warn("Connection limit reached ({d}), rejecting new connection", .{self.max_connections});
-            closeConnection(self, tt) catch unreachable;
+            closeConnection(self, actor) catch unreachable;
             return .rearm;
         }
 
-        self.connections.put(socket.fd, tt) catch |err| {
+        self.connections.put(socket.fd, actor) catch |err| {
             std.log.err("Failed to append connection to list: {any}", .{err});
-            closeConnection(self, tt) catch unreachable;
+            closeConnection(self, actor) catch unreachable;
             return .rearm;
         };
-        tt.read();
+        actor.read();
         return .rearm;
     }
 
@@ -123,12 +123,12 @@ pub const ServerActor = struct {
     }
 
     fn closeCallback(
-        close_context: ?*anyopaque,
+        ctx_: ?*anyopaque,
         _: *xev.Loop,
         _: *xev.Completion,
         _: xev.Result,
     ) xev.CallbackAction {
-        const ctx: *closeContext = @ptrCast(@alignCast(close_context));
+        const ctx: *closeContext = @ptrCast(@alignCast(ctx_));
         _ = ctx.self.connections.remove(ctx.conn.socket.fd);
         ctx.self.allocator.destroy(ctx.conn);
         ctx.self.allocator.destroy(ctx);

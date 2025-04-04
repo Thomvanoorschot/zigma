@@ -16,7 +16,6 @@ const OrderbookUpdate = brkr_impl.OrderbookUpdate;
 pub const BrokerMessage = union(enum) {
     init: BrokerInitRequest,
     subscribe: BrokerSubscribeRequest,
-    orderbook_update: OrderbookUpdate,
 };
 
 pub const BrokerInitRequest = struct {
@@ -64,10 +63,6 @@ pub const BrokerActor = struct {
                 // TODO Split this up into seperate messages?
                 try self.broker.?.subscribeToOrderbook(m.ticker);
                 try self.subscriptions.append(message.sender.?);
-            },
-            .orderbook_update => |m| {
-                std.debug.print("Received orderbook update\n", .{});
-                _ = m;
             },
         }
     }

@@ -1,9 +1,11 @@
 const std = @import("std");
 const app = @import("visualization/app.zig");
-
+const xev = @import("xev");
 const App = app.App;
 pub fn main() !void {
-    App.init(800, 500, "Market Visualization");
+    var loop = try xev.Loop.init(.{});
+    App.init(&loop, 800, 500, "Market Visualization");
+    try loop.run(.until_done);
 }
 
 // QUIC:

@@ -20,18 +20,20 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
+    const xev_dep = b.dependency("libxev", .{ .target = target, .optimize = optimize });
+
     // Setup cimgui and cimplot modules for our executable
     const mod_cimgui = setupCimgui(b, sokol_dep, target, optimize, imgui_dep);
     const mod_cimplot = setupCimplot(b, sokol_dep, target, optimize, imgui_dep, implot_dep);
 
     // Inject the cimgui header search path into the sokol C library compile step
-    sokol_dep.artifact("sokol_clib").addIncludePath(b.path("deps"));
-
+    const sokol_clib = sokol_dep.artifact("sokol_clib");
+    sokol_clib.addIncludePath(b.path("deps"));
     // Create the executable based on target architecture
     if (target.result.cpu.arch == .wasm32) {
-        try buildWasmExecutable(b, target, optimize, sokol_dep, mod_cimgui, mod_cimplot);
+        try buildWasmExecutable(b, target, optimize, sokol_dep, mod_cimgui, mod_cimplot, xev_dep);
     } else {
-        buildNativeExecutable(b, target, optimize, sokol_dep, mod_cimgui, mod_cimplot);
+        buildNativeExecutable(b, target, optimize, sokol_dep, mod_cimgui, mod_cimplot, xev_dep);
     }
 }
 
@@ -42,6 +44,7 @@ fn buildNativeExecutable(
     sokol_dep: *std.Build.Dependency,
     mod_cimgui: *std.Build.Module,
     mod_cimplot: *std.Build.Module,
+    xev_dep: *std.Build.Dependency,
 ) void {
     const exe = b.addExecutable(.{
         .name = "example",
@@ -54,7 +57,7 @@ fn buildNativeExecutable(
     exe.root_module.addImport("sokol", sokol_dep.module("sokol"));
     exe.root_module.addImport("imgui", mod_cimgui);
     exe.root_module.addImport("implot", mod_cimplot);
-
+    exe.root_module.addImport("xev", xev_dep.module("xev"));
     b.installArtifact(exe);
     b.step("run", "Run example").dependOn(&b.addRunArtifact(exe).step);
 }
@@ -66,6 +69,7 @@ fn buildWasmExecutable(
     sokol_dep: *std.Build.Dependency,
     mod_cimgui: *std.Build.Module,
     mod_cimplot: *std.Build.Module,
+    xev_dep: *std.Build.Dependency,
 ) !void {
     const example = b.addStaticLibrary(.{
         .name = "example",
@@ -78,7 +82,7 @@ fn buildWasmExecutable(
     example.root_module.addImport("sokol", sokol_dep.module("sokol"));
     example.root_module.addImport("imgui", mod_cimgui);
     example.root_module.addImport("implot", mod_cimplot);
-
+    example.root_module.addImport("xev", xev_dep.module("xev"));
     // Setup EMSDK for WebAssembly
     const dep_emsdk = sokol_dep.builder.dependency("emsdk", .{});
     const emsdk_incl_path = dep_emsdk.path("upstream/emscripten/cache/sysroot/include");

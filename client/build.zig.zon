@@ -20,6 +20,10 @@
             .url = "https://github.com/ocornut/imgui/archive/947aa9c9722bd6ff740dd757da609ff41f4d3ba3.tar.gz",
             .hash = "1220ce4f606cb3ce8471f792dee481f8121de285f255855de14a6aba95364df88648",
         },
+        .libxev = .{
+            .url = "https://github.com/mitchellh/libxev/archive/main.tar.gz",
+            .hash = "libxev-0.0.0-86vtc-zkEgB7uv1i0Sa6ytJETZQi_lHJrImu9mLb9moi",
+        },
     },
     .paths = .{
         "build.zig",

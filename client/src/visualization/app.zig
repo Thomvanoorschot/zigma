@@ -2,6 +2,7 @@ const std = @import("std");
 const sokol = @import("sokol");
 const implot = @import("implot");
 const imgui = @import("imgui");
+const xev = @import("xev");
 const orderbook_chart = @import("orderbook_chart.zig");
 const sapp = sokol.app;
 const sg = sokol.gfx;
@@ -13,20 +14,53 @@ const State = struct {
     var pass_action: sg.PassAction = .{};
 };
 
+var completion: xev.Completion = undefined;
+var temp_completion: xev.Completion = undefined;
+
 pub const App = struct {
-    pub fn init(width: i32, height: i32, title: [:0]const u8) void {
-        sapp.run(.{
-            .init_cb = sInit,
-            .frame_cb = sFrame,
-            .cleanup_cb = sCleanup,
-            .event_cb = sEvent,
-            .width = width,
-            .height = height,
-            .window_title = title,
-            .icon = .{ .sokol_default = true },
-            .logger = .{ .func = slog.func },
-        });
+    pub fn init(
+        loop: *xev.Loop,
+        comptime width: i32,
+        comptime height: i32,
+        comptime title: [:0]const u8,
+    ) void {
+        const callback = struct {
+            fn inner(
+                _: ?*anyopaque,
+                _: *xev.Loop,
+                _: *xev.Completion,
+                _: xev.Result,
+            ) xev.CallbackAction {
+                sapp.run(.{
+                    .init_cb = sInit,
+                    .frame_cb = sFrame,
+                    .cleanup_cb = sCleanup,
+                    .event_cb = sEvent,
+                    .width = width,
+                    .height = height,
+                    .window_title = title,
+                    .icon = .{ .sokol_default = true },
+                    .logger = .{ .func = slog.func },
+                });
+                return .disarm;
+            }
+        }.inner;
+        const callback2 = struct {
+            fn inner(
+                _: ?*anyopaque,
+                _: *xev.Loop,
+                _: *xev.Completion,
+                _: xev.Result,
+            ) xev.CallbackAction {
+                std.debug.print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n", .{});
+                return .disarm;
+            }
+        }.inner;
+
+        loop.timer(&completion, 1000, null, callback);
+        loop.timer(&temp_completion, 2000, null, callback2);
     }
+
     export fn sFrame() void {
         const new_frame: sokol.imgui.FrameDesc = .{
             .width = sapp.width(),

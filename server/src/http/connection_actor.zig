@@ -7,6 +7,9 @@ const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
 const Orderbook = @import("../trading/orderbook.zig").OrderBook;
 const OrderbookMessage = @import("../trading/orderbook_actor.zig").OrderbookMessage;
+const stringify = @import("zbor").stringify;
+const parse = @import("zbor").parse;
+const DataItem = @import("zbor").DataItem;
 pub const ConnectionMessage = union(enum) {
     listen: ListenMessage,
     orderbook_update: *const Orderbook,
@@ -52,6 +55,22 @@ pub const ConnectionActor = struct {
                 // self.write("hello\r\n");
                 const t: *const Orderbook = m;
                 const best_bid = t.getBestAsk();
+
+                var str = std.ArrayList(u8).init(self.allocator);
+                defer str.deinit();
+
+                try stringify(t, .{
+                    .ignore_override = true,
+                    .field_settings = &.{
+                        .{ .name = "allocator", .field_options = .{ .skip = .Skip } },
+                    },
+                }, str.writer());
+
+                const di = try DataItem.new(str.items);
+                const y = try parse(Orderbook, di, .{
+                    .allocator = self.allocator,
+                });
+                std.debug.print("parsed: {any}\n", .{y});
                 if (best_bid) |b| {
                     self.write(try std.fmt.allocPrint(self.allocator, "{{ \"mid_price\": {d} }}\r\n", .{b.price}));
                 }

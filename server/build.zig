@@ -12,6 +12,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const zbor_dep = b.dependency("zbor", .{
+        .target = target,
+        .optimize = optimize,
+    });
     const exe = b.addExecutable(.{
         .name = "zigma_server",
         .root_source_file = .{ .cwd_relative = "src/main.zig" },
@@ -21,6 +25,7 @@ pub fn build(b: *std.Build) void {
 
     exe.root_module.addImport("backstage", backstage_dep.module("backstage"));
     exe.root_module.addImport("xevzocket", xevzocket_dep.module("xevzocket"));
+    exe.root_module.addImport("zbor", zbor_dep.module("zbor"));
     b.installArtifact(exe);
     // Add a run step
     const run_cmd = b.addRunArtifact(exe);

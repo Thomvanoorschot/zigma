@@ -16,6 +16,10 @@
             .url = "https://github.com/Thomvanoorschot/xevzocket/archive/main.tar.gz",
             .hash = "xevzocket-0.0.1-6kfuPt54AAArqlQsJkNRkUCGUxQdhpWr0zNVpUHTizyh",
         },
+        .zbor = .{
+            .url = "https://github.com/r4gus/zbor/archive/refs/tags/0.17.2.tar.gz",
+            .hash = "zbor-0.17.0-kr-CoHIkAwCy2WhoS6MgwSvyQsLWzzNy6a7UTHqMPMmO",
+        },
     },
     .paths = .{
         "src",

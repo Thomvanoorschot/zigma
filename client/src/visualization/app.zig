@@ -2,11 +2,12 @@ const std = @import("std");
 const sokol = @import("sokol");
 const implot = @import("implot");
 const imgui = @import("imgui");
-
+const orderbook_chart = @import("orderbook_chart.zig");
 const sapp = sokol.app;
 const sg = sokol.gfx;
 const slog = sokol.log;
 const sglue = sokol.glue;
+const plotOrderbookWindow = orderbook_chart.plotOrderbookWindow;
 
 const State = struct {
     var pass_action: sg.PassAction = .{};
@@ -39,8 +40,8 @@ pub const App = struct {
         // if (State.actor_manager) |manager| {
         //     candlestick_chart.plotCandlestickWindow(manager);
         // }
-
-        _ = implot.ImPlot_ShowDemoWindow(null);
+        plotOrderbookWindow(std.heap.page_allocator) catch unreachable;
+        // _ = implot.ImPlot_ShowDemoWindow(null);
 
         sg.beginPass(.{ .action = State.pass_action, .swapchain = sglue.swapchain() });
         sokol.imgui.render();

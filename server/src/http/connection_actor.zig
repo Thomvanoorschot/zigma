@@ -29,7 +29,8 @@ pub const ConnectionActor = struct {
     close_completion: xev.Completion = undefined,
     io_buf: [8192]u8 = std.mem.zeroes([8192]u8),
     keep_alive: bool = false,
-    write_completions_test: std.ArrayList(*xev.Completion),
+    write_buffers: std.ArrayList(std.ArrayList(u8)),
+    write_completions: std.ArrayList(*xev.Completion),
 
     const Self = @This();
 
@@ -40,7 +41,8 @@ pub const ConnectionActor = struct {
         self.* = .{
             .ctx = ctx,
             .allocator = allocator,
-            .write_completions_test = std.ArrayList(*xev.Completion).init(allocator),
+            .write_completions = std.ArrayList(*xev.Completion).init(allocator),
+            .write_buffers = std.ArrayList(std.ArrayList(u8)).init(allocator),
         };
         return self;
     }
@@ -52,28 +54,16 @@ pub const ConnectionActor = struct {
                 // try self.server.listen();
             },
             .orderbook_update => |m| {
-                // self.write("hello\r\n");
-                const t: *const Orderbook = m;
-                const best_bid = t.getBestAsk();
-
                 var str = std.ArrayList(u8).init(self.allocator);
-                defer str.deinit();
-
-                try stringify(t, .{
+                self.write_buffers.append(str) catch unreachable;
+                try stringify(m, .{
                     .ignore_override = true,
                     .field_settings = &.{
                         .{ .name = "allocator", .field_options = .{ .skip = .Skip } },
                     },
                 }, str.writer());
 
-                const di = try DataItem.new(str.items);
-                const y = try parse(Orderbook, di, .{
-                    .allocator = self.allocator,
-                });
-                std.debug.print("parsed: {any}\n", .{y});
-                if (best_bid) |b| {
-                    self.write(try std.fmt.allocPrint(self.allocator, "{{ \"mid_price\": {d} }}\r\n", .{b.price}));
-                }
+                self.write(str);
             },
         }
     }
@@ -116,21 +106,16 @@ pub const ConnectionActor = struct {
             return .disarm;
         }
 
-        std.log.info("Read {d} bytes from client.", .{bytes_read});
-
-        const response = "HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello World!";
-        self.write(response);
-
         if (self.keep_alive) {
             return .rearm;
         }
         return .disarm;
     }
 
-    pub fn write(self: *Self, buf: []const u8) void {
-        const new_completion = self.write_completions_test.allocator.create(xev.Completion) catch unreachable;
-        self.write_completions_test.append(new_completion) catch unreachable;
-        self.socket.write(self.ctx.getLoop(), new_completion, .{ .slice = buf }, Self, self, writeCallback);
+    pub fn write(self: *Self, buf: std.ArrayList(u8)) void {
+        const new_completion = self.write_completions.allocator.create(xev.Completion) catch unreachable;
+        self.write_completions.append(new_completion) catch unreachable;
+        self.socket.write(self.ctx.getLoop(), new_completion, .{ .slice = buf.items }, Self, self, writeCallback);
     }
     fn writeCallback(
         self_: ?*Self,
@@ -141,13 +126,15 @@ pub const ConnectionActor = struct {
         result: xev.WriteError!usize,
     ) xev.CallbackAction {
         const self = self_ orelse unreachable;
-        for (self.write_completions_test.items, 0..) |item, idx| {
+        for (self.write_completions.items, 0..) |item, idx| {
             if (item == c) {
-                _ = self.write_completions_test.orderedRemove(idx);
+                _ = self.write_completions.orderedRemove(idx);
+                const wb = self.write_buffers.orderedRemove(idx);
+                defer wb.deinit();
                 break;
             }
         }
-        defer self.write_completions_test.allocator.destroy(c);
+        defer self.write_completions.allocator.destroy(c);
         const bytes_written = result catch |err| {
             std.log.err("Write error to client: {any}. Closing connection.", .{err});
             self.close_callback(self.close_context, self) catch unreachable;

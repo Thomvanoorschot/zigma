@@ -13,7 +13,7 @@ const parse = @import("zbor").parse;
 const DataItem = @import("zbor").DataItem;
 pub const ConnectionMessage = union(enum) {
     listen: ListenMessage,
-    orderbook_update: *const Orderbook,
+    orderbook_update: *Orderbook,
 };
 
 pub const InitMessage = struct {};
@@ -55,15 +55,8 @@ pub const ConnectionActor = struct {
                 // try self.server.listen();
             },
             .orderbook_update => |m| {
-                var str = std.ArrayList(u8).init(self.allocator);
+                const str = try m.stringify(self.allocator);
                 self.write_buffers.append(str) catch unreachable;
-                try stringify(m, .{
-                    .ignore_override = true,
-                    .field_settings = &.{
-                        .{ .name = "allocator", .field_options = .{ .skip = .Skip } },
-                    },
-                }, str.writer());
-
                 self.write(str);
             },
         }

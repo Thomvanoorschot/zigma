@@ -37,6 +37,12 @@ pub fn build(b: *std.Build) !void {
 
     exe.root_module.addImport("xev", xev.module("xev"));
 
+    const shared_models = b.dependency("shared_models", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.root_module.addImport("shared_models", shared_models.module("shared_models"));
+
     const run_cmd = b.addRunArtifact(exe);
     const run_step = b.step("run", "Run example");
     run_step.dependOn(&run_cmd.step);

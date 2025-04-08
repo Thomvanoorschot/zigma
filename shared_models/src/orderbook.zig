@@ -1,5 +1,9 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const zbor = @import("zbor");
+const zborParse = zbor.parse;
+const zborStringify = zbor.stringify;
+const DataItem = zbor.DataItem;
 
 fn priceAscending(_: void, a: PriceLevel, b: PriceLevel) bool {
     return a.price < b.price;
@@ -14,6 +18,12 @@ pub const PriceLevel = struct {
     qty: f64,
 };
 
+pub fn parseOrderbook(allocator: Allocator, str: []const u8) !OrderBook {
+    const di = try DataItem.new(str);
+    const ob = try zborParse(OrderBook, di, .{ .allocator = allocator });
+    return ob;
+}
+
 pub const OrderBook = struct {
     bids: []PriceLevel,
     bid_count: usize,
@@ -24,6 +34,7 @@ pub const OrderBook = struct {
     ticker: []const u8,
     allocator: Allocator,
 
+    const Self = @This();
     pub fn init(allocator: Allocator, exchange: []const u8, ticker: []const u8, depth: usize) !OrderBook {
         var bids = try allocator.alloc(PriceLevel, depth);
         var asks = try allocator.alloc(PriceLevel, depth);
@@ -45,14 +56,25 @@ pub const OrderBook = struct {
         };
     }
 
-    pub fn deinit(self: *OrderBook) void {
+    pub fn deinit(self: *Self) void {
         self.allocator.free(self.bids);
         self.allocator.free(self.asks);
         self.allocator.free(self.exchange);
         self.allocator.free(self.ticker);
     }
 
-    pub fn update(self: *OrderBook, price: f64, qty: f64, is_bid: bool) void {
+    pub fn stringify(self: *Self, allocator: Allocator) !std.ArrayList(u8) {
+        var str = std.ArrayList(u8).init(allocator);
+        try zborStringify(self, .{
+            .ignore_override = true,
+            .field_settings = &.{
+                .{ .name = "allocator", .field_options = .{ .skip = .Skip } },
+            },
+        }, str.writer());
+        return str;
+    }
+
+    pub fn update(self: *Self, price: f64, qty: f64, is_bid: bool) void {
         if (std.math.isNan(price) or std.math.isNan(qty)) {
             std.debug.print("Warning: NaN values detected in orderbook update\n", .{});
             return;
@@ -77,10 +99,10 @@ pub const OrderBook = struct {
         if (count.* < self.max_depth) {
             levels[count.*] = .{ .price = price, .qty = qty };
             count.* += 1;
-            
+
             self.sortLevels(is_bid);
         } else {
-            const should_replace = if (is_bid) 
+            const should_replace = if (is_bid)
                 price > self.bids[count.* - 1].price
             else
                 price < self.asks[count.* - 1].price;
@@ -92,7 +114,7 @@ pub const OrderBook = struct {
         }
     }
 
-    pub fn processUpdates(self: *OrderBook, bids: []const PriceLevel, asks: []const PriceLevel) void {
+    pub fn processUpdates(self: *Self, bids: []const PriceLevel, asks: []const PriceLevel) void {
         for (bids) |bid| {
             self.update(bid.price, bid.qty, true);
         }
@@ -110,7 +132,7 @@ pub const OrderBook = struct {
         }
     }
 
-    fn removeLevel(self: *OrderBook, is_bid: bool, index: usize) void {
+    fn removeLevel(self: *Self, is_bid: bool, index: usize) void {
         var levels = if (is_bid) self.bids else self.asks;
         const count = if (is_bid) &self.bid_count else &self.ask_count;
 
@@ -123,7 +145,7 @@ pub const OrderBook = struct {
         count.* -= 1;
     }
 
-    fn sortLevels(self: *OrderBook, is_bid: bool) void {
+    fn sortLevels(self: *Self, is_bid: bool) void {
         if (is_bid) {
             std.sort.pdq(PriceLevel, self.bids[0..self.bid_count], {}, priceDescending);
         } else {
@@ -131,7 +153,7 @@ pub const OrderBook = struct {
         }
     }
 
-    pub fn getMidPrice(self: *const OrderBook) ?f64 {
+    pub fn getMidPrice(self: *const Self) ?f64 {
         if (self.bid_count == 0 or self.ask_count == 0) return null;
 
         const best_bid = self.bids[0].price;
@@ -140,17 +162,17 @@ pub const OrderBook = struct {
         return (best_bid + best_ask) / 2.0;
     }
 
-    pub fn getBestBid(self: *const OrderBook) ?PriceLevel {
+    pub fn getBestBid(self: *const Self) ?PriceLevel {
         if (self.bid_count == 0) return null;
         return self.bids[0];
     }
 
-    pub fn getBestAsk(self: *const OrderBook) ?PriceLevel {
+    pub fn getBestAsk(self: *const Self) ?PriceLevel {
         if (self.ask_count == 0) return null;
         return self.asks[0];
     }
 
-    pub fn display(self: *const OrderBook) void {
+    pub fn display(self: *const Self) void {
         std.debug.print("\n=== Order Book {s} {s} ===\n", .{ self.exchange, self.ticker });
 
         std.debug.print("\nAsks (Sell Orders):\n", .{});
@@ -172,7 +194,7 @@ pub const OrderBook = struct {
         std.debug.print("length bids: {d} length asks: {d}\n", .{ self.bids.len, self.asks.len });
     }
 
-    pub fn calculateChecksum(self: *const OrderBook) u32 {
+    pub fn calculateChecksum(self: *const Self) u32 {
         var checksum_buffer = std.ArrayList(u8).init(self.allocator);
         defer checksum_buffer.deinit();
 

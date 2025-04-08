@@ -4,6 +4,9 @@ const glfw = @import("zglfw");
 const zopengl = @import("zopengl");
 const xev = @import("xev");
 const orderbook_chart = @import("orderbook_chart.zig");
+const shared_models = @import("shared_models");
+const OrderBook = shared_models.OrderBook;
+const parseOrderbook = shared_models.parseOrderbook;
 const plotOrderbookWindow = orderbook_chart.plotOrderbookWindow;
 const gl = zopengl.bindings;
 const TCP = xev.TCP;
@@ -179,7 +182,9 @@ pub const App = struct {
         };
 
         const received_data = buf.slice[0..n];
-        std.debug.print("Received data: {s}\n", .{received_data});
+        const ob = parseOrderbook(self.allocator, received_data) catch unreachable;
+        std.debug.print("Orderbook: {}\n", .{ob});
+
 
         self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);
         return .disarm;

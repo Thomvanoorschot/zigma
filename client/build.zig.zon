@@ -20,6 +20,9 @@
             .url = "https://github.com/zig-gamedev/zopengl/archive/main.tar.gz",
             .hash = "zopengl-0.6.0-dev-5-tnzzFUCACS5Ongbip8bl028sYtkNnzNSjhsfRj3yk1",
         },
+        .shared_models = .{
+            .path = "../shared_models",
+        },
     },
     .paths = .{
         "build.zig",

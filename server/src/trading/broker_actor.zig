@@ -50,7 +50,6 @@ pub const BrokerActor = struct {
     pub fn receive(self: *Self, message: *const Envelope(BrokerMessage)) !void {
         switch (message.payload) {
             .init => |m| {
-                // TODO Fetch loop straight from context
                 self.broker = try BrokerImpl.init(
                     self.allocator,
                     self.ctx.getLoop(),

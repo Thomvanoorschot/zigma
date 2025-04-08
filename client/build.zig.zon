@@ -4,25 +4,21 @@
     .version = "0.0.1",
     .minimum_zig_version = "0.15.0-dev.45+24db007cd",
     .dependencies = .{
-        .sokol = .{
-            .url = "https://github.com/floooh/sokol-zig/archive/master.tar.gz",
-            .hash = "sokol-0.1.0-pb1HK4G0LABRLweffdnsPCZsPAdai9zqfEz9qNs7G6bN",
-        },
-        .implot = .{
-            .url = "https://github.com/epezent/implot/archive/1f7a8c0314d838a76695bccebe0f66864f507bc0.tar.gz",
-            .hash = "1220781bd0617c107617cc19d446801f519d5a29fc4beee9438c527f74af8caf483f",
-        },
-        .cimplot = .{
-            .url = "https://github.com/cimgui/cimplot/archive/master.tar.gz",
-            .hash = "12205d3e716486290367e03777155cfcfe1b6ff991b7350048fae1a82605600adae7",
-        },
-        .imgui = .{
-            .url = "https://github.com/ocornut/imgui/archive/947aa9c9722bd6ff740dd757da609ff41f4d3ba3.tar.gz",
-            .hash = "1220ce4f606cb3ce8471f792dee481f8121de285f255855de14a6aba95364df88648",
-        },
         .libxev = .{
             .url = "https://github.com/mitchellh/libxev/archive/main.tar.gz",
             .hash = "libxev-0.0.0-86vtc-zkEgB7uv1i0Sa6ytJETZQi_lHJrImu9mLb9moi",
+        },
+        .zgui = .{
+            .url = "https://github.com/zig-gamedev/zgui/archive/main.tar.gz",
+            .hash = "zgui-0.6.0-dev--L6sZJWZaADqzylnhuPI2XexcOwyI3gTGREg8IS1XZJR",
+        },
+        .zglfw = .{
+            .url = "https://github.com/zig-gamedev/zglfw/archive/main.tar.gz",
+            .hash = "zglfw-0.10.0-dev-zgVDNJmZIQCIiO_94Sp5jqrPtz4Eumk3bDcxS7dSZfIj",
+        },
+        .zopengl = .{
+            .url = "https://github.com/zig-gamedev/zopengl/archive/main.tar.gz",
+            .hash = "zopengl-0.6.0-dev-5-tnzzFUCACS5Ongbip8bl028sYtkNnzNSjhsfRj3yk1",
         },
     },
     .paths = .{

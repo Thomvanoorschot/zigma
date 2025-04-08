@@ -4,6 +4,7 @@ const brkr_impl = @import("broker_impl.zig");
 const brkr_actr = @import("broker_actor.zig");
 const orderbook = @import("orderbook.zig");
 const conn_actr = @import("../http/connection_actor.zig");
+const shared_models = @import("shared_models");
 
 const xev = backstage.xev;
 const ActorInterface = backstage.ActorInterface;
@@ -14,9 +15,8 @@ const BrokerActor = brkr_actr.BrokerActor;
 const BrokerMessage = brkr_actr.BrokerMessage;
 const Envelope = backstage.Envelope;
 const OrderbookUpdate = brkr_impl.OrderbookUpdate;
-const Orderbook = orderbook.OrderBook;
 const ConnectionMessage = conn_actr.ConnectionMessage;
-const updateOrderbook = orderbook.updateOrderbook;
+const Orderbook = shared_models.OrderBook;
 
 pub const OrderbookMessage = union(enum) {
     init: OrderbookInitRequest,
@@ -88,12 +88,20 @@ pub const OrderbookActor = struct {
                 );
             },
             .orderbook_update => |m| {
-                _ = try updateOrderbook(&self.orderbook.?, m);
-                // self.orderbook.?.display();
-                // for (self.subscriptions.items) |actor| {
-                //     try actor.send(self.ctx.actor, ConnectionMessage{ .orderbook_update = &self.orderbook.? });
-                // }
-                m.deinit();
+                var ob_update: brkr_impl.OrderbookUpdate = m;
+
+                // TODO Probably move this to some other better place
+                const asks = try ob_update.arena_state.allocator().alloc(shared_models.PriceLevel, ob_update.data.asks.len);
+                for (ob_update.data.asks, 0..) |ask, i| {
+                    asks[i] = .{ .price = ask.price, .qty = ask.qty };
+                }
+                const bids = try ob_update.arena_state.allocator().alloc(shared_models.PriceLevel, ob_update.data.bids.len);
+                for (ob_update.data.bids, 0..) |bid, i| {
+                    bids[i] = .{ .price = bid.price, .qty = bid.qty };
+                }
+
+                self.orderbook.?.processUpdates(asks, bids);
+                ob_update.deinit();
             },
             .subscribe => |_| {
                 try self.subscriptions.append(message.sender.?);

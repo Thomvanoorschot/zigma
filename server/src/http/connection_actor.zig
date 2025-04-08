@@ -1,11 +1,12 @@
 const std = @import("std");
 const backstage = @import("backstage");
+const shared_models = @import("shared_models");
 
 const xev = backstage.xev;
 const Context = backstage.Context;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
-const Orderbook = @import("../trading/orderbook.zig").OrderBook;
+const Orderbook = shared_models.OrderBook;
 const OrderbookMessage = @import("../trading/orderbook_actor.zig").OrderbookMessage;
 const stringify = @import("zbor").stringify;
 const parse = @import("zbor").parse;

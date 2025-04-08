@@ -1,0 +1,12 @@
+.{
+    .name = .shared_models,
+    .version = "0.0.1",
+    .fingerprint = 0x872e323d83543718,
+    .minimum_zig_version = "0.15.0-dev.45+24db007cd",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}

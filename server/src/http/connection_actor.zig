@@ -90,7 +90,6 @@ pub const ConnectionActor = struct {
             }
             if (std.mem.eql(u8, line, "start")) {
                 // Temporary way of starting the sending
-                std.debug.print("Starting to send data\n", .{});
                 _ = self.ctx.send("orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
             }
         }

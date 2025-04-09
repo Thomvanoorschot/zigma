@@ -3,6 +3,9 @@ const krkn = @import("../kraken/broker.zig");
 const backstage = @import("backstage");
 const brkr_impl = @import("broker_impl.zig");
 const orderbook_actor = @import("orderbook_actor.zig");
+const ohclu = @import("ohcl_update.zig");
+const obu = @import("orderbook_update.zig");
+const ohlc_actor = @import("ohlc_actor.zig");
 
 const xev = backstage.xev;
 const Context = backstage.Context;
@@ -12,10 +15,13 @@ const BrokerPayload = brkr_impl.BrokerPayload;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
 const OrderbookMessage = orderbook_actor.OrderbookMessage;
-const OrderbookUpdate = brkr_impl.OrderbookUpdate;
+const OrderbookUpdate = obu.OrderbookUpdate;
+const OHLCUpdate = ohclu.OHLCUpdate;
+const OHLCMessage = ohlc_actor.OHLCMessage;
 pub const BrokerMessage = union(enum) {
     init: BrokerInitRequest,
-    subscribe: BrokerSubscribeRequest,
+    orderbook_subscribe: BrokerSubscribeRequest,
+    ohlc_subscribe: BrokerSubscribeRequest,
 };
 
 pub const BrokerInitRequest = struct {
@@ -30,7 +36,8 @@ pub const BrokerActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context,
     broker: ?BrokerImpl = null,
-    subscriptions: std.ArrayList(*ActorInterface),
+    orderbook_subscriptions: std.ArrayList(*ActorInterface),
+    ohlc_subscriptions: std.ArrayList(*ActorInterface),
     completion: xev.Completion = undefined,
 
     const Self = @This();
@@ -41,7 +48,8 @@ pub const BrokerActor = struct {
         self.* = .{
             .ctx = ctx,
             .allocator = allocator,
-            .subscriptions = std.ArrayList(*ActorInterface).init(allocator),
+            .orderbook_subscriptions = std.ArrayList(*ActorInterface).init(allocator),
+            .ohlc_subscriptions = std.ArrayList(*ActorInterface).init(allocator),
         };
 
         return self;
@@ -58,10 +66,14 @@ pub const BrokerActor = struct {
                     readMessage,
                 );
             },
-            .subscribe => |m| {
+            .orderbook_subscribe => |m| {
                 // TODO Split this up into seperate messages?
                 try self.broker.?.subscribeToOrderbook(m.ticker);
-                try self.subscriptions.append(message.sender.?);
+                try self.orderbook_subscriptions.append(message.sender.?);
+            },
+            .ohlc_subscribe => |m| {
+                try self.broker.?.subscribeToOHLC(m.ticker);
+                try self.ohlc_subscriptions.append(message.sender.?);
             },
         }
     }
@@ -72,8 +84,13 @@ pub const BrokerActor = struct {
         if (try message) |m| {
             switch (m) {
                 .orderbook_update => |update| {
-                    for (self.subscriptions.items) |actor| {
+                    for (self.orderbook_subscriptions.items) |actor| {
                         try actor.send(self.ctx.actor, OrderbookMessage{ .orderbook_update = update });
+                    }
+                },
+                .ohlc_update => |update| {
+                    for (self.ohlc_subscriptions.items) |actor| {
+                        try actor.send(self.ctx.actor, OHLCMessage{ .ohlc_update = update });
                     }
                 },
             }

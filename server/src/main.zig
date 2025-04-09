@@ -3,6 +3,7 @@ const backstage = @import("backstage");
 const brkr_actr = @import("trading/broker_actor.zig");
 const brkr_impl = @import("trading/broker_impl.zig");
 const ob_actr = @import("trading/orderbook_actor.zig");
+const ohlc_actr = @import("trading/ohlc_actor.zig");
 const server_actr = @import("http/server_actor.zig");
 
 const xev = backstage.xev;
@@ -14,6 +15,8 @@ const OrderbookActor = ob_actr.OrderbookActor;
 const OrderbookMessage = ob_actr.OrderbookMessage;
 const ServerActor = server_actr.ServerActor;
 const ServerMessage = server_actr.ServerMessage;
+const OHLCActor = ohlc_actr.OHLCActor;
+const OHLCMessage = ohlc_actr.OHLCMessage;
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer {
@@ -42,17 +45,23 @@ pub fn main() !void {
     try orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
     try orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "BTC/USD" } });
 
-    const test_second_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
-        .id = "test_second_actor",
+    const ohlc_actor = try engine.spawnActor(OHLCActor, OHLCMessage, .{
+        .id = "ohlc_actor",
     });
-    try test_second_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
-    try test_second_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "ETH/USD" } });
+    try ohlc_actor.send(null, OHLCMessage{ .init = .{ .broker = .kraken } });
+    try ohlc_actor.send(null, OHLCMessage{ .start = .{ .ticker = "BTC/USD" } });
 
-    const test_third_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
-        .id = "test_third_actor",
-    });
-    try test_third_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
-    try test_third_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "OMNI/USD" } });
+    // const test_second_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
+    //     .id = "test_second_actor",
+    // });
+    // try test_second_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
+    // try test_second_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "ETH/USD" } });
+
+    // const test_third_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
+    //     .id = "test_third_actor",
+    // });
+    // try test_third_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
+    // try test_third_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "OMNI/USD" } });
 
     // Stopping doesn't quite work yet
     // var cc = xev.Completion{};

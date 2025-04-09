@@ -1,9 +1,12 @@
 const std = @import("std");
 const krkn = @import("../kraken/broker.zig");
 const backstage = @import("backstage");
-
+const obu = @import("orderbook_update.zig");
+const ohclu = @import("ohcl_update.zig");
 const Loop = backstage.xev.Loop;
 const Context = backstage.Context;
+const OrderbookUpdate = obu.OrderbookUpdate;
+const OHLCUpdate = ohclu.OHLCUpdate;
 
 pub const BrokerType = enum {
     kraken,
@@ -11,42 +14,14 @@ pub const BrokerType = enum {
 
 pub const BrokerPayloadType = enum {
     orderbook_update,
+    ohlc_update,
 };
 
 pub const BrokerPayload = union(BrokerPayloadType) {
     orderbook_update: OrderbookUpdate,
+    ohlc_update: OHLCUpdate,
 };
 
-pub const OrderbookUpdate = struct {
-    arena_state: std.heap.ArenaAllocator,
-    data: *UpdateData,
-
-    const Self = @This();
-    pub fn init(allocator: std.mem.Allocator) !Self {
-        var arena_state = std.heap.ArenaAllocator.init(allocator);
-        return Self{
-            .arena_state = arena_state,
-            .data = try arena_state.allocator().create(UpdateData),
-        };
-    }
-
-    pub fn deinit(self: Self) void {
-        self.arena_state.deinit();
-    }
-};
-
-pub const PriceLevel = struct {
-    price: f64,
-    qty: f64,
-};
-
-pub const UpdateData = struct {
-    symbol: []const u8,
-    bids: []const PriceLevel,
-    asks: []const PriceLevel,
-    checksum: u64,
-    timestamp: ?[]const u8 = null,
-};
 
 pub const BrokerImpl = union(BrokerType) {
     kraken: *krkn.Broker,
@@ -80,6 +55,12 @@ pub const BrokerImpl = union(BrokerType) {
     pub fn subscribeToOrderbook(self: *Self, ticker: []const u8) !void {
         switch (self.*) {
             inline else => |broker| return try broker.subscribeToOrderbook(ticker),
+        }
+    }
+
+    pub fn subscribeToOHLC(self: *Self, ticker: []const u8) !void {
+        switch (self.*) {
+            inline else => |broker| return try broker.subscribeToOHLC(ticker),
         }
     }
 };

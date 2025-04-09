@@ -4,7 +4,7 @@ const brkr_impl = @import("broker_impl.zig");
 const brkr_actr = @import("broker_actor.zig");
 const conn_actr = @import("../http/connection_actor.zig");
 const shared_models = @import("shared_models");
-const obu = @import("orderbook_update.zig");
+const ohclu = @import("ohcl_update.zig");
 
 const xev = backstage.xev;
 const ActorInterface = backstage.ActorInterface;
@@ -14,32 +14,32 @@ const BrokerType = brkr_impl.BrokerType;
 const BrokerActor = brkr_actr.BrokerActor;
 const BrokerMessage = brkr_actr.BrokerMessage;
 const Envelope = backstage.Envelope;
-const OrderbookUpdate = obu.OrderbookUpdate;
 const ConnectionMessage = conn_actr.ConnectionMessage;
-const Orderbook = shared_models.OrderBook;
-
-pub const OrderbookMessage = union(enum) {
-    init: OrderbookInitRequest,
-    start: OrderbookStartRequest,
-    orderbook_update: OrderbookUpdate,
-    subscribe: OrderbookSubscribeRequest,
+const OHLCUpdate = ohclu.OHLCUpdate;
+pub const OHLCMessage = union(enum) {
+    init: OHLCInitRequest,
+    start: OHLCStartRequest,
+    ohlc_update: OHLCUpdate,
+    subscribe: OHLCSubscribeRequest,
 };
 
-pub const OrderbookInitRequest = struct {
+pub const OHLCInitRequest = struct {
     broker: BrokerType,
 };
-pub const OrderbookStartRequest = struct {
+pub const OHLCStartRequest = struct {
     ticker: []const u8,
 };
-pub const OrderbookSubscribeRequest = struct {};
+pub const OHLCSubscribeRequest = struct {};
+pub const OHLCResponse = struct {
+    last_timestamp: []const u8,
+};
 
-pub const OrderbookActor = struct {
+pub const OHLCActor = struct {
     allocator: Allocator,
     arena: std.heap.ArenaAllocator,
     ticker: []const u8 = "",
     ctx: *Context,
     broker_actor: ?*ActorInterface = null,
-    orderbook: ?Orderbook = null,
     subscriptions: std.ArrayList(*ActorInterface),
     notify_subscribers_completion: xev.Completion = undefined,
     const Self = @This();
@@ -62,7 +62,7 @@ pub const OrderbookActor = struct {
         self.arena.deinit();
     }
 
-    pub fn receive(self: *Self, message: *const Envelope(OrderbookMessage)) !void {
+    pub fn receive(self: *Self, message: *const Envelope(OHLCMessage)) !void {
         switch (message.payload) {
             .init => |_| {
                 const broker_actor = try self.ctx.spawnActor(BrokerActor, BrokerMessage, .{
@@ -74,8 +74,7 @@ pub const OrderbookActor = struct {
             },
             .start => |m| {
                 self.ticker = m.ticker;
-                self.orderbook = try Orderbook.init(self.allocator, "kraken", self.ticker, 10);
-                try self.broker_actor.?.send(self.ctx.actor, BrokerMessage{ .orderbook_subscribe = .{ .ticker = m.ticker } });
+                try self.broker_actor.?.send(self.ctx.actor, BrokerMessage{ .ohlc_subscribe = .{ .ticker = m.ticker } });
                 try self.ctx.runContinuously(
                     Self,
                     notify_subscribers,
@@ -84,31 +83,19 @@ pub const OrderbookActor = struct {
                     20,
                 );
             },
-            .orderbook_update => |m| {
-                std.debug.print("Orderbook Update\n", .{});
-                var ob_update: OrderbookUpdate = m;
-
-                // TODO Probably move this to some other better place
-                const asks = try ob_update.arena_state.allocator().alloc(shared_models.PriceLevel, ob_update.data.asks.len);
-                for (ob_update.data.asks, 0..) |ask, i| {
-                    asks[i] = .{ .price = ask.price, .qty = ask.qty };
-                }
-                const bids = try ob_update.arena_state.allocator().alloc(shared_models.PriceLevel, ob_update.data.bids.len);
-                for (ob_update.data.bids, 0..) |bid, i| {
-                    bids[i] = .{ .price = bid.price, .qty = bid.qty };
-                }
-
-                self.orderbook.?.processUpdates(asks, bids);
-                ob_update.deinit();
+            .ohlc_update => |m| {
+                std.debug.print("OHLC Update\n", .{});
+                var ohlc_update: OHLCUpdate = m;
+                ohlc_update.deinit();
             },
             .subscribe => |_| {
                 try self.subscriptions.append(message.sender.?);
             },
         }
     }
-    fn notify_subscribers(self: *Self) !void {
-        for (self.subscriptions.items) |actor| {
-            try actor.send(self.ctx.actor, ConnectionMessage{ .orderbook_update = &self.orderbook.? });
-        }
+    fn notify_subscribers(_: *Self) !void {
+        // for (self.subscriptions.items) |actor| {
+        //     try actor.send(self.ctx.actor, OHLCMessage{ .ohlc_update = &self.orderbook.? });
+        // }
     }
 };

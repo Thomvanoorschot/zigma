@@ -10,7 +10,7 @@
         },
         .backstage = .{
             .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
-            .hash = "backstage-0.1.0-Lti6bFBxAACyRFoDX7DQNPPhvyo6qmBFmn8B5CBr6px_",
+            .hash = "backstage-0.1.0-Lti6bIJxAABE4t9pKLjJUBvkITMjfYOgprrdNSPyFjJY",
         },
         .xevzocket = .{
             .url = "https://github.com/Thomvanoorschot/xevzocket/archive/main.tar.gz",

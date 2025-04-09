@@ -18,9 +18,9 @@ pub const PriceLevel = struct {
     qty: f64,
 };
 
-pub fn parseOrderbook(allocator: Allocator, str: []const u8) !OrderBook {
+pub fn parseOrderbook(allocator: Allocator, str: []const u8) !*OrderBook {
     const di = try DataItem.new(str);
-    const ob = try zborParse(OrderBook, di, .{ .allocator = allocator });
+    const ob = try zborParse(*OrderBook, di, .{ .allocator = allocator });
     return ob;
 }
 

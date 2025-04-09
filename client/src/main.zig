@@ -18,9 +18,7 @@ pub fn main() !void {
         1080,
     );
     app.start();
-    // while (!app.window.shouldClose() and app.window.getKey(.escape) != .press) {
-    //     app.renderFrame();
-    // }
+
 
     try loop.run(.until_done);
 }

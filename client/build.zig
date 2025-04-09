@@ -6,43 +6,55 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const exe = b.addExecutable(.{
-        .name = demo_name,
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
+    // Dependencies
     const zglfw = b.dependency("zglfw", .{
         .target = target,
     });
-    exe.root_module.addImport("zglfw", zglfw.module("root"));
-    exe.linkLibrary(zglfw.artifact("glfw"));
-
     const zopengl = b.dependency("zopengl", .{});
-    exe.root_module.addImport("zopengl", zopengl.module("root"));
-
     const zgui = b.dependency("zgui", .{
         .target = target,
         .backend = .glfw_opengl3,
         .with_implot = true,
     });
-    exe.root_module.addImport("zgui", zgui.module("root"));
-    exe.linkLibrary(zgui.artifact("imgui"));
-
+    const shared_models = b.dependency("shared_models", .{
+        .target = target,
+        .optimize = optimize,
+    });
     const xev = b.dependency("libxev", .{
         .target = target,
         .optimize = optimize,
     });
 
-    exe.root_module.addImport("xev", xev.module("xev"));
-
-    const shared_models = b.dependency("shared_models", .{
+    // Client module
+    const client_mod = b.addModule("client", .{
         .target = target,
         .optimize = optimize,
+        .root_source_file = .{ .cwd_relative = "src/main.zig" },
     });
+
+    // Add imports
+    client_mod.addImport("zglfw", zglfw.module("root"));
+    client_mod.addImport("zopengl", zopengl.module("root"));
+    client_mod.addImport("zgui", zgui.module("root"));
+    client_mod.addImport("xev", xev.module("xev"));
+    client_mod.addImport("shared_models", shared_models.module("shared_models"));
+
+    // Add executable
+    const exe = b.addExecutable(.{
+        .name = demo_name,
+        .root_module = client_mod,
+    });
+
+    // Add imports to executable
+    exe.root_module.addImport("zglfw", zglfw.module("root"));
+    exe.linkLibrary(zglfw.artifact("glfw"));
+    exe.root_module.addImport("zopengl", zopengl.module("root"));
+    exe.root_module.addImport("zgui", zgui.module("root"));
+    exe.linkLibrary(zgui.artifact("imgui"));
+    exe.root_module.addImport("xev", xev.module("xev"));
     exe.root_module.addImport("shared_models", shared_models.module("shared_models"));
 
+    // Add run step
     const run_cmd = b.addRunArtifact(exe);
     const run_step = b.step("run", "Run example");
     run_step.dependOn(&run_cmd.step);

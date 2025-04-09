@@ -6,6 +6,7 @@ const xev = @import("xev");
 const orderbook_chart = @import("orderbook_chart.zig");
 const shared_models = @import("shared_models");
 const OrderBook = shared_models.OrderBook;
+const PriceLevel = shared_models.PriceLevel;
 const parseOrderbook = shared_models.parseOrderbook;
 const plotOrderbookWindow = orderbook_chart.plotOrderbookWindow;
 const gl = zopengl.bindings;
@@ -23,6 +24,9 @@ pub const App = struct {
     connect_completion: xev.Completion = undefined,
     read_completion: xev.Completion = undefined,
     read_buf: [1024]u8 = undefined,
+
+    orderbook: ?*OrderBook = null,
+
     pub fn init(
         allocator: std.mem.Allocator,
         loop: *xev.Loop,
@@ -63,6 +67,8 @@ pub const App = struct {
 
         const self = try allocator.create(Self);
         const server_addr = try std.net.Address.parseIp4("127.0.0.1", 8081);
+
+
         self.* = Self{
             .allocator = allocator,
             .loop = loop,
@@ -121,6 +127,10 @@ pub const App = struct {
         zgui.end();
         zgui.showDemoWindow(null);
         zgui.plot.showDemoWindow(null);
+
+        if (self.orderbook) |ob| {
+            plotOrderbookWindow(ob) catch unreachable;
+        }
 
         zgui.backend.draw();
 
@@ -183,8 +193,7 @@ pub const App = struct {
 
         const received_data = buf.slice[0..n];
         const ob = parseOrderbook(self.allocator, received_data) catch unreachable;
-        std.debug.print("Orderbook: {}\n", .{ob});
-
+        self.orderbook = ob;
 
         self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);
         return .disarm;

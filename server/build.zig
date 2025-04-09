@@ -4,6 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // Dependencies
     const backstage_dep = b.dependency("backstage", .{
         .target = target,
         .optimize = optimize,
@@ -22,13 +23,26 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const exe = b.addExecutable(.{
-        .name = "zigma_server",
-        .root_source_file = .{ .cwd_relative = "src/main.zig" },
+    // Server module
+    const server_mod = b.addModule("server", .{
         .target = target,
         .optimize = optimize,
+        .root_source_file = .{ .cwd_relative = "src/main.zig" },
     });
 
+    // Add imports
+    server_mod.addImport("backstage", backstage_dep.module("backstage"));
+    server_mod.addImport("xevzocket", xevzocket_dep.module("xevzocket"));
+    server_mod.addImport("zbor", zbor_dep.module("zbor"));
+    server_mod.addImport("shared_models", shared_models_dep.module("shared_models"));
+
+    // Add executable
+    const exe = b.addExecutable(.{
+        .name = "zigma_server",
+        .root_module = server_mod,
+    });
+
+    // Add imports to executable
     exe.root_module.addImport("backstage", backstage_dep.module("backstage"));
     exe.root_module.addImport("xevzocket", xevzocket_dep.module("xevzocket"));
     exe.root_module.addImport("zbor", zbor_dep.module("zbor"));

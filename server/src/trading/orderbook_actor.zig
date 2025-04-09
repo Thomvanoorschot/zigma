@@ -2,7 +2,6 @@ const std = @import("std");
 const backstage = @import("backstage");
 const brkr_impl = @import("broker_impl.zig");
 const brkr_actr = @import("broker_actor.zig");
-const orderbook = @import("orderbook.zig");
 const conn_actr = @import("../http/connection_actor.zig");
 const shared_models = @import("shared_models");
 
@@ -84,7 +83,7 @@ pub const OrderbookActor = struct {
                     notify_subscribers,
                     &self.notify_subscribers_completion,
                     self,
-                    1000,
+                    20,
                 );
             },
             .orderbook_update => |m| {

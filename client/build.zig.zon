@@ -9,8 +9,8 @@
             .hash = "libxev-0.0.0-86vtc-zkEgB7uv1i0Sa6ytJETZQi_lHJrImu9mLb9moi",
         },
         .zgui = .{
-            .url = "https://github.com/zig-gamedev/zgui/archive/main.tar.gz",
-            .hash = "zgui-0.6.0-dev--L6sZJWZaADqzylnhuPI2XexcOwyI3gTGREg8IS1XZJR",
+            .url = "https://github.com/Thomvanoorschot/zgui/archive/main.tar.gz",
+            .hash = "zgui-0.6.0-dev--L6sZEOfaAC_YZwV_TxUXOsnn9IYHWuuuMey0Nu54OkJ",
         },
         .zglfw = .{
             .url = "https://github.com/zig-gamedev/zglfw/archive/main.tar.gz",

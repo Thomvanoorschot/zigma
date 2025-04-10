@@ -4,14 +4,18 @@ const glfw = @import("zglfw");
 const zopengl = @import("zopengl");
 const xev = @import("xev");
 const orderbook_chart = @import("orderbook_chart.zig");
+const ohlc_chart = @import("ohlc_chart.zig");
 const shared_models = @import("shared_models");
 const OrderBook = shared_models.OrderBook;
 const PriceLevel = shared_models.PriceLevel;
 const parseOrderbook = shared_models.parseOrderbook;
 const plotOrderbookWindow = orderbook_chart.plotOrderbookWindow;
+const OHLCList = shared_models.OHLCList;
+const OHLC = shared_models.OHLC;
+const parseOHLCList = shared_models.parseOHLCList;
 const gl = zopengl.bindings;
 const TCP = xev.TCP;
-
+const plotOHLCListWindow = ohlc_chart.plotOHLCListWindow;
 pub const App = struct {
     const Self = @This();
     allocator: std.mem.Allocator,
@@ -26,7 +30,7 @@ pub const App = struct {
     read_buf: [1024]u8 = undefined,
 
     orderbook: ?*OrderBook = null,
-
+    ohlc_list: ?[]OHLC = null,
     pub fn init(
         allocator: std.mem.Allocator,
         loop: *xev.Loop,
@@ -132,6 +136,10 @@ pub const App = struct {
             plotOrderbookWindow(ob) catch unreachable;
         }
 
+        if (self.ohlc_list) |ohlc_list| {
+            plotOHLCListWindow(self.allocator, ohlc_list) catch unreachable;
+        }
+
         zgui.backend.draw();
 
         self.window.swapBuffers();
@@ -192,10 +200,31 @@ pub const App = struct {
         };
 
         const received_data = buf.slice[0..n];
-        const ob = parseOrderbook(self.allocator, received_data) catch unreachable;
-        self.orderbook = ob;
+        const ohlc_list = parseOHLCList(self.allocator, received_data) catch unreachable;
+        self.ohlc_list = ohlc_list;
 
         self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);
         return .disarm;
     }
+    // fn readCallback(
+    //     self_: ?*Self,
+    //     l: *xev.Loop,
+    //     c: *xev.Completion,
+    //     _: TCP,
+    //     buf: xev.ReadBuffer,
+    //     r: xev.ReadError!usize,
+    // ) xev.CallbackAction {
+    //     const self = self_.?;
+    //     const n = r catch |err| {
+    //         std.debug.print("Read error: {s}\n", .{@errorName(err)});
+    //         return .disarm;
+    //     };
+
+    //     const received_data = buf.slice[0..n];
+    //     const ob = parseOrderbook(self.allocator, received_data) catch unreachable;
+    //     self.orderbook = ob;
+
+    //     self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);
+    //     return .disarm;
+    // }
 };

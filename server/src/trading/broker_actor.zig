@@ -3,7 +3,7 @@ const krkn = @import("../kraken/broker.zig");
 const backstage = @import("backstage");
 const brkr_impl = @import("broker_impl.zig");
 const orderbook_actor = @import("orderbook_actor.zig");
-const ohclu = @import("ohcl_update.zig");
+const ohlcu = @import("ohlc_update.zig");
 const obu = @import("orderbook_update.zig");
 const ohlc_actor = @import("ohlc_actor.zig");
 
@@ -16,7 +16,7 @@ const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
 const OrderbookMessage = orderbook_actor.OrderbookMessage;
 const OrderbookUpdate = obu.OrderbookUpdate;
-const OHLCUpdate = ohclu.OHLCUpdate;
+const OHLCUpdate = ohlcu.OHLCUpdate;
 const OHLCMessage = ohlc_actor.OHLCMessage;
 pub const BrokerMessage = union(enum) {
     init: BrokerInitRequest,
@@ -85,12 +85,16 @@ pub const BrokerActor = struct {
             switch (m) {
                 .orderbook_update => |update| {
                     for (self.orderbook_subscriptions.items) |actor| {
-                        try actor.send(self.ctx.actor, OrderbookMessage{ .orderbook_update = update });
+                        try actor.send(self.ctx.actor, OrderbookMessage{
+                            .orderbook_update = update,
+                        });
                     }
                 },
                 .ohlc_update => |update| {
                     for (self.ohlc_subscriptions.items) |actor| {
-                        try actor.send(self.ctx.actor, OHLCMessage{ .ohlc_update = update });
+                        try actor.send(self.ctx.actor, OHLCMessage{
+                            .ohlc_update = update,
+                        });
                     }
                 },
             }

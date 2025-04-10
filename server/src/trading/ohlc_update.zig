@@ -21,12 +21,12 @@ pub const OHLCUpdate = struct {
 
 pub const UpdateData = struct {
     symbol: []const u8,
-    open: f64,
-    high: f64,
-    low: f64,
-    close: f64,
+    open: f32,
+    high: f32,
+    low: f32,
+    close: f32,
     trades: u64,
-    volume: f64,
+    volume: f32,
     interval: u64,
     timestamp: []const u8,
 };

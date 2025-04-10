@@ -39,11 +39,11 @@ pub fn main() !void {
     } });
     try server_actor.send(null, ServerMessage{ .listen = .{} });
 
-    const orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
-        .id = "orderbook_actor",
-    });
-    try orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
-    try orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "BTC/USD" } });
+    // const orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
+    //     .id = "orderbook_actor",
+    // });
+    // try orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
+    // try orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "BTC/USD" } });
 
     const ohlc_actor = try engine.spawnActor(OHLCActor, OHLCMessage, .{
         .id = "ohlc_actor",

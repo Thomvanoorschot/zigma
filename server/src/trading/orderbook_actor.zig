@@ -108,7 +108,10 @@ pub const OrderbookActor = struct {
     }
     fn notify_subscribers(self: *Self) !void {
         for (self.subscriptions.items) |actor| {
-            try actor.send(self.ctx.actor, ConnectionMessage{ .orderbook_update = &self.orderbook.? });
+            try actor.send(
+                self.ctx.actor,
+                ConnectionMessage{ .orderbook_update = &self.orderbook.? },
+            );
         }
     }
 };

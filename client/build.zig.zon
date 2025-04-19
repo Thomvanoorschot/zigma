@@ -10,7 +10,7 @@
         },
         .zgui = .{
             .url = "https://github.com/Thomvanoorschot/zgui/archive/main.tar.gz",
-            .hash = "zgui-0.6.0-dev--L6sZEOfaAC_YZwV_TxUXOsnn9IYHWuuuMey0Nu54OkJ",
+            .hash = "zgui-0.6.0-dev--L6sZPalaAD8peV-nStu7c46nZl5UiMJg_I3Vs4XAkDa",
         },
         .zglfw = .{
             .url = "https://github.com/zig-gamedev/zglfw/archive/main.tar.gz",
@@ -22,6 +22,10 @@
         },
         .shared_models = .{
             .path = "../shared_models",
+        },
+        .zul = .{
+            .url = "https://github.com/karlseguin/zul/archive/master.tar.gz",
+            .hash = "zul-0.0.0-1oDotyJMBwBli3UBm47WYeNZSMNni_DbkT-jTtDpowDW",
         },
     },
     .paths = .{

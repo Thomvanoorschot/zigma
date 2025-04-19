@@ -74,6 +74,7 @@ pub const Broker = struct {
             .params = .{
                 .channel = "ohlc",
                 .symbol = &[_][]const u8{ticker},
+                .interval = 1,
             },
         }, &buffer);
 

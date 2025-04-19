@@ -5,6 +5,7 @@ pub const WsSubsribeRequest = struct {
     params: struct {
         channel: []const u8,
         symbol: []const []const u8,
+        interval: ?u64 = null,
     },
 };
 

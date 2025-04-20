@@ -55,7 +55,7 @@ fn plotCandlestick(
     zgui.plot.setupAxisLimits(.x1, .{ .min = min_time - (time_padding), .max = max_time + (time_padding) });
     zgui.plot.setupAxisLimits(.y1, .{ .min = 84000, .max = 86000 });
     zgui.plot.setupAxisScale(.x1, .time);
-    
+
     zgui.plot.setupAxisLimitsConstraints(.x1, min_time - time_padding, max_time + time_padding);
 
     const min_zoom_span: f64 = 60 * 15;
@@ -73,10 +73,10 @@ fn plotCandlestick(
     const draw_list = plot.getPlotDrawList();
 
     std.debug.print("time: {d} ohlc: {s} {d} {d} {d} {d}\n", .{ xs[ohlc_list.len - 1], ohlc_list[ohlc_list.len - 1].symbol, ohlc_list[ohlc_list.len - 1].open, ohlc_list[ohlc_list.len - 1].close, ohlc_list[ohlc_list.len - 1].low, ohlc_list[ohlc_list.len - 1].high });
+
     if (plot.beginItem("Candlestick")) {
         defer plot.endItem();
         for (ohlc_list, 0..) |ohlc, i| {
-
             const color = if (ohlc.open > ohlc.close) bear_col else bull_col;
 
             const open_pos = plot.plotToPixels(xs[i] - half_width, ohlc.open);
@@ -97,6 +97,15 @@ fn plotCandlestick(
                 .col = color,
             });
         }
+    }
+
+    // Allocate memory for the y-values (assuming you have an allocator)
+    const y_values = try allocator.alloc(f64, xs.len);
+    defer allocator.free(y_values);
+
+    // Populate the y-values
+    for (y_values) |*y| {
+        y.* = 85000.0; // Set the desired height for each bar
     }
 }
 

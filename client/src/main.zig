@@ -3,6 +3,7 @@ const xev = @import("xev");
 const Loop = xev.Loop;
 // const App = @import("visualization/app.zig").App;
 const window_title = "zigma_client";
+const glfw = @import("zglfw");
 
 pub fn main() !void {
     var loop = try Loop.init(.{});

@@ -7,16 +7,12 @@
 // Add #define to your imconfig.h file, or as a compilation flag in your build system.
 // This requirement will be removed once WebGPU stabilizes and backends converge on a unified interface.
 //#define IMGUI_IMPL_WEBGPU_BACKEND_DAWN
-
-// FIX(zig-gamedev)
-#define IMGUI_IMPL_WEBGPU_BACKEND_WGPU
+//#define IMGUI_IMPL_WEBGPU_BACKEND_WGPU
 
 // Implemented features:
 //  [X] Renderer: User texture binding. Use 'WGPUTextureView' as ImTextureID. Read the FAQ about ImTextureID!
 //  [X] Renderer: Large meshes support (64k+ vertices) even with 16-bit indices (ImGuiBackendFlags_RendererHasVtxOffset).
 //  [X] Renderer: Expose selected render state for draw callbacks to use. Access in '(ImGui_ImplXXXX_RenderState*)GetPlatformIO().Renderer_RenderState'.
-// Missing features:
-//  [ ] Renderer: Multi-viewport support (multiple windows). Not meaningful on the web.
 
 // You can use unmodified imgui_impl_* files in your project. See examples/ folder for examples of using this.
 // Prefer including the entire imgui/ repository into your project (either as a copy or as a submodule), and only build the backends you need.

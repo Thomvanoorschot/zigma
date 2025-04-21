@@ -4,8 +4,6 @@
 // Implemented features:
 //  [X] Renderer: User texture binding. Use simply cast a reference to your SDL_GPUTextureSamplerBinding to ImTextureID.
 //  [X] Renderer: Large meshes support (64k+ vertices) with 16-bit indices.
-// Missing features:
-//  [ ] Renderer: Multi-viewport support (multiple windows).
 
 // The aim of imgui_impl_sdlgpu3.h/.cpp is to be usable in your engine without any modification.
 // IF YOU FEEL YOU NEED TO MAKE ANY CHANGE TO THIS CODE, please share them and your feedback at https://github.com/ocornut/imgui/
@@ -27,9 +25,6 @@
 #ifndef IMGUI_DISABLE
 #include <SDL3/SDL_gpu.h>
 
-// FIX(zig-gamedev):
-extern "C" {
-
 // Initialization data, for ImGui_ImplSDLGPU_Init()
 // - Remember to set ColorTargetFormat to the correct format. If you're rendering to the swapchain, call SDL_GetGPUSwapchainTextureFormat to query the right value
 struct ImGui_ImplSDLGPU3_InitInfo
@@ -45,8 +40,6 @@ IMGUI_IMPL_API void     ImGui_ImplSDLGPU3_Shutdown();
 IMGUI_IMPL_API void     ImGui_ImplSDLGPU3_NewFrame();
 IMGUI_IMPL_API void     Imgui_ImplSDLGPU3_PrepareDrawData(ImDrawData* draw_data, SDL_GPUCommandBuffer* command_buffer);
 IMGUI_IMPL_API void     ImGui_ImplSDLGPU3_RenderDrawData(ImDrawData* draw_data, SDL_GPUCommandBuffer* command_buffer, SDL_GPURenderPass* render_pass, SDL_GPUGraphicsPipeline* pipeline = nullptr);
-
-}
 
 IMGUI_IMPL_API void     ImGui_ImplSDLGPU3_CreateDeviceObjects();
 IMGUI_IMPL_API void     ImGui_ImplSDLGPU3_DestroyDeviceObjects();

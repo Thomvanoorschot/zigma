@@ -63,8 +63,10 @@ pub fn build(b: *std.Build) !void {
 
     const imgui = addImgui(b, target, optimize);
     addImplot(b, imgui);
+    addBackend(b, imgui);
 
     exe.linkLibrary(imgui);
+    
     if (target.result.os.tag == .macos) {
         if (b.lazyDependency("system_sdk", .{})) |system_sdk| {
             imgui.addSystemIncludePath(system_sdk.path("macos12/usr/include"));
@@ -85,8 +87,8 @@ fn addImgui(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
         .target = target,
         .optimize = optimize,
     });
-
-    b.installArtifact(imgui);
+    
+    // b.installArtifact(imgui);
 
     imgui.addIncludePath(b.path("libs"));
     imgui.addIncludePath(b.path("libs/imgui"));
@@ -98,7 +100,6 @@ fn addImgui(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
         .file = b.path("libs/cimgui.cpp"),
         .flags = cflags,
     });
-
     imgui.addCSourceFiles(.{
         .files = &.{
             "libs/imgui/imgui.cpp",

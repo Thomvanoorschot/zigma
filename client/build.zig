@@ -13,8 +13,12 @@ pub fn build(b: *std.Build) !void {
     // Dependencies
     const zglfw_dep = b.dependency("zglfw", .{
         .target = target,
+        .optimize = optimize,
     });
-    const zopengl_dep = b.dependency("zopengl", .{});
+    const zopengl_dep = b.dependency("zopengl", .{
+        .target = target,
+        // .optimize = optimize,
+    });
 
     const shared_models_dep = b.dependency("shared_models", .{
         .target = target,
@@ -59,6 +63,14 @@ pub fn build(b: *std.Build) !void {
 
     const imgui = addImgui(b, target, optimize);
     addImplot(b, imgui);
+
+    exe.linkLibrary(imgui);
+    if (target.result.os.tag == .macos) {
+        if (b.lazyDependency("system_sdk", .{})) |system_sdk| {
+            imgui.addSystemIncludePath(system_sdk.path("macos12/usr/include"));
+            imgui.addFrameworkPath(system_sdk.path("macos12/System/Library/Frameworks"));
+        }
+    }
     // Add run step
     const run_cmd = b.addRunArtifact(exe);
     const run_step = b.step("run", "Run example");
@@ -69,7 +81,7 @@ pub fn build(b: *std.Build) !void {
 
 fn addImgui(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
     const imgui = b.addStaticLibrary(.{
-        .name = "cimgui",
+        .name = "imgui",
         .target = target,
         .optimize = optimize,
     });
@@ -80,6 +92,7 @@ fn addImgui(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
     imgui.addIncludePath(b.path("libs/imgui"));
 
     imgui.linkLibC();
+    imgui.linkLibCpp();
 
     imgui.addCSourceFile(.{
         .file = b.path("libs/cimgui.cpp"),
@@ -103,7 +116,7 @@ fn addImplot(b: *std.Build, imgui: *std.Build.Step.Compile) void {
     imgui.addIncludePath(b.path("libs/implot"));
 
     imgui.addCSourceFile(.{
-        .file = b.path("src/zplot.cpp"),
+        .file = b.path("libs/cimplot.cpp"),
         .flags = cflags,
     });
 

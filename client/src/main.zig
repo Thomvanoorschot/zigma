@@ -7,7 +7,7 @@ const glfw = @import("zglfw");
 const zopengl = @import("zopengl");
 const gl = zopengl.bindings;
 const backend =  @import("backend_glfw_opengl.zig");
-
+const gui = @import("gui.zig");
 pub fn main() !void {
     var loop = try Loop.init(.{});
     defer loop.deinit();
@@ -28,6 +28,8 @@ pub fn main() !void {
 }
 
 fn testGlfw() !void {
+    var allocator_state = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = allocator_state.allocator();
     try glfw.init();
     defer glfw.terminate();
 
@@ -40,6 +42,9 @@ fn testGlfw() !void {
     const gl_major = 4;
     const gl_minor = 0;
     try zopengl.loadCoreProfile(glfw.getProcAddress, gl_major, gl_minor);
+
+
+    gui.init(allocator);
     while (!window.shouldClose()) {
         glfw.pollEvents();
 

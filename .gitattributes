@@ -1,2 +1,3 @@
 **/deps/** linguist-detectable=false
 **/zig-out/** linguist-detectable=false
+**/libs/** linguist-detectable=false

@@ -52,7 +52,7 @@ CIMGUI_API void igSetCurrentContext(ImGuiContext* ctx)
 {
     return ImGui::SetCurrentContext(ctx);
 }
-CIMGUI_API ImGuiIO* igGetIO()
+CIMGUI_API ImGuiIO* igGetIO_Nil()
 {
     return &ImGui::GetIO();
 }
@@ -1291,6 +1291,13 @@ CIMGUI_API void igLogFinish()
 CIMGUI_API void igLogButtons()
 {
     return ImGui::LogButtons();
+}
+CIMGUI_API void igLogText(const char* fmt,...)
+{
+    va_list args;
+    va_start(args, fmt);
+    ImGui::LogTextV(fmt,args);
+    va_end(args);
 }
 CIMGUI_API void igLogTextV(const char* fmt,va_list args)
 {
@@ -3854,7 +3861,7 @@ CIMGUI_API ImGuiTableColumnSettings* ImGuiTableSettings_GetColumnSettings(ImGuiT
 {
     return self->GetColumnSettings();
 }
-CIMGUI_API ImGuiIO* igGetIOEx(ImGuiContext* ctx)
+CIMGUI_API ImGuiIO* igGetIO_ContextPtr(ImGuiContext* ctx)
 {
     return &ImGui::GetIO(ctx);
 }
@@ -5486,16 +5493,7 @@ CIMGUI_API void ImGuiFreeType_SetAllocatorFunctions(void*(*alloc_func)(size_t sz
 
 
 /////////////////////////////manual written functions
-CIMGUI_API void igLogText(const char *fmt, ...)
-{
-    char buffer[256];
-    va_list args;
-    va_start(args, fmt);
-    vsnprintf(buffer, 256, fmt, args);
-    va_end(args);
 
-    ImGui::LogText("%s", buffer);
-}
 CIMGUI_API void ImGuiTextBuffer_appendf(ImGuiTextBuffer *self, const char *fmt, ...)
 {
     va_list args;

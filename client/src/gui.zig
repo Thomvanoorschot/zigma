@@ -25,3 +25,6 @@ const Context = *opaque {};
 extern fn igCreateContext(shared_font_atlas: ?*const anyopaque) Context;
 extern fn igDestroyContext(ctx: ?Context) void;
 extern fn igGetCurrentContext() ?Context;
+
+pub const newFrame = igNewFrame;
+extern fn igNewFrame() void;

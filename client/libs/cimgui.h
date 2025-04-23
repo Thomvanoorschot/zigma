@@ -3325,7 +3325,7 @@ CIMGUI_API ImGuiContext* igCreateContext(ImFontAtlas* shared_font_atlas);
 CIMGUI_API void igDestroyContext(ImGuiContext* ctx);
 CIMGUI_API ImGuiContext* igGetCurrentContext(void);
 CIMGUI_API void igSetCurrentContext(ImGuiContext* ctx);
-CIMGUI_API ImGuiIO* igGetIO(void);
+CIMGUI_API ImGuiIO* igGetIO_Nil(void);
 CIMGUI_API ImGuiPlatformIO* igGetPlatformIO_Nil(void);
 CIMGUI_API ImGuiStyle* igGetStyle(void);
 CIMGUI_API void igNewFrame(void);
@@ -3625,6 +3625,7 @@ CIMGUI_API void igLogToFile(int auto_open_depth,const char* filename);
 CIMGUI_API void igLogToClipboard(int auto_open_depth);
 CIMGUI_API void igLogFinish(void);
 CIMGUI_API void igLogButtons(void);
+CIMGUI_API void igLogText(const char* fmt,...);
 CIMGUI_API void igLogTextV(const char* fmt,va_list args);
 CIMGUI_API bool igBeginDragDropSource(ImGuiDragDropFlags flags);
 CIMGUI_API bool igSetDragDropPayload(const char* type,const void* data,size_t sz,ImGuiCond cond);
@@ -4263,7 +4264,7 @@ CIMGUI_API void ImGuiTableColumnSettings_destroy(ImGuiTableColumnSettings* self)
 CIMGUI_API ImGuiTableSettings* ImGuiTableSettings_ImGuiTableSettings(void);
 CIMGUI_API void ImGuiTableSettings_destroy(ImGuiTableSettings* self);
 CIMGUI_API ImGuiTableColumnSettings* ImGuiTableSettings_GetColumnSettings(ImGuiTableSettings* self);
-CIMGUI_API ImGuiIO* igGetIOEx(ImGuiContext* ctx);
+CIMGUI_API ImGuiIO* igGetIO_ContextPtr(ImGuiContext* ctx);
 CIMGUI_API ImGuiPlatformIO* igGetPlatformIO_ContextPtr(ImGuiContext* ctx);
 CIMGUI_API ImGuiWindow* igGetCurrentWindowRead(void);
 CIMGUI_API ImGuiWindow* igGetCurrentWindow(void);
@@ -4674,8 +4675,6 @@ CIMGUI_API void ImGuiFreeType_SetAllocatorFunctions(void*(*alloc_func)(size_t sz
 
 
 /////////////////////////hand written functions
-//no LogTextV
-CIMGUI_API void igLogText(const char *fmt, ...);
 //no appendfV
 CIMGUI_API void ImGuiTextBuffer_appendf(ImGuiTextBuffer *self, const char *fmt, ...);
 //for getting FLT_MAX in bindings
@@ -4695,6 +4694,7 @@ CIMGUI_API void ImGuiPlatformIO_Set_Platform_GetWindowSize(ImGuiPlatformIO* plat
 #endif
 
 #endif //CIMGUI_INCLUDED
+
 
 
 

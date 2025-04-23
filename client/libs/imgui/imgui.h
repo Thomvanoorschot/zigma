@@ -31,6 +31,8 @@
 #define IMGUI_VERSION       "1.91.9"
 #define IMGUI_VERSION_NUM   19190
 #define IMGUI_HAS_TABLE
+// #define IMGUI_HAS_VIEWPORT
+// #define IMGUI_HAS_DOCK
 
 /*
 

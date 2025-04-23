@@ -4,6 +4,9 @@ const cflags = &.{
     "-fno-sanitize=undefined",
     "-Wno-elaborated-enum-base",
     "-Wno-error=date-time",
+    "-DIMGUI_IMPL_API=extern \"C\" ",
+    "-DIMGUI_IMPL_OPENGL_LOADER_GL3W",
+    "-Dcimgui_EXPORTS",
 };
 
 pub fn build(b: *std.Build) !void {
@@ -11,10 +14,7 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
 
     // Dependencies
-    const zglfw_dep = b.dependency("zglfw", .{
-        .target = target,
-        .optimize = optimize,
-    });
+    const zglfw_dep = b.dependency("zglfw", .{});
     const zopengl_dep = b.dependency("zopengl", .{
         .target = target,
         // .optimize = optimize,
@@ -62,17 +62,15 @@ pub fn build(b: *std.Build) !void {
     exe.root_module.addImport("zul", zul_dep.module("zul"));
 
     const imgui = addImgui(b, target, optimize);
+    // if (target.result.os.tag == .macos) {
+    //     const system_sdk = b.dependency("system_sdk", .{});
+    //     imgui.addSystemIncludePath(system_sdk.path("macos12/usr/include"));
+    //     imgui.addFrameworkPath(system_sdk.path("macos12/System/Library/Frameworks"));
+    // }
     addImplot(b, imgui);
-    addBackend(b, imgui);
+    addBackend(b, imgui, zglfw_dep);
 
     exe.linkLibrary(imgui);
-    
-    if (target.result.os.tag == .macos) {
-        if (b.lazyDependency("system_sdk", .{})) |system_sdk| {
-            imgui.addSystemIncludePath(system_sdk.path("macos12/usr/include"));
-            imgui.addFrameworkPath(system_sdk.path("macos12/System/Library/Frameworks"));
-        }
-    }
     // Add run step
     const run_cmd = b.addRunArtifact(exe);
     const run_step = b.step("run", "Run example");
@@ -87,7 +85,7 @@ fn addImgui(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
         .target = target,
         .optimize = optimize,
     });
-    
+
     // b.installArtifact(imgui);
 
     imgui.addIncludePath(b.path("libs"));
@@ -96,12 +94,11 @@ fn addImgui(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
     imgui.linkLibC();
     imgui.linkLibCpp();
 
-    imgui.addCSourceFile(.{
-        .file = b.path("libs/cimgui.cpp"),
-        .flags = cflags,
-    });
     imgui.addCSourceFiles(.{
         .files = &.{
+            "libs/cimgui.cpp",
+            "libs/cimgui_impl.cpp",
+
             "libs/imgui/imgui.cpp",
             "libs/imgui/imgui_widgets.cpp",
             "libs/imgui/imgui_tables.cpp",
@@ -110,19 +107,17 @@ fn addImgui(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
         },
         .flags = cflags,
     });
+
     return imgui;
 }
 
 fn addImplot(b: *std.Build, imgui: *std.Build.Step.Compile) void {
     imgui.addIncludePath(b.path("libs/implot"));
 
-    imgui.addCSourceFile(.{
-        .file = b.path("libs/cimplot.cpp"),
-        .flags = cflags,
-    });
-
     imgui.addCSourceFiles(.{
         .files = &.{
+            "libs/cimplot.cpp",
+
             "libs/implot/implot_demo.cpp",
             "libs/implot/implot.cpp",
             "libs/implot/implot_items.cpp",
@@ -131,15 +126,15 @@ fn addImplot(b: *std.Build, imgui: *std.Build.Step.Compile) void {
     });
 }
 
-fn addBackend(b: *std.Build, imgui: *std.Build.Step.Compile) void {
-    if (b.lazyDependency("zglfw", .{})) |zglfw| {
-        imgui.addIncludePath(zglfw.path("libs/glfw/include"));
-    }
+fn addBackend(b: *std.Build, imgui: *std.Build.Step.Compile, zglfw_dep: *std.Build.Dependency) void {
+    imgui.addIncludePath(zglfw_dep.path("libs/glfw/include"));
+    imgui.addIncludePath(b.path("libs/imgui/backends"));
+
     imgui.addCSourceFiles(.{
         .files = &.{
             "libs/imgui/backends/imgui_impl_glfw.cpp",
             "libs/imgui/backends/imgui_impl_opengl3.cpp",
         },
-        .flags = &(cflags.* ++ .{"-DIMGUI_IMPL_OPENGL_LOADER_CUSTOM"}),
+        // .flags = &(cflags.* ++ .{"-DIMGUI_IMPL_OPENGL_LOADER_CUSTOM"}),
     });
 }

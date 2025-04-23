@@ -2963,3 +2963,4 @@ CIMGUI_API void ImPlot_Locator_SymLog(ImPlotTicker* ticker,const ImPlotRange ran
 {
     return ImPlot::Locator_SymLog(*ticker,range,pixels,vertical,formatter,formatter_data);
 }
+

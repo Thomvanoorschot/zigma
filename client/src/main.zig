@@ -50,8 +50,8 @@ fn testGlfw() !void {
 
         // gl.clearBufferfv(gl.COLOR, 0, &[_]f32{ 0, 0, 0, 1.0 });
 
-        // const fb_size = window.getFramebufferSize();
-
+        const fb_size = window.getFramebufferSize();
+        backend.newFrame(@intCast(fb_size[0]), @intCast(fb_size[1]));
         // zgui.backend.newFrame(@intCast(fb_size[0]), @intCast(fb_size[1]));
 
         // if (zgui.begin("My window", .{})) {

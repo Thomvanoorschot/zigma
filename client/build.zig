@@ -4,9 +4,13 @@ const cflags = &.{
     "-fno-sanitize=undefined",
     "-Wno-elaborated-enum-base",
     "-Wno-error=date-time",
-    "-DIMGUI_IMPL_API=extern \"C\" ",
-    "-DIMGUI_IMPL_OPENGL_LOADER_GL3W",
-    "-Dcimgui_EXPORTS",
+};
+
+pub const IMGUI_C_DEFINES: []const [2][]const u8 = &.{
+    // .{ "IMGUI_DISABLE_OBSOLETE_FUNCTIONS", "1" },
+    // .{ "IMGUI_DISABLE_OBSOLETE_KEYIO", "1" },
+    .{ "IMGUI_IMPL_API", "extern \"C\"" },
+    .{ "IMGUI_IMPL_OPENGL_LOADER_GL3W", "1" },
 };
 
 pub fn build(b: *std.Build) !void {
@@ -86,6 +90,9 @@ fn addImgui(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
         .optimize = optimize,
     });
 
+    for (IMGUI_C_DEFINES) |c_define| {
+        imgui.root_module.addCMacro(c_define[0], c_define[1]);
+    }
     // b.installArtifact(imgui);
 
     imgui.addIncludePath(b.path("libs"));

@@ -6,7 +6,7 @@ const window_title = "zigma_client";
 const glfw = @import("zglfw");
 const zopengl = @import("zopengl");
 const gl = zopengl.bindings;
-const backend =  @import("backend_glfw_opengl.zig");
+const backend = @import("backend_glfw_opengl.zig");
 const gui = @import("gui.zig");
 pub fn main() !void {
     var loop = try Loop.init(.{});
@@ -41,17 +41,24 @@ fn testGlfw() !void {
 
     const gl_major = 4;
     const gl_minor = 0;
+    glfw.windowHint(.context_version_major, gl_major);
+    glfw.windowHint(.context_version_minor, gl_minor);
+    glfw.windowHint(.opengl_profile, .opengl_core_profile);
+    glfw.windowHint(.opengl_forward_compat, true);
+    glfw.windowHint(.client_api, .opengl_api);
+    glfw.windowHint(.doublebuffer, true);
     try zopengl.loadCoreProfile(glfw.getProcAddress, gl_major, gl_minor);
 
-
     gui.init(allocator);
+    gui.backend.init(window);
+    defer gui.backend.deinit();
     while (!window.shouldClose()) {
         glfw.pollEvents();
 
         // gl.clearBufferfv(gl.COLOR, 0, &[_]f32{ 0, 0, 0, 1.0 });
 
-        const fb_size = window.getFramebufferSize();
-        backend.newFrame(@intCast(fb_size[0]), @intCast(fb_size[1]));
+        // const fb_size = window.getFramebufferSize();
+        // backend.newFrame(@intCast(fb_size[0]), @intCast(fb_size[1]));
         // zgui.backend.newFrame(@intCast(fb_size[0]), @intCast(fb_size[1]));
 
         // if (zgui.begin("My window", .{})) {

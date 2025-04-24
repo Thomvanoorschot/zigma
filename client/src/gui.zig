@@ -376,6 +376,44 @@ pub const MouseButton = enum(u32) {
     middle = 2,
 };
 
+pub const Direction = enum(c_int) {
+    none = -1,
+    left = 0,
+    right = 1,
+    up = 2,
+    down = 3,
+};
+
+pub const HoveredFlags = packed struct(c_int) {
+    child_windows: bool = false,
+    root_window: bool = false,
+    any_window: bool = false,
+    no_popup_hierarchy: bool = false,
+    dock_hierarchy: bool = false,
+    allow_when_blocked_by_popup: bool = false,
+    _reserved1: bool = false,
+    allow_when_blocked_by_active_item: bool = false,
+    allow_when_overlapped_by_item: bool = false,
+    allow_when_overlapped_by_window: bool = false,
+    allow_when_disabled: bool = false,
+    no_nav_override: bool = false,
+    for_tooltip: bool = false,
+    stationary: bool = false,
+    delay_none: bool = false,
+    delay_normal: bool = false,
+    delay_short: bool = false,
+    no_shared_delay: bool = false,
+    _padding: u14 = 0,
+
+    pub const rect_only = HoveredFlags{
+        .allow_when_blocked_by_popup = true,
+        .allow_when_blocked_by_active_item = true,
+        .allow_when_overlapped_by_item = true,
+        .allow_when_overlapped_by_window = true,
+    };
+    pub const root_and_child_windows = HoveredFlags{ .root_window = true, .child_windows = true };
+};
+
 const Begin = struct {
     popen: ?*bool = null,
     flags: WindowFlags = .{},
@@ -401,10 +439,8 @@ extern fn igShowDemoWindow(popen: ?*bool) void;
 
 pub const showMetricsWindow = igShowMetricsWindow;
 extern fn igShowMetricsWindow(popen: ?*bool) void;
-//----------------------------------------------------------
 
 // --- Window API ---
-
 /// Push window to the stack and start appending to it.
 /// Returns false if window is collapsed, so you can early out in your code.
 /// Always call a matching end() for each begin() call, regardless of its return value!
@@ -1658,6 +1694,271 @@ pub const io = struct {
     pub const getFontsTexId = igIoGetFontsTexId;
     extern fn igIoGetFontsTexId() TextureIdent;
 };
+
+// --- Style ---
+pub const Style = extern struct {
+    alpha: f32,
+    disabled_alpha: f32,
+    window_padding: [2]f32,
+    window_rounding: f32,
+    window_border_size: f32,
+    window_min_size: [2]f32,
+    window_title_align: [2]f32,
+    window_menu_button_position: Direction,
+    child_rounding: f32,
+    child_border_size: f32,
+    popup_rounding: f32,
+    popup_border_size: f32,
+    frame_padding: [2]f32,
+    frame_rounding: f32,
+    frame_border_size: f32,
+    item_spacing: [2]f32,
+    item_inner_spacing: [2]f32,
+    cell_padding: [2]f32,
+    touch_extra_padding: [2]f32,
+    indent_spacing: f32,
+    columns_min_spacing: f32,
+    scrollbar_size: f32,
+    scrollbar_rounding: f32,
+    grab_min_size: f32,
+    grab_rounding: f32,
+    log_slider_deadzone: f32,
+    tab_rounding: f32,
+    tab_border_size: f32,
+    tab_min_width_for_close_button: f32,
+    tab_bar_border_size: f32,
+    tab_bar_overline_size: f32,
+    table_angled_header_angle: f32,
+    table_angled_headers_text_align: [2]f32,
+    color_button_position: Direction,
+    button_text_align: [2]f32,
+    selectable_text_align: [2]f32,
+    separator_text_border_size: f32,
+    separator_text_align: [2]f32,
+    separator_text_padding: [2]f32,
+    display_window_padding: [2]f32,
+    display_safe_area_padding: [2]f32,
+    docking_separator_size: f32,
+    mouse_cursor_scale: f32,
+    anti_aliased_lines: bool,
+    anti_aliased_lines_use_tex: bool,
+    anti_aliased_fill: bool,
+    curve_tessellation_tol: f32,
+    circle_tessellation_max_error: f32,
+
+    colors: [@typeInfo(StyleCol).@"enum".fields.len][4]f32,
+
+    hover_stationary_delay: f32,
+    hover_delay_short: f32,
+    hover_delay_normal: f32,
+
+    hover_flags_for_tooltip_mouse: HoveredFlags,
+    hover_flags_for_tooltip_nav: HoveredFlags,
+
+    /// `pub fn init() Style`
+    pub const init = igStyle_Init;
+    extern fn igStyle_Init() Style;
+
+    /// `pub fn scaleAllSizes(style: *Style, scale_factor: f32) void`
+    pub const scaleAllSizes = ImGuiStyle_ScaleAllSizes;
+    extern fn ImGuiStyle_ScaleAllSizes(style: *Style, scale_factor: f32) void;
+
+    /// `pub fn styleColorsDark(*Style)`
+    pub const setColorsDark = igStyleColorsDark;
+
+    /// `pub fn styleColorsLight(*Style)`
+    pub const setColorsLight = igStyleColorsLight;
+
+    /// `pub fn styleColorsClassic(*Style)`
+    pub const setColorsClassic = igStyleColorsClassic;
+
+    pub const StyleColorsBuiltin = enum {
+        dark,
+        light,
+        classic,
+    };
+    pub fn setColorsBuiltin(style: *Style, variant: StyleColorsBuiltin) void {
+        switch (variant) {
+            .dark => igStyleColorsDark(style),
+            .light => igStyleColorsLight(style),
+            .classic => igStyleColorsClassic(style),
+        }
+    }
+
+    pub fn getColor(style: Style, idx: StyleCol) [4]f32 {
+        return style.colors[@intCast(@intFromEnum(idx))];
+    }
+    pub fn setColor(style: *Style, idx: StyleCol, color: [4]f32) void {
+        style.colors[@intCast(@intFromEnum(idx))] = color;
+    }
+};
+/// `pub fn getStyle() *Style`
+pub const getStyle = igGetStyle;
+extern fn igGetStyle() *Style;
+
+/// `pub fn styleColorsDark(*Style)`
+pub const styleColorsDark = igStyleColorsDark;
+extern fn igStyleColorsDark(style: *Style) void;
+
+/// `pub fn styleColorsLight(*Style)`
+pub const styleColorsLight = igStyleColorsLight;
+extern fn igStyleColorsLight(style: *Style) void;
+
+/// `pub fn styleColorsClassic(*Style)`
+pub const styleColorsClassic = igStyleColorsClassic;
+extern fn igStyleColorsClassic(style: *Style) void;
+
+pub const StyleCol = enum(c_int) {
+    text,
+    text_disabled,
+    window_bg,
+    child_bg,
+    popup_bg,
+    border,
+    border_shadow,
+    frame_bg,
+    frame_bg_hovered,
+    frame_bg_active,
+    title_bg,
+    title_bg_active,
+    title_bg_collapsed,
+    menu_bar_bg,
+    scrollbar_bg,
+    scrollbar_grab,
+    scrollbar_grab_hovered,
+    scrollbar_grab_active,
+    check_mark,
+    slider_grab,
+    slider_grab_active,
+    button,
+    button_hovered,
+    button_active,
+    header,
+    header_hovered,
+    header_active,
+    separator,
+    separator_hovered,
+    separator_active,
+    resize_grip,
+    resize_grip_hovered,
+    resize_grip_active,
+    tab_hovered,
+    tab,
+    tab_selected,
+    tab_selected_overline,
+    tab_dimmed,
+    tab_dimmed_selected,
+    tab_dimmed_selected_overline,
+    docking_preview,
+    docking_empty_bg,
+    plot_lines,
+    plot_lines_hovered,
+    plot_histogram,
+    plot_histogram_hovered,
+    table_header_bg,
+    table_border_strong,
+    table_border_light,
+    table_row_bg,
+    table_row_bg_alt,
+    text_link,
+    text_selected_bg,
+    drag_drop_target,
+    nav_highlight,
+    nav_windowing_highlight,
+    nav_windowing_dim_bg,
+    modal_window_dim_bg,
+};
+
+pub fn pushStyleColor4f(args: struct {
+    idx: StyleCol,
+    c: [4]f32,
+}) void {
+    igPushStyleColor4f(args.idx, &args.c);
+}
+extern fn igPushStyleColor4f(idx: StyleCol, col: *const [4]f32) void;
+
+pub fn pushStyleColor1u(args: struct {
+    idx: StyleCol,
+    c: u32,
+}) void {
+    igPushStyleColor1u(args.idx, args.c);
+}
+extern fn igPushStyleColor1u(idx: StyleCol, col: c_uint) void;
+
+pub fn popStyleColor(args: struct {
+    count: i32 = 1,
+}) void {
+    igPopStyleColor(args.count);
+}
+extern fn igPopStyleColor(count: c_int) void;
+
+/// `fn pushTextWrapPos(wrap_pos_x: f32) void`
+pub const pushTextWrapPos = igPushTextWrapPos;
+extern fn igPushTextWrapPos(wrap_pos_x: f32) void;
+
+/// `fn popTextWrapPos() void`
+pub const popTextWrapPos = igPopTextWrapPos;
+extern fn igPopTextWrapPos() void;
+
+pub const StyleVar = enum(c_int) {
+    alpha, // 1f
+    disabled_alpha, // 1f
+    window_padding, // 2f
+    window_rounding, // 1f
+    window_border_size, // 1f
+    window_min_size, // 2f
+    window_title_align, // 2f
+    child_rounding, // 1f
+    child_border_size, // 1f
+    popup_rounding, // 1f
+    popup_border_size, // 1f
+    frame_padding, // 2f
+    frame_rounding, // 1f
+    frame_border_size, // 1f
+    item_spacing, // 2f
+    item_inner_spacing, // 2f
+    indent_spacing, // 1f
+    cell_padding, // 2f
+    scrollbar_size, // 1f
+    scrollbar_rounding, // 1f
+    grab_min_size, // 1f
+    grab_rounding, // 1f
+    tab_rounding, // 1f
+    tab_border_size, // 1f
+    tab_bar_border_size, // 1f
+    tab_bar_overline_size, // 1f
+    table_angled_headers_angle, // 1f
+    table_angled_headers_text_align, // 2f
+    button_text_align, // 2f
+    selectable_text_align, // 2f
+    separator_text_border_size, // 1f
+    separator_text_align, // 2f
+    separator_text_padding, // 2f
+    docking_separator_size, // 1f
+};
+
+pub fn pushStyleVar1f(args: struct {
+    idx: StyleVar,
+    v: f32,
+}) void {
+    igPushStyleVar1f(args.idx, args.v);
+}
+extern fn igPushStyleVar1f(idx: StyleVar, v: f32) void;
+
+pub fn pushStyleVar2f(args: struct {
+    idx: StyleVar,
+    v: [2]f32,
+}) void {
+    igPushStyleVar2f(args.idx, &args.v);
+}
+extern fn igPushStyleVar2f(idx: StyleVar, v: *const [2]f32) void;
+
+pub fn popStyleVar(args: struct {
+    count: i32 = 1,
+}) void {
+    igPopStyleVar(args.count);
+}
+extern fn igPopStyleVar(count: c_int) void;
 
 // --- Utility ---
 

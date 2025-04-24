@@ -1,17 +1,20 @@
 const gui = @import("gui.zig");
 //--------------------------------------------------------------------------------------------------
 pub fn init() void {
-    if (zguiPlot_GetCurrentContext() == null) {
-        _ = zguiPlot_CreateContext();
+    if (ImPlot_GetCurrentContext() == null) {
+        _ = ImPlot_CreateContext();
     }
 }
 pub fn deinit() void {
-    if (zguiPlot_GetCurrentContext() != null) {
-        zguiPlot_DestroyContext(null);
+    if (ImPlot_GetCurrentContext() != null) {
+        ImPlot_DestroyContext(null);
     }
 }
 const Context = *opaque {};
 
-extern fn zguiPlot_GetCurrentContext() ?Context;
-extern fn zguiPlot_CreateContext() Context;
-extern fn zguiPlot_DestroyContext(ctx: ?Context) void;
+extern fn ImPlot_GetCurrentContext() ?Context;
+extern fn ImPlot_CreateContext() Context;
+extern fn ImPlot_DestroyContext(ctx: ?Context) void;
+
+pub const showDemoWindow = ImPlot_ShowDemoWindow;
+extern fn ImPlot_ShowDemoWindow(popen: ?*bool) void;

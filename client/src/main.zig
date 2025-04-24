@@ -6,7 +6,6 @@ const window_title = "zigma_client";
 const glfw = @import("zglfw");
 const zopengl = @import("zopengl");
 const gl = zopengl.bindings;
-const backend = @import("backend_glfw_opengl.zig");
 const gui = @import("gui.zig");
 pub fn main() !void {
     var loop = try Loop.init(.{});
@@ -49,6 +48,25 @@ fn testGlfw() !void {
     glfw.windowHint(.doublebuffer, true);
     try zopengl.loadCoreProfile(glfw.getProcAddress, gl_major, gl_minor);
 
+    const gl_version_ptr = gl.getString(gl.VERSION);
+    const glsl_version_ptr = gl.getString(gl.SHADING_LANGUAGE_VERSION);
+
+    if (gl_version_ptr) |ptr| {
+        // Assuming ptr is null-terminated, which gl.getString should return
+        const gl_version = std.mem.sliceTo(ptr, 0);
+        std.debug.print("Actual OpenGL Version: {s}\n", .{gl_version});
+    } else {
+        std.debug.print("Failed to get OpenGL Version string\n", .{});
+    }
+
+    if (glsl_version_ptr) |ptr| {
+        // Assuming ptr is null-terminated
+        const glsl_version = std.mem.sliceTo(ptr, 0);
+        std.debug.print("Actual GLSL Version: {s}\n", .{glsl_version});
+    } else {
+        std.debug.print("Failed to get GLSL Version string\n", .{});
+    }
+
     gui.init(allocator);
     gui.backend.init(window);
     defer gui.backend.deinit();
@@ -57,29 +75,20 @@ fn testGlfw() !void {
 
         // gl.clearBufferfv(gl.COLOR, 0, &[_]f32{ 0, 0, 0, 1.0 });
 
-        // const fb_size = window.getFramebufferSize();
-        // backend.newFrame(@intCast(fb_size[0]), @intCast(fb_size[1]));
-        // zgui.backend.newFrame(@intCast(fb_size[0]), @intCast(fb_size[1]));
+        gl.clear(gl.COLOR_BUFFER_BIT);
 
-        // if (zgui.begin("My window", .{})) {
-        //     if (zgui.button("Press me!", .{ .w = 200.0 })) {
-        //         std.debug.print("Button pressed\n", .{});
-        //     }
-        // }
-        // zgui.end();
-        // zgui.showDemoWindow(null);
-        // zgui.plot.showDemoWindow(null);
+        const fb_size = window.getFramebufferSize();
+        gui.backend.newFrame(@intCast(fb_size[0]), @intCast(fb_size[1]));
 
-        // if (self.orderbook) |ob| {
-        //     plotOrderbookWindow(ob) catch unreachable;
-        // }
+        if (gui.begin("My window", .{})) {
+            if (gui.button("Press me!", .{ .w = 200.0 })) {
+                std.debug.print("Button pressed\n", .{});
+            }
+        }
+        gui.end();
+        gui.showDemoWindow(null);
+        gui.backend.draw();
 
-        // if (self.ohlc_list) |ohlc_list| {
-        //     plotOHLCListWindow(self.allocator, ohlc_list) catch unreachable;
-        // }
-
-        // zgui.backend.draw();
-
-        // window.swapBuffers();
+        window.swapBuffers();
     }
 }

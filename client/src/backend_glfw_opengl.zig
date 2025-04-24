@@ -13,7 +13,7 @@ pub fn initWithGlSlVersion(
 pub fn init(
     window: *const anyopaque, // zglfw.Window
 ) void {
-    initWithGlSlVersion(window, null);
+    initWithGlSlVersion(window, "#version 120");
 }
 
 pub fn deinit() void {

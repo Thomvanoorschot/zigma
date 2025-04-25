@@ -8,7 +8,7 @@ const cflags = &.{
 
 pub const IMGUI_C_DEFINES: []const [2][]const u8 = &.{
     .{ "IMGUI_IMPL_API", "extern \"C\"" },
-    .{ "IMGUI_IMPL_OPENGL_LOADER_GL3W", "1" },
+    .{ "IMGUI_IMPL_WEBGPU_BACKEND_WGPU", "1" },
 };
 
 pub fn build(b: *std.Build) !void {
@@ -17,11 +17,10 @@ pub fn build(b: *std.Build) !void {
 
     // Dependencies
     const zglfw_dep = b.dependency("zglfw", .{});
-    const zopengl_dep = b.dependency("zopengl", .{
-        .target = target,
-        // .optimize = optimize,
-    });
 
+    const zgpu_dep = b.dependency("zgpu", .{
+        .target = target,
+    });
     const shared_models_dep = b.dependency("shared_models", .{
         .target = target,
         .optimize = optimize,
@@ -44,7 +43,7 @@ pub fn build(b: *std.Build) !void {
 
     // Add imports
     client_mod.addImport("zglfw", zglfw_dep.module("root"));
-    client_mod.addImport("zopengl", zopengl_dep.module("root"));
+    client_mod.addImport("zgpu", zgpu_dep.module("root"));
     client_mod.addImport("xev", xev_dep.module("xev"));
     client_mod.addImport("shared_models", shared_models_dep.module("shared_models"));
     client_mod.addImport("zul", zul_dep.module("zul"));
@@ -58,10 +57,12 @@ pub fn build(b: *std.Build) !void {
     // Add imports to executable
     exe.root_module.addImport("zglfw", zglfw_dep.module("root"));
     exe.linkLibrary(zglfw_dep.artifact("glfw"));
-    exe.root_module.addImport("zopengl", zopengl_dep.module("root"));
     exe.root_module.addImport("xev", xev_dep.module("xev"));
     exe.root_module.addImport("shared_models", shared_models_dep.module("shared_models"));
     exe.root_module.addImport("zul", zul_dep.module("zul"));
+    @import("zgpu").addLibraryPathsTo(exe);
+    exe.root_module.addImport("zgpu", zgpu_dep.module("root"));
+    exe.linkLibrary(zgpu_dep.artifact("zdawn"));
 
     const imgui = addImgui(b, target, optimize);
     // if (target.result.os.tag == .macos) {
@@ -70,7 +71,7 @@ pub fn build(b: *std.Build) !void {
     //     imgui.addFrameworkPath(system_sdk.path("macos12/System/Library/Frameworks"));
     // }
     addImplot(b, imgui);
-    addBackend(b, imgui, zglfw_dep);
+    addBackend(b, imgui, zglfw_dep, zgpu_dep);
 
     exe.linkLibrary(imgui);
     // Add run step
@@ -130,15 +131,19 @@ fn addImplot(b: *std.Build, imgui: *std.Build.Step.Compile) void {
     });
 }
 
-fn addBackend(b: *std.Build, imgui: *std.Build.Step.Compile, zglfw_dep: *std.Build.Dependency) void {
+fn addBackend(
+    b: *std.Build,
+    imgui: *std.Build.Step.Compile,
+    zglfw_dep: *std.Build.Dependency,
+    zgpu_dep: *std.Build.Dependency,
+) void {
     imgui.addIncludePath(zglfw_dep.path("libs/glfw/include"));
     imgui.addIncludePath(b.path("libs/imgui/backends"));
-
+    imgui.addIncludePath(zgpu_dep.path("libs/dawn/include"));
     imgui.addCSourceFiles(.{
         .files = &.{
             "libs/imgui/backends/imgui_impl_glfw.cpp",
-            "libs/imgui/backends/imgui_impl_opengl3.cpp",
+            "libs/imgui/backends/imgui_impl_wgpu.cpp",
         },
-        // .flags = &(cflags.* ++ .{"-DIMGUI_IMPL_OPENGL_LOADER_CUSTOM"}),
     });
 }

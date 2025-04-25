@@ -6,13 +6,13 @@
 #include "cimgui.h"
 
 
-// #ifdef CIMGUI_USE_GLFW
+#ifdef CIMGUI_USE_GLFW
 #include "imgui_impl_glfw.h"
-// #endif
+#endif
 
-// #ifdef CIMGUI_USE_OPENGL3
+#ifdef CIMGUI_USE_OPENGL3
 #include "imgui_impl_opengl3.h"
-// #endif
+#endif
 
 #ifdef CIMGUI_USE_OPENGL2
 #include "imgui_impl_opengl2.h"

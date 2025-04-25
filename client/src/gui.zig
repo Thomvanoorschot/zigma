@@ -1,5 +1,5 @@
 const std = @import("std");
-pub const backend = @import("backend_glfw_opengl.zig");
+pub const backend = @import("backend_glfw_wgpu.zig");
 
 pub fn init(allocator: std.mem.Allocator) void {
     if (igGetCurrentContext() == null) {
@@ -48,13 +48,21 @@ fn Vector(comptime T: type) type {
     };
 }
 
+pub const IO = extern struct {
+    display_size: [2]f32,
+    display_framebuffer_scale: [2]f32,
+    delta_time: f32,
+    mouse_pos: [2]f32,
+    mouse_delta: [2]f32,
+    mouse_down: [5]bool,
+};
 pub const DrawVert = extern struct {
     pos: [2]f32,
     uv: [2]f32,
     color: u32,
 };
 
-pub const DrawIdx = u16;
+pub const DrawIdx = u32;
 pub const TextureIdent = *anyopaque;
 pub const DrawCallback = *const fn (*const anyopaque, *const DrawCmd) callconv(.C) void;
 
@@ -1514,6 +1522,8 @@ pub const DrawList = *opaque {
 
 /// Access IO structure (mouse/keyboard/gamepad inputs, time, various configuration options/flags)
 pub const io = struct {
+    pub const getIO = igGetIO_Nil;
+    extern fn igGetIO_Nil() *IO;
     // --- Configuration ---
     pub const setConfigFlags = igIoSetConfigFlags;
     extern fn igIoSetConfigFlags(flags: ConfigFlags) void;
@@ -1530,8 +1540,9 @@ pub const io = struct {
 
     // --- Display ---
     /// Set display size, in pixels. For clamping windows positions.
-    pub const setDisplaySize = igIoSetDisplaySize;
-    extern fn igIoSetDisplaySize(width: f32, height: f32) void;
+    pub fn setDisplaySize(width: f32, height: f32) void {
+        io.getIO().display_size = [2]f32{ width, height };
+    }
 
     pub fn getDisplaySize() [2]f32 {
         var size: [2]f32 = undefined;
@@ -1541,8 +1552,9 @@ pub const io = struct {
     extern fn igIoGetDisplaySize(size: *[2]f32) void;
 
     /// Set display framebuffer scale. For retina displays. Generally (1, 1) or (2, 2).
-    pub const setDisplayFramebufferScale = igIoSetDisplayFramebufferScale;
-    extern fn igIoSetDisplayFramebufferScale(sx: f32, sy: f32) void;
+    pub fn setDisplayFramebufferScale(sx: f32, sy: f32) void {
+        io.getIO().display_framebuffer_scale = [2]f32{ sx, sy };
+    }
 
     // --- Timing ---
     /// Set time delta in seconds.

@@ -1,11 +1,14 @@
 const std = @import("std");
-const zgui = @import("zgui");
 const glfw = @import("zglfw");
-const zopengl = @import("zopengl");
+const zgpu = @import("zgpu");
+const gui = @import("../gui.zig");
+const plot = @import("../plot.zig");
 const xev = @import("xev");
 const orderbook_chart = @import("orderbook_chart.zig");
 const ohlc_chart = @import("ohlc_chart.zig");
 const shared_models = @import("shared_models");
+
+const wgpu = zgpu.wgpu;
 const OrderBook = shared_models.OrderBook;
 const PriceLevel = shared_models.PriceLevel;
 const parseOrderbook = shared_models.parseOrderbook;
@@ -13,14 +16,15 @@ const plotOrderbookWindow = orderbook_chart.plotOrderbookWindow;
 const OHLCList = shared_models.OHLCList;
 const OHLC = shared_models.OHLC;
 const parseOHLCList = shared_models.parseOHLCList;
-const gl = zopengl.bindings;
 const TCP = xev.TCP;
 const plotOHLCListWindow = ohlc_chart.plotOHLCListWindow;
+
 pub const App = struct {
     const Self = @This();
     allocator: std.mem.Allocator,
     loop: *xev.Loop,
     window: *glfw.Window,
+    gctx: *zgpu.GraphicsContext,
     render_frame_completion: xev.Completion = undefined,
 
     socket: TCP,
@@ -40,43 +44,47 @@ pub const App = struct {
     ) !*Self {
         try glfw.init();
 
-        const gl_major = 4;
-        const gl_minor = 0;
-        glfw.windowHint(.context_version_major, gl_major);
-        glfw.windowHint(.context_version_minor, gl_minor);
-        glfw.windowHint(.opengl_profile, .opengl_core_profile);
-        glfw.windowHint(.opengl_forward_compat, true);
-        glfw.windowHint(.client_api, .opengl_api);
-        glfw.windowHint(.doublebuffer, true);
-
-        const window = try glfw.Window.create(width, height, title, null);
-        window.setSizeLimits(width, height, -1, -1);
-
+        _ = width;
+        _ = height;
+        glfw.windowHint(.client_api, .no_api);
+        const window = try glfw.Window.create(1920, 1080, title, null);
+        // window.setSizeLimits(450, 800, -1, -1);
         glfw.makeContextCurrent(window);
-        glfw.swapInterval(1);
 
-        try zopengl.loadCoreProfile(glfw.getProcAddress, gl_major, gl_minor);
+        const gctx = try zgpu.GraphicsContext.create(
+            allocator,
+            .{
+                .window = window,
+                .fn_getTime = @ptrCast(&glfw.getTime),
+                .fn_getFramebufferSize = @ptrCast(&glfw.Window.getFramebufferSize),
+                .fn_getCocoaWindow = @ptrCast(&glfw.getCocoaWindow),
+            },
+            .{},
+        );
 
-        zgui.init(allocator);
+        gui.init(allocator);
+        gui.backend.init(
+            window,
+            gctx.device,
+            @intFromEnum(zgpu.GraphicsContext.swapchain_format),
+            @intFromEnum(wgpu.TextureFormat.undef),
+        );
 
-        const scale_factor = scale_factor: {
-            const scale = window.getContentScale();
-            break :scale_factor @max(scale[0], scale[1]);
-        };
-        zgui.getStyle().scaleAllSizes(scale_factor);
-
-        zgui.backend.init(window);
-
-        zgui.plot.init();
+        // const scale_factor = scale_factor: {
+        //     const scale = window.getContentScale();
+        //     break :scale_factor @max(scale[0], scale[1]);
+        // };
+        // gui.getStyle().scaleAllSizes(scale_factor);
+        plot.init();
 
         const self = try allocator.create(Self);
         const server_addr = try std.net.Address.parseIp4("127.0.0.1", 8081);
-
 
         self.* = Self{
             .allocator = allocator,
             .loop = loop,
             .window = window,
+            .gctx = gctx,
             .socket = try TCP.init(server_addr),
             .server_addr = server_addr,
         };
@@ -84,6 +92,9 @@ pub const App = struct {
     }
 
     pub fn start(self: *Self) void {
+        // while (true) {
+        //     self.renderFrame();
+        // }
         const callback = struct {
             fn inner(
                 ud: ?*anyopaque,
@@ -92,9 +103,10 @@ pub const App = struct {
                 _: xev.Result,
             ) xev.CallbackAction {
                 var app = @as(*Self, @ptrCast(@alignCast(ud.?)));
-                app.renderFrame();
+                app.renderFrame() catch unreachable;
                 if (!app.window.shouldClose() and app.window.getKey(.escape) != .press) {
-                    l.timer(c, 16, ud, inner);
+                    // l.timer(c, 16, ud, inner);
+                    l.timer(c, 0, ud, inner);
                     return .disarm;
                 }
                 app.deinit();
@@ -107,42 +119,79 @@ pub const App = struct {
 
     pub fn deinit(self: *Self) void {
         self.loop.deinit();
-        zgui.backend.deinit();
-        zgui.deinit();
-        zgui.plot.deinit();
+        self.gctx.destroy(self.allocator);
+        gui.backend.deinit();
+        plot.deinit();
         glfw.terminate();
         self.window.destroy();
     }
 
-    pub fn renderFrame(self: *Self) void {
+    pub fn renderFrame(self: *Self) !void {
         glfw.pollEvents();
 
-        gl.clearBufferfv(gl.COLOR, 0, &[_]f32{ 0, 0, 0, 1.0 });
+        gui.backend.newFrame(
+            self.gctx.swapchain_descriptor.width,
+            self.gctx.swapchain_descriptor.height,
+        );
 
-        const fb_size = self.window.getFramebufferSize();
+        // if (gui.begin("candlestick", .{})) {
+        //     defer gui.end();
+        //     if (plot.beginPlot("candlestick", .{
+        //         .h = -1,
+        //     })) {
+        //         defer plot.endPlot();
+        //         // plot.setupAxis(.x1, .{ .flags = .{ .auto_fit = true } });
+        //         // plot.setupAxis(.y1, .{ .flags = .{ .auto_fit = true } });
 
-        zgui.backend.newFrame(@intCast(fb_size[0]), @intCast(fb_size[1]));
+        //         // plot.setupAxisLimits(.x1, .{ .min = 0.0, .max = 1.0, .cond = .once });
+        //         // plot.setupAxisLimits(.y1, .{ .min = 0.0, .max = 1.0, .cond = .once });
+        //         // plot.setupLegend(.{ .south = true, .west = true }, .{});
+        //         plot.setupFinish();
 
-        if (zgui.begin("My window", .{})) {
-            if (zgui.button("Press me!", .{ .w = 200.0 })) {
-                std.debug.print("Button pressed\n", .{});
-            }
-        }
-        zgui.end();
-        zgui.showDemoWindow(null);
-        zgui.plot.showDemoWindow(null);
+        //         plot.plotLine("", f64, .{
+        //             .xv = &[_]f64{ 0.1, 0.1 },
+        //             .yv = &[_]f64{ 0.1, 0.5 },
+        //         });
 
-        if (self.orderbook) |ob| {
-            plotOrderbookWindow(ob) catch unreachable;
-        }
+        //         // plot.plotBars("", f64, .{
+        //         //     .xv = &[_]f64{ 0.1, 0.2 },
+        //         //     .yv = &[_]f64{ 0.3, 0.4 },
+        //         //     .bar_size = 0.01,
+        //         // });
+        //     }
+        // }
 
         if (self.ohlc_list) |ohlc_list| {
-            plotOHLCListWindow(self.allocator, ohlc_list) catch unreachable;
+            try plotOHLCListWindow(self.allocator, ohlc_list);
         }
 
-        zgui.backend.draw();
+        const swapchain_texv = self.gctx.swapchain.getCurrentTextureView();
+        defer swapchain_texv.release();
 
-        self.window.swapBuffers();
+        const commands = commands: {
+            const encoder = self.gctx.device.createCommandEncoder(null);
+            defer encoder.release();
+
+            // GUI pass
+            {
+                const pass = zgpu.beginRenderPassSimple(
+                    encoder,
+                    .load,
+                    swapchain_texv,
+                    null,
+                    null,
+                    null,
+                );
+                defer zgpu.endReleasePass(pass);
+                gui.backend.draw(pass);
+            }
+
+            break :commands encoder.finish(null);
+        };
+        defer commands.release();
+
+        self.gctx.submit(&.{commands});
+        _ = self.gctx.present();
     }
 
     fn connectCallback(

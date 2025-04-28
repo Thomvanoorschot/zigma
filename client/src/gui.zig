@@ -3,12 +3,11 @@ pub const backend = @import("backend_glfw_wgpu.zig");
 
 pub fn init(allocator: std.mem.Allocator) void {
     if (igGetCurrentContext() == null) {
-        // mem_allocator = allocator;
-        // mem_allocations = std.AutoHashMap(usize, usize).init(allocator);
-        // mem_allocations.?.ensureTotalCapacity(32) catch @panic("ig: out of memory");
-        // igSetAllocatorFunctions(igMemAlloc, igMemFree);
+        mem_allocator = allocator;
+        mem_allocations = std.AutoHashMap(usize, usize).init(allocator);
+        mem_allocations.?.ensureTotalCapacity(32) catch @panic("ig: out of memory");
+        igSetAllocatorFunctions(igMemAlloc, igMemFree);
 
-        // TODO It needs to do path traversal to /libs/imgui
         _ = igCreateContext(null);
 
         temp_buffer = std.ArrayList(u8).init(allocator);
@@ -20,6 +19,46 @@ pub fn init(allocator: std.mem.Allocator) void {
     }
 }
 
+fn igMemAlloc(size: usize, _: ?*anyopaque) callconv(.C) ?*anyopaque {
+    mem_mutex.lock();
+    defer mem_mutex.unlock();
+
+    const mem = mem_allocator.?.alignedAlloc(
+        u8,
+        mem_alignment,
+        size,
+    ) catch @panic("ig: out of memory");
+
+    mem_allocations.?.put(@intFromPtr(mem.ptr), size) catch @panic("ig: out of memory");
+
+    return mem.ptr;
+}
+
+fn igMemFree(maybe_ptr: ?*anyopaque, _: ?*anyopaque) callconv(.C) void {
+    if (maybe_ptr) |ptr| {
+        mem_mutex.lock();
+        defer mem_mutex.unlock();
+
+        if (mem_allocations != null) {
+            if (mem_allocations.?.fetchRemove(@intFromPtr(ptr))) |kv| {
+                const size = kv.value;
+                const mem = @as([*]align(mem_alignment) u8, @ptrCast(@alignCast(ptr)))[0..size];
+                mem_allocator.?.free(mem);
+            }
+        }
+    }
+}
+
+var mem_allocator: ?std.mem.Allocator = null;
+var mem_allocations: ?std.AutoHashMap(usize, usize) = null;
+var mem_mutex: std.Thread.Mutex = .{};
+const mem_alignment = 16;
+
+extern fn igSetAllocatorFunctions(
+    alloc_func: ?*const fn (usize, ?*anyopaque) callconv(.C) ?*anyopaque,
+    free_func: ?*const fn (?*anyopaque, ?*anyopaque) callconv(.C) void,
+) void;
+
 extern fn igCreateContext(shared_font_atlas: ?*const anyopaque) Context;
 extern fn igDestroyContext(ctx: ?Context) void;
 extern fn igGetCurrentContext() ?Context;
@@ -29,6 +68,12 @@ pub const Context = *opaque {};
 pub const Font = *opaque {};
 
 // Core Structs and Enums
+
+pub const ImVec2 = extern struct {
+    x: f32,
+    y: f32,
+};
+
 pub const DrawData = *extern struct {
     valid: bool,
     cmd_lists_count: c_int,
@@ -427,6 +472,31 @@ const Begin = struct {
     flags: WindowFlags = .{},
 };
 
+pub const Condition = enum(c_int) {
+    none = 0,
+    always = 1,
+    once = 2,
+    first_use_ever = 4,
+    appearing = 8,
+};
+
+const SetNextWindowSize = struct {
+    w: f32,
+    h: f32,
+    cond: Condition = .none,
+};
+pub fn setNextWindowSize(args: SetNextWindowSize) void {
+    igSetNextWindowSize(args.w, args.h, args.cond);
+}
+extern fn igSetNextWindowSize(w: f32, h: f32, cond: Condition) void;
+
+pub fn getWindowSize() [2]f32 {
+    var size: [2]f32 = undefined;
+    igGetWindowSize(&size);
+    return size;
+}
+extern fn igGetWindowSize(size: *[2]f32) void;
+
 // --- Main ---
 pub const newFrame = igNewFrame;
 extern fn igNewFrame() void;
@@ -474,1048 +544,74 @@ extern fn igButton(label: [*:0]const u8, w: f32, h: f32) bool;
 
 // --- Draw List API ---
 
+pub const getWindowDrawList = igGetWindowDrawList;
+pub const getBackgroundDrawList = igGetBackgroundDrawList;
+pub const getForegroundDrawList = igGetForegroundDrawList;
+
+extern fn igGetWindowDrawList() DrawList;
+extern fn igGetBackgroundDrawList() DrawList;
+extern fn igGetForegroundDrawList() DrawList;
+extern fn igCreateDrawList() DrawList;
+extern fn igDestroyDrawList(draw_list: DrawList) void;
 /// Draw List: A single draw command list. Generally obtained via `igGetWindowDrawList()`, `igGetForegroundDrawList()`, `igGetBackgroundDrawList()`.
 /// Important: Methods are only valid during the frame they were retrieved.
+// pub const DrawList = extern struct {
+// CmdBuffer: ImVector_ImDrawCmd,
+// IdxBuffer: ImVector_ImDrawIdx,
+// VtxBuffer: ImVector_ImDrawVert,
+// Flags: ImDrawListFlags,
+// _VtxCurrentIdx: c_uint,
+// ImDrawListSharedData* _Data;
+// ImDrawVert* _VtxWritePtr;
+// ImDrawIdx* _IdxWritePtr;
+// ImVector_ImVec2 _Path;
+// ImDrawCmdHeader _CmdHeader;
+// ImDrawListSplitter _Splitter;
+// ImVector_ImVec4 _ClipRectStack;
+// ImVector_ImTextureID _TextureIdStack;
+// ImVector_ImU8 _CallbacksDataBuf;
+// float _FringeScale;
+// const char* _OwnerName;
+// };
+
 pub const DrawList = *opaque {
-    // --- Owner Information ---
-    pub const getOwnerName = igDrawList_GetOwnerName;
-    extern fn igDrawList_GetOwnerName(draw_list: DrawList) ?[*:0]const u8;
+    // pub const addLine = ImDrawList_AddLine;
+    // extern fn ImDrawList_AddLine(self: DrawList, p1: [2]f32, p2: [2]f32, col: u32, thickness: f32) void;
 
-    // --- State & Buffer Management ---
-
-    /// If the draw list doesn't have an owner name, this function is equivalent to ResetForNewFrame().
-    /// Otherwise, it will assert, as draw lists owned by a window cannot be reset manually.
-    pub fn reset(draw_list: DrawList) void {
-        if (draw_list.getOwnerName()) |owner| {
-            std.log.warn("ig: illegally resetting DrawList of {s}", .{owner});
-            // Consider panicking here if this should truly be an error condition
-            // @panic(format("ig: illegally resetting DrawList of {s}", .{owner}));
-        }
-        igDrawList_ResetForNewFrame(draw_list);
-    }
-    extern fn igDrawList_ResetForNewFrame(draw_list: DrawList) void;
-
-    /// If the draw list doesn't have an owner name, this function is equivalent to ClearFreeMemory().
-    /// Otherwise, it will assert, as draw lists owned by a window cannot be cleared manually.
-    pub fn clearMemory(draw_list: DrawList) void {
-        if (draw_list.getOwnerName()) |owner| {
-            std.log.warn("ig: illegally clearing memory DrawList of {s}", .{owner});
-            // Consider panicking here if this should truly be an error condition
-            // @panic(format("ig: illegally clearing memory DrawList of {s}", .{owner}));
-        }
-        igDrawList_ClearFreeMemory(draw_list);
-    }
-    extern fn igDrawList_ClearFreeMemory(draw_list: DrawList) void;
-
-    pub const DrawListFlags = packed struct(c_int) {
-        anti_aliased_lines: bool = false, // Enable anti-aliased lines/borders (*2 CPU cost, experimental)
-        anti_aliased_lines_use_tex: bool = false, // Enable anti-aliased lines/borders using textures when possible. Require backend to render with bilinear filtering.
-        anti_aliased_fill: bool = false, // Enable anti-aliased edge filling (rounded rectangles, circles, etc.). Require backend to render with bilinear filtering. (*2 CPU cost)
-        allow_vtx_offset: bool = false, // Can emit 'VtxOffset > 0' to allow large meshes. Set when 'ImGuiBackendFlags_RendererHasVtxOffset' is set.
-        _padding: u28 = 0,
-    };
-
-    pub const setDrawListFlags = igDrawList_SetFlags;
-    extern fn igDrawList_SetFlags(draw_list: DrawList, flags: DrawListFlags) void;
-
-    pub const getDrawListFlags = igDrawList_GetFlags;
-    extern fn igDrawList_GetFlags(draw_list: DrawList) DrawListFlags;
-
-    // --- Vertex/Index/Command Buffer Access ---
-
-    pub fn getVertexBufferLength(draw_list: DrawList) i32 {
-        return igDrawList_GetVertexBufferLength(draw_list);
-    }
-    extern fn igDrawList_GetVertexBufferLength(draw_list: DrawList) c_int;
-
-    pub const getVertexBufferData = igDrawList_GetVertexBufferData;
-    extern fn igDrawList_GetVertexBufferData(draw_list: DrawList) [*]DrawVert;
-
-    pub fn getVertexBuffer(draw_list: DrawList) []DrawVert {
-        const len: usize = @intCast(draw_list.getVertexBufferLength());
-        return draw_list.getVertexBufferData()[0..len];
-    }
-
-    pub fn getIndexBufferLength(draw_list: DrawList) i32 {
-        return igDrawList_GetIndexBufferLength(draw_list);
-    }
-    extern fn igDrawList_GetIndexBufferLength(draw_list: DrawList) c_int;
-
-    pub const getIndexBufferData = igDrawList_GetIndexBufferData;
-    extern fn igDrawList_GetIndexBufferData(draw_list: DrawList) [*]DrawIdx;
-
-    pub fn getIndexBuffer(draw_list: DrawList) []DrawIdx {
-        const len: usize = @intCast(draw_list.getIndexBufferLength());
-        return draw_list.getIndexBufferData()[0..len];
-    }
-
-    pub fn getCurrentIndex(draw_list: DrawList) u32 {
-        return igDrawList_GetCurrentIndex(draw_list);
-    }
-    extern fn igDrawList_GetCurrentIndex(draw_list: DrawList) c_uint;
-
-    pub fn getCmdBufferLength(draw_list: DrawList) i32 {
-        return igDrawList_GetCmdBufferLength(draw_list);
-    }
-    extern fn igDrawList_GetCmdBufferLength(draw_list: DrawList) c_int;
-
-    pub const getCmdBufferData = igDrawList_GetCmdBufferData;
-    extern fn igDrawList_GetCmdBufferData(draw_list: DrawList) [*]DrawCmd;
-
-    pub fn getCmdBuffer(draw_list: DrawList) []DrawCmd {
-        const len: usize = @intCast(draw_list.getCmdBufferLength());
-        return draw_list.getCmdBufferData()[0..len];
-    }
-
-    // --- Clipping ---
-
-    const ClipRect = struct {
-        pmin: [2]f32,
-        pmax: [2]f32,
-        intersect_with_current: bool = false,
-    };
-    /// Render-level scissoring. This is passed down to your render function but not used for CPU-side coarse clipping. Prefer using higher-level ImGui::PushClipRect() to affect logic (hit-testing and widget culling)
-    pub fn pushClipRect(draw_list: DrawList, args: ClipRect) void {
-        igDrawList_PushClipRect(
-            draw_list,
-            &args.pmin,
-            &args.pmax,
-            args.intersect_with_current,
-        );
-    }
-    extern fn igDrawList_PushClipRect(
+    pub fn addLine(
         draw_list: DrawList,
-        clip_rect_min: *const [2]f32,
-        clip_rect_max: *const [2]f32,
-        intersect_with_current_clip_rect: bool,
+        args: struct {
+            p1: ImVec2,
+            p2: ImVec2,
+            col: u32,
+            // thickness: f32,
+        },
+    ) void {
+        ImDrawList_AddLine(draw_list, &args.p1, &args.p2, args.col);
+    }
+    extern fn ImDrawList_AddLine(
+        draw_list: DrawList,
+        p1: *const ImVec2,
+        p2: *const ImVec2,
+        col: u32,
+        // thickness: f32,
     ) void;
 
-    pub const pushClipRectFullScreen = igDrawList_PushClipRectFullScreen;
-    extern fn igDrawList_PushClipRectFullScreen(draw_list: DrawList) void;
-
-    pub const popClipRect = igDrawList_PopClipRect;
-    extern fn igDrawList_PopClipRect(draw_list: DrawList) void;
-
-    pub fn getClipRectMin(draw_list: DrawList) [2]f32 {
-        var v: [2]f32 = undefined;
-        igDrawList_GetClipRectMin(draw_list, &v);
-        return v;
-    }
-    extern fn igDrawList_GetClipRectMin(draw_list: DrawList, clip_min: *[2]f32) void;
-
-    pub fn getClipRectMax(draw_list: DrawList) [2]f32 {
-        var v: [2]f32 = undefined;
-        igDrawList_GetClipRectMax(draw_list, &v);
-        return v;
-    }
-    extern fn igDrawList_GetClipRectMax(draw_list: DrawList, clip_max: *[2]f32) void;
-
-    // --- Texture State ---
-
-    pub const pushTextureId = igDrawList_PushTextureId;
-    extern fn igDrawList_PushTextureId(draw_list: DrawList, texture_id: TextureIdent) void;
-
-    pub const popTextureId = igDrawList_PopTextureId;
-    extern fn igDrawList_PopTextureId(draw_list: DrawList) void;
-
-    // --- Primitive Shapes ---
-
-    pub fn addLine(draw_list: DrawList, args: struct {
-        p1: [2]f32,
-        p2: [2]f32,
-        col: u32,
-        thickness: f32 = 1.0,
-    }) void {
-        igDrawList_AddLine(draw_list, &args.p1, &args.p2, args.col, args.thickness);
-    }
-    extern fn igDrawList_AddLine(
-        draw_list: DrawList,
-        p1: *const [2]f32,
-        p2: *const [2]f32,
-        col: u32,
-        thickness: f32,
-    ) void;
-
-    /// a: upper-left, b: lower-right, flags: ImDrawFlags_RoundCorners* flags
-    pub fn addRect(draw_list: DrawList, args: struct {
-        pmin: [2]f32,
-        pmax: [2]f32,
-        col: u32,
-        rounding: f32 = 0.0,
-        flags: DrawFlags = .{},
-        thickness: f32 = 1.0,
-    }) void {
-        igDrawList_AddRect(
-            draw_list,
-            &args.pmin,
-            &args.pmax,
-            args.col,
-            args.rounding,
-            args.flags,
-            args.thickness,
-        );
-    }
-    extern fn igDrawList_AddRect(
-        draw_list: DrawList,
-        pmin: *const [2]f32,
-        pmax: *const [2]f32,
-        col: u32,
-        rounding: f32,
-        flags: DrawFlags,
-        thickness: f32,
-    ) void;
-
-    /// a: upper-left, b: lower-right, flags: ImDrawFlags_RoundCorners* flags
-    pub fn addRectFilled(draw_list: DrawList, args: struct {
-        pmin: [2]f32,
-        pmax: [2]f32,
-        col: u32,
-        rounding: f32 = 0.0,
-        flags: DrawFlags = .{},
-    }) void {
-        igDrawList_AddRectFilled(
-            draw_list,
-            &args.pmin,
-            &args.pmax,
-            args.col,
-            args.rounding,
-            args.flags,
-        );
-    }
-    extern fn igDrawList_AddRectFilled(
-        draw_list: DrawList,
-        pmin: *const [2]f32,
-        pmax: *const [2]f32,
-        col: u32,
-        rounding: f32,
-        flags: DrawFlags,
-    ) void;
-
-    /// a: upper-left, b: lower-right. NB: EXPERIMENTAL function. Provided alongside AddRect() calls specifically for gradient fill flexibility. May be removed!
-    pub fn addRectFilledMultiColor(draw_list: DrawList, args: struct {
-        pmin: [2]f32,
-        pmax: [2]f32,
-        col_upr_left: u32,
-        col_upr_right: u32,
-        col_bot_right: u32,
-        col_bot_left: u32,
-    }) void {
-        igDrawList_AddRectFilledMultiColor(
-            draw_list,
-            &args.pmin,
-            &args.pmax,
-            args.col_upr_left,
-            args.col_upr_right,
-            args.col_bot_right,
-            args.col_bot_left,
-        );
-    }
-    extern fn igDrawList_AddRectFilledMultiColor(
-        draw_list: DrawList,
-        pmin: *const [2]f32,
-        pmax: *const [2]f32,
-        col_upr_left: c_uint,
-        col_upr_right: c_uint,
-        col_bot_right: c_uint,
-        col_bot_left: c_uint,
-    ) void;
-
-    pub fn addQuad(draw_list: DrawList, args: struct {
-        p1: [2]f32,
-        p2: [2]f32,
-        p3: [2]f32,
-        p4: [2]f32,
-        col: u32,
-        thickness: f32 = 1.0,
-    }) void {
-        igDrawList_AddQuad(
-            draw_list,
-            &args.p1,
-            &args.p2,
-            &args.p3,
-            &args.p4,
-            args.col,
-            args.thickness,
-        );
-    }
-    extern fn igDrawList_AddQuad(
-        draw_list: DrawList,
-        p1: *const [2]f32,
-        p2: *const [2]f32,
-        p3: *const [2]f32,
-        p4: *const [2]f32,
-        col: u32,
-        thickness: f32,
-    ) void;
-
-    pub fn addQuadFilled(draw_list: DrawList, args: struct {
-        p1: [2]f32,
-        p2: [2]f32,
-        p3: [2]f32,
-        p4: [2]f32,
-        col: u32,
-    }) void {
-        igDrawList_AddQuadFilled(draw_list, &args.p1, &args.p2, &args.p3, &args.p4, args.col);
-    }
-    extern fn igDrawList_AddQuadFilled(
-        draw_list: DrawList,
-        p1: *const [2]f32,
-        p2: *const [2]f32,
-        p3: *const [2]f32,
-        p4: *const [2]f32,
-        col: u32,
-    ) void;
-
-    pub fn addTriangle(draw_list: DrawList, args: struct {
-        p1: [2]f32,
-        p2: [2]f32,
-        p3: [2]f32,
-        col: u32,
-        thickness: f32 = 1.0,
-    }) void {
-        igDrawList_AddTriangle(draw_list, &args.p1, &args.p2, &args.p3, args.col, args.thickness);
-    }
-    extern fn igDrawList_AddTriangle(
-        draw_list: DrawList,
-        p1: *const [2]f32,
-        p2: *const [2]f32,
-        p3: *const [2]f32,
-        col: u32,
-        thickness: f32,
-    ) void;
-
-    pub fn addTriangleFilled(draw_list: DrawList, args: struct {
-        p1: [2]f32,
-        p2: [2]f32,
-        p3: [2]f32,
-        col: u32,
-    }) void {
-        igDrawList_AddTriangleFilled(draw_list, &args.p1, &args.p2, &args.p3, args.col);
-    }
-    extern fn igDrawList_AddTriangleFilled(
-        draw_list: DrawList,
-        p1: *const [2]f32,
-        p2: *const [2]f32,
-        p3: *const [2]f32,
-        col: u32,
-    ) void;
-
-    /// Use num_segments == 0 for auto-tessellation. num_segments max = 63.
-    pub fn addCircle(draw_list: DrawList, args: struct {
-        p: [2]f32,
-        r: f32,
-        col: u32,
-        num_segments: i32 = 0,
-        thickness: f32 = 1.0,
-    }) void {
-        igDrawList_AddCircle(
-            draw_list,
-            &args.p,
-            args.r,
-            args.col,
-            args.num_segments,
-            args.thickness,
-        );
-    }
-    extern fn igDrawList_AddCircle(
-        draw_list: DrawList,
-        center: *const [2]f32,
+    pub fn addCircleFilled(draw_list: DrawList, args: struct {
+        center: ImVec2,
         radius: f32,
         col: u32,
-        num_segments: c_int,
-        thickness: f32,
-    ) void;
-
-    /// Use num_segments == 0 for auto-tessellation. num_segments max = 63.
-    pub fn addCircleFilled(
-        draw_list: DrawList,
-        args: struct {
-            p: [2]f32,
-            r: f32,
-            col: u32,
-            num_segments: u16 = 0, // TODO: Check C type, likely c_int
-        },
-    ) void {
-        igDrawList_AddCircleFilled(draw_list, &args.p, args.r, args.col, args.num_segments);
+        num_segments: i32,
+    }) void {
+        ImDrawList_AddCircleFilled(draw_list, &args.center, args.radius, args.col, args.num_segments);
     }
-    extern fn igDrawList_AddCircleFilled(
+    extern fn ImDrawList_AddCircleFilled(
         draw_list: DrawList,
-        center: *const [2]f32,
+        center: *const ImVec2,
         radius: f32,
         col: u32,
-        num_segments: c_int,
+        num_segments: i32,
     ) void;
-
-    /// Use num_segments == 0 for auto-tessellation. num_segments max = 63.
-    pub fn addEllipse(
-        draw_list: DrawList,
-        args: struct {
-            p: [2]f32,
-            r: [2]f32, // radius x, y
-            col: u32,
-            rot: f32 = 0, // rotation in radians
-            num_segments: i32 = 0,
-            thickness: f32 = 1.0,
-        },
-    ) void {
-        igDrawList_AddEllipse(
-            draw_list,
-            &args.p,
-            &args.r,
-            args.col,
-            args.rot,
-            args.num_segments,
-            args.thickness,
-        );
-    }
-    extern fn igDrawList_AddEllipse(
-        draw_list: DrawList,
-        center: *const [2]f32,
-        radius: *const [2]f32,
-        col: u32,
-        rot: f32,
-        num_segments: c_int,
-        thickness: f32,
-    ) void;
-
-    /// Use num_segments == 0 for auto-tessellation. num_segments max = 63.
-    pub fn addEllipseFilled(
-        draw_list: DrawList,
-        args: struct {
-            p: [2]f32,
-            r: [2]f32, // radius x, y
-            col: u32,
-            rot: f32 = 0, // rotation in radians
-            num_segments: u16 = 0, // TODO: Check C type, likely c_int
-        },
-    ) void {
-        igDrawList_AddEllipseFilled(
-            draw_list,
-            &args.p,
-            &args.r,
-            args.col,
-            args.rot,
-            args.num_segments,
-        );
-    }
-    extern fn igDrawList_AddEllipseFilled(
-        draw_list: DrawList,
-        center: *const [2]f32,
-        radius: *const [2]f32,
-        col: u32,
-        rot: f32,
-        num_segments: c_int,
-    ) void;
-
-    /// Use num_segments >= 3.
-    pub fn addNgon(draw_list: DrawList, args: struct {
-        p: [2]f32,
-        r: f32,
-        col: u32,
-        num_segments: u32,
-        thickness: f32 = 1.0,
-    }) void {
-        igDrawList_AddNgon(
-            draw_list,
-            &args.p,
-            args.r,
-            args.col,
-            @intCast(args.num_segments),
-            args.thickness,
-        );
-    }
-    extern fn igDrawList_AddNgon(
-        draw_list: DrawList,
-        center: *const [2]f32,
-        radius: f32,
-        col: u32,
-        num_segments: c_int,
-        thickness: f32,
-    ) void;
-
-    /// Use num_segments >= 3.
-    pub fn addNgonFilled(draw_list: DrawList, args: struct {
-        p: [2]f32,
-        r: f32,
-        col: u32,
-        num_segments: u32,
-    }) void {
-        igDrawList_AddNgonFilled(draw_list, &args.p, args.r, args.col, @intCast(args.num_segments));
-    }
-    extern fn igDrawList_AddNgonFilled(
-        draw_list: DrawList,
-        center: *const [2]f32,
-        radius: f32,
-        col: u32,
-        num_segments: c_int,
-    ) void;
-
-    // --- Text ---
-
-    /// Add text using a format string. Requires `temp_buffer` to be initialized.
-    pub fn addText(draw_list: DrawList, pos: [2]f32, col: u32, comptime fmt: []const u8, args: anytype) void {
-        const txt = format(fmt, args); // Assuming 'format' uses temp_buffer
-        draw_list.addTextUnformatted(pos, col, txt);
-    }
-
-    /// Add text without formatting.
-    pub fn addTextUnformatted(draw_list: DrawList, pos: [2]f32, col: u32, txt: []const u8) void {
-        igDrawList_AddText(draw_list, &pos, col, txt.ptr, txt.ptr + txt.len);
-    }
-    extern fn igDrawList_AddText(
-        draw_list: DrawList,
-        pos: *const [2]f32,
-        col: u32,
-        text: [*]const u8,
-        text_end: [*]const u8,
-    ) void;
-
-    // TODO: AddFont variations
-
-    // --- Polylines & Polygons ---
-
-    pub fn addPolyline(draw_list: DrawList, points: []const [2]f32, args: struct {
-        col: u32,
-        flags: DrawFlags = .{},
-        thickness: f32 = 1.0,
-    }) void {
-        igDrawList_AddPolyline(
-            draw_list,
-            points.ptr,
-            @intCast(points.len),
-            args.col,
-            args.flags,
-            args.thickness,
-        );
-    }
-    extern fn igDrawList_AddPolyline(
-        draw_list: DrawList,
-        points: [*]const [2]f32,
-        num_points: c_int,
-        col: u32,
-        flags: DrawFlags,
-        thickness: f32,
-    ) void;
-
-    /// Requires points to be convex.
-    pub fn addConvexPolyFilled(
-        draw_list: DrawList,
-        points: []const [2]f32,
-        col: u32,
-    ) void {
-        igDrawList_AddConvexPolyFilled(
-            draw_list,
-            points.ptr,
-            @intCast(points.len),
-            col,
-        );
-    }
-    extern fn igDrawList_AddConvexPolyFilled(
-        draw_list: DrawList,
-        points: [*]const [2]f32,
-        num_points: c_int,
-        col: u32,
-    ) void;
-
-    /// Tessellates concave polygons on the CPU. Might be slow.
-    pub fn addConcavePolyFilled(
-        draw_list: DrawList,
-        points: []const [2]f32,
-        col: u32,
-    ) void {
-        igDrawList_AddConcavePolyFilled(
-            draw_list,
-            points.ptr,
-            @intCast(points.len),
-            col,
-        );
-    }
-    extern fn igDrawList_AddConcavePolyFilled(
-        draw_list: DrawList,
-        points: [*]const [2]f32,
-        num_points: c_int,
-        col: u32,
-    ) void;
-
-    // --- Bezier Curves ---
-
-    /// Use num_segments = 0 for auto-tessellation.
-    pub fn addBezierCubic(
-        draw_list: DrawList,
-        args: struct {
-            p1: [2]f32, // start point
-            p2: [2]f32, // control point 1
-            p3: [2]f32, // control point 2
-            p4: [2]f32, // end point
-            col: u32,
-            thickness: f32 = 1.0,
-            num_segments: u32 = 0,
-        },
-    ) void {
-        igDrawList_AddBezierCubic(
-            draw_list,
-            &args.p1,
-            &args.p2,
-            &args.p3,
-            &args.p4,
-            args.col,
-            args.thickness,
-            @intCast(args.num_segments),
-        );
-    }
-    extern fn igDrawList_AddBezierCubic(
-        draw_list: DrawList,
-        p1: *const [2]f32,
-        p2: *const [2]f32,
-        p3: *const [2]f32,
-        p4: *const [2]f32,
-        col: u32,
-        thickness: f32,
-        num_segments: c_int,
-    ) void;
-
-    /// Use num_segments = 0 for auto-tessellation.
-    pub fn addBezierQuadratic(
-        draw_list: DrawList,
-        args: struct {
-            p1: [2]f32, // start point
-            p2: [2]f32, // control point
-            p3: [2]f32, // end point
-            col: u32,
-            thickness: f32 = 1.0,
-            num_segments: u32 = 0,
-        },
-    ) void {
-        igDrawList_AddBezierQuadratic(
-            draw_list,
-            &args.p1,
-            &args.p2,
-            &args.p3,
-            args.col,
-            args.thickness,
-            @intCast(args.num_segments),
-        );
-    }
-    extern fn igDrawList_AddBezierQuadratic(
-        draw_list: DrawList,
-        p1: *const [2]f32,
-        p2: *const [2]f32,
-        p3: *const [2]f32,
-        col: u32,
-        thickness: f32,
-        num_segments: c_int,
-    ) void;
-
-    // --- Images ---
-
-    pub fn addImage(draw_list: DrawList, user_texture_id: TextureIdent, args: struct {
-        pmin: [2]f32,
-        pmax: [2]f32,
-        uvmin: [2]f32 = .{ 0, 0 },
-        uvmax: [2]f32 = .{ 1, 1 },
-        col: u32 = 0xff_ff_ff_ff,
-    }) void {
-        igDrawList_AddImage(
-            draw_list,
-            user_texture_id,
-            &args.pmin,
-            &args.pmax,
-            &args.uvmin,
-            &args.uvmax,
-            args.col,
-        );
-    }
-    extern fn igDrawList_AddImage(
-        draw_list: DrawList,
-        user_texture_id: TextureIdent,
-        pmin: *const [2]f32,
-        pmax: *const [2]f32,
-        uvmin: *const [2]f32,
-        uvmax: *const [2]f32,
-        col: u32,
-    ) void;
-
-    pub fn addImageQuad(draw_list: DrawList, user_texture_id: TextureIdent, args: struct {
-        p1: [2]f32,
-        p2: [2]f32,
-        p3: [2]f32,
-        p4: [2]f32,
-        uv1: [2]f32 = .{ 0, 0 },
-        uv2: [2]f32 = .{ 1, 0 },
-        uv3: [2]f32 = .{ 1, 1 },
-        uv4: [2]f32 = .{ 0, 1 },
-        col: u32 = 0xff_ff_ff_ff,
-    }) void {
-        igDrawList_AddImageQuad(
-            draw_list,
-            user_texture_id,
-            &args.p1,
-            &args.p2,
-            &args.p3,
-            &args.p4,
-            &args.uv1,
-            &args.uv2,
-            &args.uv3,
-            &args.uv4,
-            args.col,
-        );
-    }
-    extern fn igDrawList_AddImageQuad(
-        draw_list: DrawList,
-        user_texture_id: TextureIdent,
-        p1: *const [2]f32,
-        p2: *const [2]f32,
-        p3: *const [2]f32,
-        p4: *const [2]f32,
-        uv1: *const [2]f32,
-        uv2: *const [2]f32,
-        uv3: *const [2]f32,
-        uv4: *const [2]f32,
-        col: u32,
-    ) void;
-
-    /// flags: ImDrawFlags_RoundCorners* flags
-    pub fn addImageRounded(
-        draw_list: DrawList,
-        user_texture_id: TextureIdent,
-        args: struct {
-            pmin: [2]f32,
-            pmax: [2]f32,
-            uvmin: [2]f32 = .{ 0, 0 },
-            uvmax: [2]f32 = .{ 1, 1 },
-            col: u32 = 0xff_ff_ff_ff,
-            rounding: f32, // = 0.0 -> check C API for default
-            flags: DrawFlags = .{},
-        },
-    ) void {
-        igDrawList_AddImageRounded(
-            draw_list,
-            user_texture_id,
-            &args.pmin,
-            &args.pmax,
-            &args.uvmin,
-            &args.uvmax,
-            args.col,
-            args.rounding,
-            args.flags,
-        );
-    }
-    extern fn igDrawList_AddImageRounded(
-        draw_list: DrawList,
-        user_texture_id: TextureIdent,
-        pmin: *const [2]f32,
-        pmax: *const [2]f32,
-        uvmin: *const [2]f32,
-        uvmax: *const [2]f32,
-        col: u32,
-        rounding: f32,
-        flags: DrawFlags,
-    ) void;
-
-    // --- Path API --- (Note: Not well-suited for very large paths)
-
-    /// Clear the current path.
-    pub const pathClear = igDrawList_PathClear;
-    extern fn igDrawList_PathClear(draw_list: DrawList) void;
-
-    /// Add a point to the current path.
-    pub fn pathLineTo(draw_list: DrawList, pos: [2]f32) void {
-        igDrawList_PathLineTo(draw_list, &pos);
-    }
-    extern fn igDrawList_PathLineTo(draw_list: DrawList, pos: *const [2]f32) void;
-
-    /// Add a point to the current path, merging duplicates.
-    pub fn pathLineToMergeDuplicate(draw_list: DrawList, pos: [2]f32) void {
-        igDrawList_PathLineToMergeDuplicate(draw_list, &pos);
-    }
-    extern fn igDrawList_PathLineToMergeDuplicate(draw_list: DrawList, pos: *const [2]f32) void;
-
-    /// Fill convex path shape.
-    pub fn pathFillConvex(draw_list: DrawList, col: u32) void {
-        return igDrawList_PathFillConvex(draw_list, col);
-    }
-    extern fn igDrawList_PathFillConvex(draw_list: DrawList, col: c_uint) void;
-
-    /// Fill concave path shape (CPU tessellation).
-    pub fn pathFillConcave(draw_list: DrawList, col: u32) void {
-        return igDrawList_PathFillConcave(draw_list, col);
-    }
-    extern fn igDrawList_PathFillConcave(draw_list: DrawList, col: c_uint) void;
-
-    /// Stroke path shape.
-    pub fn pathStroke(
-        draw_list: DrawList,
-        args: struct {
-            col: u32,
-            flags: DrawFlags = .{}, // flags: ImDrawFlags_Closed or 0
-            thickness: f32 = 1.0,
-        },
-    ) void {
-        igDrawList_PathStroke(draw_list, args.col, args.flags, args.thickness);
-    }
-    extern fn igDrawList_PathStroke(draw_list: DrawList, col: u32, flags: DrawFlags, thickness: f32) void;
-
-    /// Arc segment (using angles). Use num_segments=0 for auto-tessellation.
-    pub fn pathArcTo(
-        draw_list: DrawList,
-        args: struct {
-            p: [2]f32,
-            r: f32,
-            amin: f32, // Minimum angle in radians
-            amax: f32, // Maximum angle in radians
-            num_segments: u16 = 0, // TODO: check C type
-        },
-    ) void {
-        igDrawList_PathArcTo(
-            draw_list,
-            &args.p,
-            args.r,
-            args.amin,
-            args.amax,
-            args.num_segments,
-        );
-    }
-    extern fn igDrawList_PathArcTo(
-        draw_list: DrawList,
-        center: *const [2]f32,
-        radius: f32,
-        amin: f32,
-        amax: f32,
-        num_segments: c_int,
-    ) void;
-
-    /// Arc segment (using fixed number of segments). User needs to specify meaningful subdivisions. Faster than PathArcTo().
-    pub fn pathArcToFast(
-        draw_list: DrawList,
-        args: struct {
-            p: [2]f32,
-            r: f32,
-            amin_of_12: u16, // Minimum angle in 1/12 rotations (0..11)
-            amax_of_12: u16, // Maximum angle in 1/12 rotations (0..11)
-        },
-    ) void {
-        // TODO: check C types for a_min_of_12/a_max_of_12
-        igDrawList_PathArcToFast(draw_list, &args.p, args.r, args.amin_of_12, args.amax_of_12);
-    }
-    extern fn igDrawList_PathArcToFast(
-        draw_list: DrawList,
-        center: *const [2]f32,
-        radius: f32,
-        a_min_of_12: c_int, // Use c_int for safety until confirmed
-        a_max_of_12: c_int, // Use c_int for safety until confirmed
-    ) void;
-
-    /// Elliptical arc segment (using angles). Use num_segments=0 for auto-tessellation.
-    pub fn pathEllipticalArcTo(
-        draw_list: DrawList,
-        args: struct {
-            p: [2]f32, // center
-            r: [2]f32, // radius x, y
-            rot: f32, // rotation in radians
-            amin: f32, // Minimum angle in radians
-            amax: f32, // Maximum angle in radians
-            num_segments: u16 = 0, // TODO: check C type
-        },
-    ) void {
-        igDrawList_PathEllipticalArcTo(
-            draw_list,
-            &args.p,
-            &args.r,
-            args.rot,
-            args.amin,
-            args.amax,
-            args.num_segments,
-        );
-    }
-    extern fn igDrawList_PathEllipticalArcTo(
-        draw_list: DrawList,
-        center: *const [2]f32,
-        radius: *const [2]f32,
-        rot: f32,
-        amin: f32,
-        amax: f32,
-        num_segments: c_int,
-    ) void;
-
-    /// Cubic Bezier segment. Use num_segments=0 for auto-tessellation.
-    pub fn pathBezierCubicCurveTo(
-        draw_list: DrawList,
-        args: struct {
-            p2: [2]f32, // control point 1
-            p3: [2]f32, // control point 2
-            p4: [2]f32, // end point
-            num_segments: u16 = 0, // TODO: Check C type
-        },
-    ) void {
-        igDrawList_PathBezierCubicCurveTo(
-            draw_list,
-            &args.p2,
-            &args.p3,
-            &args.p4,
-            args.num_segments,
-        );
-    }
-    extern fn igDrawList_PathBezierCubicCurveTo(
-        draw_list: DrawList,
-        p2: *const [2]f32,
-        p3: *const [2]f32,
-        p4: *const [2]f32,
-        num_segments: c_int,
-    ) void;
-
-    /// Quadratic Bezier segment. Use num_segments=0 for auto-tessellation.
-    pub fn pathBezierQuadraticCurveTo(
-        draw_list: DrawList,
-        args: struct {
-            p2: [2]f32, // control point
-            p3: [2]f32, // end point
-            num_segments: u16 = 0, // TODO: Check C type
-        },
-    ) void {
-        igDrawList_PathBezierQuadraticCurveTo(draw_list, &args.p2, &args.p3, args.num_segments);
-    }
-    extern fn igDrawList_PathBezierQuadraticCurveTo(
-        draw_list: DrawList,
-        p2: *const [2]f32,
-        p3: *const [2]f32,
-        num_segments: c_int,
-    ) void;
-
-    /// Rectangle path shape (automatically closed). flags: ImDrawFlags_RoundCorners* flags.
-    const PathRect = struct {
-        bmin: [2]f32, // Top-left
-        bmax: [2]f32, // Bottom-right
-        rounding: f32 = 0.0,
-        flags: DrawFlags = .{},
-    };
-    pub fn pathRect(draw_list: DrawList, args: PathRect) void {
-        igDrawList_PathRect(draw_list, &args.bmin, &args.bmax, args.rounding, args.flags);
-    }
-    extern fn igDrawList_PathRect(
-        draw_list: DrawList,
-        rect_min: *const [2]f32,
-        rect_max: *const [2]f32,
-        rounding: f32,
-        flags: DrawFlags,
-    ) void;
-
-    // --- Low-level Primitives ---
-
-    /// Reserve space for vertices and indices. Call PrimReserve(), write your data into VtxBuffer[]/IdxBuffer[], call PrimUnreserve().
-    pub const primReserve = igDrawList_PrimReserve;
-    extern fn igDrawList_PrimReserve(
-        draw_list: DrawList,
-        idx_count: c_int, // Use c_int for safety
-        vtx_count: c_int, // Use c_int for safety
-    ) void;
-
-    pub const primUnreserve = igDrawList_PrimUnreserve;
-    extern fn igDrawList_PrimUnreserve(
-        draw_list: DrawList,
-        idx_count: c_int, // Use c_int for safety
-        vtx_count: c_int, // Use c_int for safety
-    ) void;
-
-    /// Add a primitive rectangle without texture coordinates.
-    pub fn primRect(
-        draw_list: DrawList,
-        a: [2]f32, // Top-left
-        b: [2]f32, // Bottom-right
-        col: u32,
-    ) void {
-        return igDrawList_PrimRect(draw_list, &a, &b, col);
-    }
-    extern fn igDrawList_PrimRect(
-        draw_list: DrawList,
-        a: *const [2]f32,
-        b: *const [2]f32,
-        col: u32,
-    ) void;
-
-    /// Add a primitive rectangle with texture coordinates.
-    pub fn primRectUV(
-        draw_list: DrawList,
-        a: [2]f32, // Top-left
-        b: [2]f32, // Bottom-right
-        uv_a: [2]f32, // UV top-left
-        uv_b: [2]f32, // UV bottom-right
-        col: u32,
-    ) void {
-        return igDrawList_PrimRectUV(draw_list, &a, &b, &uv_a, &uv_b, col);
-    }
-    extern fn igDrawList_PrimRectUV(
-        draw_list: DrawList,
-        a: *const [2]f32,
-        b: *const [2]f32,
-        uv_a: *const [2]f32,
-        uv_b: *const [2]f32,
-        col: u32,
-    ) void;
-
-    /// Add a primitive quadrangle with texture coordinates.
-    pub fn primQuadUV(
-        draw_list: DrawList,
-        a: [2]f32,
-        b: [2]f32,
-        c: [2]f32,
-        d: [2]f32,
-        uv_a: [2]f32,
-        uv_b: [2]f32,
-        uv_c: [2]f32,
-        uv_d: [2]f32,
-        col: u32,
-    ) void {
-        return igDrawList_PrimQuadUV(draw_list, &a, &b, &c, &d, &uv_a, &uv_b, &uv_c, &uv_d, col);
-    }
-    extern fn igDrawList_PrimQuadUV(
-        draw_list: DrawList,
-        a: *const [2]f32,
-        b: *const [2]f32,
-        c: *const [2]f32,
-        d: *const [2]f32,
-        uv_a: *const [2]f32,
-        uv_b: *const [2]f32,
-        uv_c: *const [2]f32,
-        uv_d: *const [2]f32,
-        col: u32,
-    ) void;
-
-    /// Write a single vertex into the buffer. Position is automatically transformed.
-    pub fn primWriteVtx(
-        draw_list: DrawList,
-        pos: [2]f32,
-        uv: [2]f32,
-        col: u32,
-    ) void {
-        return igDrawList_PrimWriteVtx(draw_list, &pos, &uv, col);
-    }
-    extern fn igDrawList_PrimWriteVtx(
-        draw_list: DrawList,
-        pos: *const [2]f32,
-        uv: *const [2]f32,
-        col: u32,
-    ) void;
-
-    /// Write a single index into the buffer.
-    pub const primWriteIdx = igDrawList_PrimWriteIdx;
-    extern fn igDrawList_PrimWriteIdx(
-        draw_list: DrawList,
-        idx: DrawIdx,
-    ) void;
-
-    // --- Callbacks ---
-
-    /// Add a callback function to the draw list.
-    pub fn addCallback(draw_list: DrawList, callback: DrawCallback, callback_data: ?*anyopaque) void {
-        igDrawList_AddCallback(draw_list, callback, callback_data);
-    }
-    extern fn igDrawList_AddCallback(draw_list: DrawList, callback: DrawCallback, callback_data: ?*anyopaque) void;
-
-    /// Special callback specifically designed to reset the render state. Requires backend to handle `ImDrawCallback_ResetRenderState`.
-    pub fn addResetRenderStateCallback(draw_list: DrawList) void {
-        igDrawList_AddResetRenderStateCallback(draw_list);
-    }
-    extern fn igDrawList_AddResetRenderStateCallback(draw_list: DrawList) void;
 };
 
 // --- Input/Output (IO) ---
@@ -1971,6 +1067,13 @@ pub fn popStyleVar(args: struct {
     igPopStyleVar(args.count);
 }
 extern fn igPopStyleVar(count: c_int) void;
+
+pub fn colorConvertFloat4ToU32(in: [4]f32) u32 {
+    return igColorConvertFloat4ToU32(&in);
+}
+extern fn igColorConvertFloat4ToU32(in: *const [4]f32) u32;
+
+
 
 // --- Utility ---
 

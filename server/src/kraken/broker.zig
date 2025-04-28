@@ -108,10 +108,10 @@ pub const Broker = struct {
                 },
                 .ohlc => |ohlc| {
                     switch (ohlc) {
-                        .snapshot => |im| {
-                            try self.read_callback(self.callback_context, BrokerPayload{
-                                .ohlc_update = try self.convertOHLCUpdateData(im),
-                            });
+                        .snapshot => |_| {
+                            // try self.read_callback(self.callback_context, BrokerPayload{
+                            //     .ohlc_update = try self.convertOHLCUpdateData(im),
+                            // });
                         },
                         .update => |im| {
                             try self.read_callback(self.callback_context, BrokerPayload{

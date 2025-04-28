@@ -24,8 +24,8 @@ CIMGUI_API void ImGui_ImplGlfw_CharCallback(GLFWwindow* window,unsigned int c);
 CIMGUI_API void ImGui_ImplGlfw_MonitorCallback(GLFWmonitor* monitor,int event);
 CIMGUI_API void ImGui_ImplGlfw_Sleep(int milliseconds);
 
-// #endif
-// #ifdef CIMGUI_USE_OPENGL3
+#endif
+#ifdef CIMGUI_USE_OPENGL3
 CIMGUI_API bool ImGui_ImplOpenGL3_Init(const char* glsl_version);
 CIMGUI_API void ImGui_ImplOpenGL3_Shutdown(void);
 CIMGUI_API void ImGui_ImplOpenGL3_NewFrame(void);

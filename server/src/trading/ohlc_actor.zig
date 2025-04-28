@@ -88,7 +88,6 @@ pub const OHLCActor = struct {
                 );
             },
             .ohlc_update => |m| {
-                std.debug.print("OHLC Update\n", .{});
                 var ohlc_update: OHLCUpdate = m;
                 const ohlc = OHLC{
                     .symbol = ohlc_update.data.symbol,

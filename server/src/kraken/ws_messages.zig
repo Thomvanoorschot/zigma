@@ -1,12 +1,45 @@
 const std = @import("std");
 
-pub const WsSubsribeRequest = struct {
+pub const WsSubscribeRequest = struct {
     method: []const u8,
-    params: struct {
-        channel: []const u8,
-        symbol: []const []const u8,
-        interval: ?u64 = null,
+    params: union(enum) {
+        ohlc: OHLCParams,
+        orderbook: OrderbookParams,
     },
+};
+
+pub fn stringifySubscribeRequestFixed(
+    req: WsSubscribeRequest,
+    buf: []u8,
+) ![]u8 {
+    var stream = std.io.fixedBufferStream(buf);
+    const writer = stream.writer();
+
+    try writer.writeAll("{");
+    try std.json.stringify("method", .{}, writer);
+    try writer.writeAll(":");
+    try std.json.stringify(req.method, .{}, writer);
+    try writer.writeAll(",");
+
+    try std.json.stringify("params", .{}, writer);
+    try writer.writeAll(":");
+    switch (req.params) {
+        .ohlc => |p| try std.json.stringify(p, .{}, writer),
+        .orderbook => |p| try std.json.stringify(p, .{}, writer),
+    }
+    try writer.writeAll("}");
+
+    return stream.getWritten();
+}
+const OHLCParams = struct {
+    channel: []const u8,
+    symbol: []const []const u8,
+    interval: ?u64 = null,
+};
+
+const OrderbookParams = struct {
+    channel: []const u8,
+    symbol: []const []const u8,
 };
 
 const WsResponseMessageType = enum { orderbook, ohlc };
@@ -67,11 +100,13 @@ pub const OHLCUpdateData = struct {
 };
 
 pub fn parseMessage(allocator: std.mem.Allocator, json_str: []const u8) !?WsResponseMessage {
+    std.debug.print("json_str: {s}\n", .{json_str});
     var raw_json = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
     defer raw_json.deinit();
 
     const raw_value = raw_json.value;
     const channel_str = if (raw_value.object.get("channel")) |c| c.string else "";
+    std.debug.print("channel: {s}\n", .{channel_str});
     if (std.mem.eql(u8, channel_str, "book")) {
         return parseOrderbookUpdate(allocator, raw_value);
     } else if (std.mem.eql(u8, channel_str, "ohlc")) {

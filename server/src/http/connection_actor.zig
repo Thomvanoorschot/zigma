@@ -99,8 +99,8 @@ pub const ConnectionActor = struct {
             }
             if (std.mem.eql(u8, line, "start")) {
                 // Temporary way of starting the sending
-                // _ = self.ctx.send("orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
-                _ = self.ctx.send("ohlc_actor", OHLCMessage{ .subscribe = .{} }) catch unreachable;
+                _ = self.ctx.send("orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
+                // _ = self.ctx.send("ohlc_actor", OHLCMessage{ .subscribe = .{} }) catch unreachable;
             }
         }
         if (bytes_read == 0) {

@@ -68,7 +68,7 @@ pub const Context = *opaque {};
 pub const Font = *opaque {};
 
 // Core Structs and Enums
-
+pub const Ident = u32;
 pub const ImVec2 = extern struct {
     x: f32,
     y: f32,
@@ -79,7 +79,7 @@ pub const DrawData = *extern struct {
     cmd_lists_count: c_int,
     total_idx_count: c_int,
     total_vtx_count: c_int,
-    cmd_lists: Vector(DrawList),
+    // cmd_lists: Vector(DrawList),
     display_pos: [2]f32,
     display_size: [2]f32,
     framebuffer_scale: [2]f32,
@@ -510,6 +510,17 @@ extern fn igRender() void;
 pub const getDrawData = igGetDrawData;
 extern fn igGetDrawData() DrawData;
 
+pub const bullet = igBullet;
+extern fn igBullet() void;
+
+pub const separator = igSeparator;
+extern fn igSeparator() void;
+
+pub fn separatorText(label: [:0]const u8) void {
+    igSeparatorText(label);
+}
+extern fn igSeparatorText(label: [*:0]const u8) void;
+
 // --- Demo, Debug, Information ---
 /// `pub fn showDemoWindow(popen: ?*bool) void`
 pub const showDemoWindow = igShowDemoWindow;
@@ -541,78 +552,6 @@ pub fn button(label: [:0]const u8, args: Button) bool {
     return igButton(label, args.w, args.h);
 }
 extern fn igButton(label: [*:0]const u8, w: f32, h: f32) bool;
-
-// --- Draw List API ---
-
-pub const getWindowDrawList = igGetWindowDrawList;
-pub const getBackgroundDrawList = igGetBackgroundDrawList;
-pub const getForegroundDrawList = igGetForegroundDrawList;
-
-extern fn igGetWindowDrawList() DrawList;
-extern fn igGetBackgroundDrawList() DrawList;
-extern fn igGetForegroundDrawList() DrawList;
-extern fn igCreateDrawList() DrawList;
-extern fn igDestroyDrawList(draw_list: DrawList) void;
-/// Draw List: A single draw command list. Generally obtained via `igGetWindowDrawList()`, `igGetForegroundDrawList()`, `igGetBackgroundDrawList()`.
-/// Important: Methods are only valid during the frame they were retrieved.
-// pub const DrawList = extern struct {
-// CmdBuffer: ImVector_ImDrawCmd,
-// IdxBuffer: ImVector_ImDrawIdx,
-// VtxBuffer: ImVector_ImDrawVert,
-// Flags: ImDrawListFlags,
-// _VtxCurrentIdx: c_uint,
-// ImDrawListSharedData* _Data;
-// ImDrawVert* _VtxWritePtr;
-// ImDrawIdx* _IdxWritePtr;
-// ImVector_ImVec2 _Path;
-// ImDrawCmdHeader _CmdHeader;
-// ImDrawListSplitter _Splitter;
-// ImVector_ImVec4 _ClipRectStack;
-// ImVector_ImTextureID _TextureIdStack;
-// ImVector_ImU8 _CallbacksDataBuf;
-// float _FringeScale;
-// const char* _OwnerName;
-// };
-
-pub const DrawList = *opaque {
-    // pub const addLine = ImDrawList_AddLine;
-    // extern fn ImDrawList_AddLine(self: DrawList, p1: [2]f32, p2: [2]f32, col: u32, thickness: f32) void;
-
-    pub fn addLine(
-        draw_list: DrawList,
-        args: struct {
-            p1: ImVec2,
-            p2: ImVec2,
-            col: u32,
-            // thickness: f32,
-        },
-    ) void {
-        ImDrawList_AddLine(draw_list, &args.p1, &args.p2, args.col);
-    }
-    extern fn ImDrawList_AddLine(
-        draw_list: DrawList,
-        p1: *const ImVec2,
-        p2: *const ImVec2,
-        col: u32,
-        // thickness: f32,
-    ) void;
-
-    pub fn addCircleFilled(draw_list: DrawList, args: struct {
-        center: ImVec2,
-        radius: f32,
-        col: u32,
-        num_segments: i32,
-    }) void {
-        ImDrawList_AddCircleFilled(draw_list, &args.center, args.radius, args.col, args.num_segments);
-    }
-    extern fn ImDrawList_AddCircleFilled(
-        draw_list: DrawList,
-        center: *const ImVec2,
-        radius: f32,
-        col: u32,
-        num_segments: i32,
-    ) void;
-};
 
 // --- Input/Output (IO) ---
 
@@ -1073,6 +1012,312 @@ pub fn colorConvertFloat4ToU32(in: [4]f32) u32 {
 }
 extern fn igColorConvertFloat4ToU32(in: *const [4]f32) u32;
 
+/// --- Text API ---
+
+pub fn textUnformatted(txt: []const u8) void {
+    igTextUnformatted(txt.ptr, txt.ptr + txt.len);
+}
+pub fn textUnformattedColored(color: [4]f32, txt: []const u8) void {
+    pushStyleColor4f(.{ .idx = .text, .c = color });
+    textUnformatted(txt);
+    popStyleColor(.{});
+}
+//--------------------------------------------------------------------------------------------------
+pub fn text(comptime fmt: []const u8, args: anytype) void {
+    const result = format(fmt, args);
+    igTextUnformatted(result.ptr, result.ptr + result.len);
+}
+pub fn textColored(color: [4]f32, comptime fmt: []const u8, args: anytype) void {
+    pushStyleColor4f(.{ .idx = .text, .c = color });
+    text(fmt, args);
+    popStyleColor(.{});
+}
+extern fn igTextUnformatted(txt: [*]const u8, txt_end: [*]const u8) void;
+//--------------------------------------------------------------------------------------------------
+pub fn textDisabled(comptime fmt: []const u8, args: anytype) void {
+    igTextDisabled("%s", formatZ(fmt, args).ptr);
+}
+extern fn igTextDisabled(fmt: [*:0]const u8, ...) void;
+//--------------------------------------------------------------------------------------------------
+pub fn textWrapped(comptime fmt: []const u8, args: anytype) void {
+    igTextWrapped("%s", formatZ(fmt, args).ptr);
+}
+extern fn igTextWrapped(fmt: [*:0]const u8, ...) void;
+//--------------------------------------------------------------------------------------------------
+pub fn bulletText(comptime fmt: []const u8, args: anytype) void {
+    bullet();
+    text(fmt, args);
+}
+//--------------------------------------------------------------------------------------------------
+pub fn labelText(label: [:0]const u8, comptime fmt: []const u8, args: anytype) void {
+    igLabelText(label, "%s", formatZ(fmt, args).ptr);
+}
+extern fn igLabelText(label: [*:0]const u8, fmt: [*:0]const u8, ...) void;
+//--------------------------------------------------------------------------------------------------
+const CalcTextSize = struct {
+    hide_text_after_double_hash: bool = false,
+    wrap_width: f32 = -1.0,
+};
+pub fn calcTextSize(txt: []const u8, args: CalcTextSize) [2]f32 {
+    var w: f32 = undefined;
+    var h: f32 = undefined;
+    igCalcTextSize(
+        txt.ptr,
+        txt.ptr + txt.len,
+        args.hide_text_after_double_hash,
+        args.wrap_width,
+        &w,
+        &h,
+    );
+    return .{ w, h };
+}
+extern fn igCalcTextSize(
+    txt: [*]const u8,
+    txt_end: [*]const u8,
+    hide_text_after_double_hash: bool,
+    wrap_width: f32,
+    out_w: *f32,
+    out_h: *f32,
+) void;
+
+/// --- Table API ---
+pub const TableBorderFlags = packed struct(u4) {
+    inner_h: bool = false,
+    outer_h: bool = false,
+    inner_v: bool = false,
+    outer_v: bool = false,
+
+    pub const h = TableBorderFlags{
+        .inner_h = true,
+        .outer_h = true,
+    }; // Draw horizontal borders.
+    pub const v = TableBorderFlags{
+        .inner_v = true,
+        .outer_v = true,
+    }; // Draw vertical borders.
+    pub const inner = TableBorderFlags{
+        .inner_v = true,
+        .inner_h = true,
+    }; // Draw inner borders.
+    pub const outer = TableBorderFlags{
+        .outer_v = true,
+        .outer_h = true,
+    }; // Draw outer borders.
+    pub const all = TableBorderFlags{
+        .inner_v = true,
+        .inner_h = true,
+        .outer_v = true,
+        .outer_h = true,
+    }; // Draw all borders.
+};
+pub const TableFlags = packed struct(c_int) {
+    resizable: bool = false,
+    reorderable: bool = false,
+    hideable: bool = false,
+    sortable: bool = false,
+    no_saved_settings: bool = false,
+    context_menu_in_body: bool = false,
+    row_bg: bool = false,
+    borders: TableBorderFlags = .{},
+    no_borders_in_body: bool = false,
+    no_borders_in_body_until_resize: bool = false,
+
+    // Sizing Policy
+    sizing: enum(u3) {
+        none = 0,
+        fixed_fit = 1,
+        fixed_same = 2,
+        stretch_prop = 3,
+        stretch_same = 4,
+    } = .none,
+
+    // Sizing Extra Options
+    no_host_extend_x: bool = false,
+    no_host_extend_y: bool = false,
+    no_keep_columns_visible: bool = false,
+    precise_widths: bool = false,
+
+    // Clipping
+    no_clip: bool = false,
+
+    // Padding
+    pad_outer_x: bool = false,
+    no_pad_outer_x: bool = false,
+    no_pad_inner_x: bool = false,
+
+    // Scrolling
+    scroll_x: bool = false,
+    scroll_y: bool = false,
+
+    // Sorting
+    sort_multi: bool = false,
+    sort_tristate: bool = false,
+
+    // Miscellaneous
+    highlight_hovered_column: bool = false,
+
+    _padding: u3 = 0,
+};
+
+pub const TableRowFlags = packed struct(c_int) {
+    headers: bool = false,
+
+    _padding: u31 = 0,
+};
+
+pub const TableColumnFlags = packed struct(c_int) {
+    // Input configuration flags
+    disabled: bool = false,
+    default_hide: bool = false,
+    default_sort: bool = false,
+    width_stretch: bool = false,
+    width_fixed: bool = false,
+    no_resize: bool = false,
+    no_reorder: bool = false,
+    no_hide: bool = false,
+    no_clip: bool = false,
+    no_sort: bool = false,
+    no_sort_ascending: bool = false,
+    no_sort_descending: bool = false,
+    no_header_label: bool = false,
+    no_header_width: bool = false,
+    prefer_sort_ascending: bool = false,
+    prefer_sort_descending: bool = false,
+    indent_enable: bool = false,
+    indent_disable: bool = false,
+
+    _padding0: u6 = 0,
+
+    // Output status flags, read-only via TableGetColumnFlags()
+    is_enabled: bool = false,
+    is_visible: bool = false,
+    is_sorted: bool = false,
+    is_hovered: bool = false,
+
+    _padding1: u4 = 0,
+};
+
+pub const TableColumnSortSpecs = extern struct {
+    user_id: Ident,
+    index: i16,
+    sort_order: i16,
+    sort_direction: enum(u8) {
+        none = 0,
+        ascending = 1, // Ascending = 0->9, A->Z etc.
+        descending = 2, // Descending = 9->0, Z->A etc.
+    },
+};
+
+pub const TableSortSpecs = *extern struct {
+    specs: [*]TableColumnSortSpecs,
+    count: c_int,
+    dirty: bool,
+};
+
+pub const TableBgTarget = enum(c_int) {
+    none = 0,
+    row_bg0 = 1,
+    row_bg1 = 2,
+    cell_bg = 3,
+};
+
+pub fn beginTable(name: [:0]const u8, args: struct {
+    column: i32,
+    flags: TableFlags = .{},
+    outer_size: [2]f32 = .{ 0, 0 },
+    inner_width: f32 = 0,
+}) bool {
+    return igBeginTable(name, args.column, args.flags, &args.outer_size, args.inner_width);
+}
+extern fn igBeginTable(
+    str_id: [*:0]const u8,
+    column: c_int,
+    flags: TableFlags,
+    outer_size: *const [2]f32,
+    inner_width: f32,
+) bool;
+
+pub fn endTable() void {
+    igEndTable();
+}
+extern fn igEndTable() void;
+
+pub const TableNextRow = struct {
+    row_flags: TableRowFlags = .{},
+    min_row_height: f32 = 0,
+};
+pub fn tableNextRow(args: TableNextRow) void {
+    igTableNextRow(args.row_flags, args.min_row_height);
+}
+extern fn igTableNextRow(row_flags: TableRowFlags, min_row_height: f32) void;
+
+pub const tableNextColumn = igTableNextColumn;
+extern fn igTableNextColumn() bool;
+
+pub const tableSetColumnIndex = igTableSetColumnIndex;
+extern fn igTableSetColumnIndex(column_n: i32) bool;
+
+pub const TableSetupColumn = struct {
+    flags: TableColumnFlags = .{},
+    init_width_or_height: f32 = 0,
+    user_id: Ident = 0,
+};
+pub fn tableSetupColumn(label: [:0]const u8, args: TableSetupColumn) void {
+    igTableSetupColumn(label, args.flags, args.init_width_or_height, args.user_id);
+}
+extern fn igTableSetupColumn(label: [*:0]const u8, flags: TableColumnFlags, init_width_or_height: f32, user_id: Ident) void;
+
+pub const tableSetupScrollFreeze = igTableSetupScrollFreeze;
+extern fn igTableSetupScrollFreeze(cols: i32, rows: i32) void;
+
+pub const tableHeadersRow = igTableHeadersRow;
+extern fn igTableHeadersRow() void;
+
+pub fn tableHeader(label: [:0]const u8) void {
+    igTableHeader(label);
+}
+extern fn igTableHeader(label: [*:0]const u8) void;
+
+pub const tableGetSortSpecs = igTableGetSortSpecs;
+extern fn igTableGetSortSpecs() ?TableSortSpecs;
+
+pub const tableGetColumnCount = igTableGetColumnCount;
+extern fn igTableGetColumnCount() i32;
+
+pub const tableGetColumnIndex = igTableGetColumnIndex;
+extern fn igTableGetColumnIndex() i32;
+
+pub const tableGetRowIndex = igTableGetRowIndex;
+extern fn igTableGetRowIndex() i32;
+
+pub const TableGetColumnName = struct {
+    column_n: i32 = -1,
+};
+pub fn tableGetColumnName(args: TableGetColumnName) [*:0]const u8 {
+    return igTableGetColumnName(args.column_n);
+}
+extern fn igTableGetColumnName(column_n: i32) [*:0]const u8;
+
+pub const TableGetColumnFlags = struct {
+    column_n: i32 = -1,
+};
+pub fn tableGetColumnFlags(args: TableGetColumnFlags) TableColumnFlags {
+    return igTableGetColumnFlags(args.column_n);
+}
+extern fn igTableGetColumnFlags(column_n: i32) TableColumnFlags;
+
+pub const tableSetColumnEnabled = igTableSetColumnEnabled;
+extern fn igTableSetColumnEnabled(column_n: i32, v: bool) void;
+
+pub fn tableSetBgColor(args: struct {
+    target: TableBgTarget,
+    color: u32,
+    column_n: i32 = -1,
+}) void {
+    igTableSetBgColor(args.target, args.color, args.column_n);
+}
+extern fn igTableSetBgColor(target: TableBgTarget, color: c_uint, column_n: c_int) void;
+
 
 
 // --- Utility ---
@@ -1107,4 +1352,10 @@ pub fn format(comptime fmt_str: []const u8, args: anytype) []const u8 {
         std.log.err("ig.format: std.fmt.bufPrint failed: {s}", .{@errorName(err)});
         return ""; // Or handle error
     };
+}
+
+pub fn formatZ(comptime fmt: []const u8, args: anytype) [:0]const u8 {
+    const len = std.fmt.count(fmt ++ "\x00", args);
+    if (len > temp_buffer.?.items.len) temp_buffer.?.resize(@intCast(len + 64)) catch unreachable;
+    return std.fmt.bufPrintZ(temp_buffer.?.items, fmt, args) catch unreachable;
 }

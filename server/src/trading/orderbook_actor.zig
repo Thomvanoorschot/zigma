@@ -81,7 +81,7 @@ pub const OrderbookActor = struct {
                     notify_subscribers,
                     &self.notify_subscribers_completion,
                     self,
-                    20,
+                    100,
                 );
             },
             .orderbook_update => |m| {

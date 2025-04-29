@@ -13,7 +13,7 @@ const OrderbookUpdate = obu.OrderbookUpdate;
 const PriceLevel = obu.PriceLevel;
 const UpdateData = obu.UpdateData;
 const OHLCUpdate = ohlcu.OHLCUpdate;
-const WsSubsribeRequest = ws_messages.WsSubsribeRequest;
+const WsSubsribeRequest = ws_messages.WsSubscribeRequest;
 const parseMessage = ws_messages.parseMessage;
 const BrokerImpl = brkr_impl.BrokerImpl;
 
@@ -55,11 +55,13 @@ pub const Broker = struct {
     pub fn subscribeToOrderbook(self: *Self, ticker: []const u8) !void {
         std.debug.print("Subscribing to orderbook for {s}\n", .{ticker});
         var buffer: [128]u8 = undefined;
-        const req = try json_utils.jsonMarshalFixedBuffer(WsSubsribeRequest{
+        const req = try ws_messages.stringifySubscribeRequestFixed(WsSubsribeRequest{
             .method = "subscribe",
             .params = .{
-                .channel = "book",
-                .symbol = &[_][]const u8{ticker},
+                .orderbook = .{
+                    .channel = "book",
+                    .symbol = &[_][]const u8{ticker},
+                },
             },
         }, &buffer);
 
@@ -69,15 +71,16 @@ pub const Broker = struct {
     pub fn subscribeToOHLC(self: *Self, ticker: []const u8) !void {
         std.debug.print("Subscribing to OHLC for {s}\n", .{ticker});
         var buffer: [128]u8 = undefined;
-        const req = try json_utils.jsonMarshalFixedBuffer(WsSubsribeRequest{
+        const req = try ws_messages.stringifySubscribeRequestFixed(WsSubsribeRequest{
             .method = "subscribe",
             .params = .{
-                .channel = "ohlc",
-                .symbol = &[_][]const u8{ticker},
-                .interval = 1,
+                .ohlc = .{
+                    .channel = "ohlc",
+                    .symbol = &[_][]const u8{ticker},
+                    .interval = 1,
+                },
             },
         }, &buffer);
-
         try self.ws_client.write(req);
     }
 

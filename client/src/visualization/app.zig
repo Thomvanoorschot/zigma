@@ -164,6 +164,9 @@ pub const App = struct {
         if (self.ohlc_list) |ohlc_list| {
             try plotOHLCListWindow(self.allocator, ohlc_list);
         }
+        if (self.orderbook) |orderbook| {
+            try plotOrderbookWindow(orderbook);
+        }
 
         const swapchain_texv = self.gctx.swapchain.getCurrentTextureView();
         defer swapchain_texv.release();
@@ -234,27 +237,6 @@ pub const App = struct {
         return .disarm;
     }
 
-    fn readCallback(
-        self_: ?*Self,
-        l: *xev.Loop,
-        c: *xev.Completion,
-        _: TCP,
-        buf: xev.ReadBuffer,
-        r: xev.ReadError!usize,
-    ) xev.CallbackAction {
-        const self = self_.?;
-        const n = r catch |err| {
-            std.debug.print("Read error: {s}\n", .{@errorName(err)});
-            return .disarm;
-        };
-
-        const received_data = buf.slice[0..n];
-        const ohlc_list = parseOHLCList(self.allocator, received_data) catch unreachable;
-        self.ohlc_list = ohlc_list;
-
-        self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);
-        return .disarm;
-    }
     // fn readCallback(
     //     self_: ?*Self,
     //     l: *xev.Loop,
@@ -270,10 +252,31 @@ pub const App = struct {
     //     };
 
     //     const received_data = buf.slice[0..n];
-    //     const ob = parseOrderbook(self.allocator, received_data) catch unreachable;
-    //     self.orderbook = ob;
+    //     const ohlc_list = parseOHLCList(self.allocator, received_data) catch unreachable;
+    //     self.ohlc_list = ohlc_list;
 
     //     self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);
     //     return .disarm;
     // }
+    fn readCallback(
+        self_: ?*Self,
+        l: *xev.Loop,
+        c: *xev.Completion,
+        _: TCP,
+        buf: xev.ReadBuffer,
+        r: xev.ReadError!usize,
+    ) xev.CallbackAction {
+        const self = self_.?;
+        const n = r catch |err| {
+            std.debug.print("Read error: {s}\n", .{@errorName(err)});
+            return .disarm;
+        };
+
+        const received_data = buf.slice[0..n];
+        const ob = parseOrderbook(self.allocator, received_data) catch unreachable;
+        self.orderbook = ob;
+        ob.display();
+        self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);
+        return .disarm;
+    }
 };

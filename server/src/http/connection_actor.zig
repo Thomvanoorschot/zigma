@@ -118,7 +118,14 @@ pub const ConnectionActor = struct {
     pub fn write(self: *Self, buf: std.ArrayList(u8)) void {
         const new_completion = self.write_completions.allocator.create(xev.Completion) catch unreachable;
         self.write_completions.append(new_completion) catch unreachable;
-        self.socket.write(self.ctx.getLoop(), new_completion, .{ .slice = buf.items }, Self, self, writeCallback);
+        self.socket.write(
+            self.ctx.getLoop(),
+            new_completion,
+            .{ .slice = buf.items },
+            Self,
+            self,
+            writeCallback,
+        );
     }
     fn writeCallback(
         self_: ?*Self,

@@ -273,7 +273,11 @@ pub const App = struct {
         };
 
         const received_data = buf.slice[0..n];
-        const ob = parseOrderbook(self.allocator, received_data) catch unreachable;
+        const ob = parseOrderbook(self.allocator, received_data) catch |err| {
+            std.log.err("Failed to parse orderbook data: {s}\nRaw data was: {s}", .{ @errorName(err), received_data });
+
+            return .disarm;
+        };
         self.orderbook = ob;
         ob.display();
         self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);

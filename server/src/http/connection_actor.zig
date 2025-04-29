@@ -87,7 +87,9 @@ pub const ConnectionActor = struct {
         std.debug.print("Read callback\n", .{});
         const bytes_read = result catch |err| {
             std.log.err("Read error for fd={d}, closing connection: {any}", .{ self.socket.fd, err });
-            self.close_callback(self.close_context, self) catch unreachable;
+            self.close_callback(self.close_context, self) catch |close_err| {
+                std.log.err("Failed to close connection: {any}", .{close_err});
+            };
             return .disarm;
         };
         var it = std.mem.tokenizeAny(u8, buf.slice[0..bytes_read], "\r\n");
@@ -147,7 +149,9 @@ pub const ConnectionActor = struct {
         defer self.write_completions.allocator.destroy(c);
         const bytes_written = result catch |err| {
             std.log.err("Write error to client: {any}. Closing connection.", .{err});
-            self.close_callback(self.close_context, self) catch unreachable;
+            self.close_callback(self.close_context, self) catch |close_err| {
+                std.log.err("Failed to close connection: {any}", .{close_err});
+            };
             return .disarm;
         };
 

@@ -132,6 +132,7 @@ pub const ServerActor = struct {
         _ = ctx.self.connections.remove(ctx.conn.socket.fd);
         ctx.self.allocator.destroy(ctx.conn);
         ctx.self.allocator.destroy(ctx);
+        std.debug.print("Closed connection\n", .{});
         return .disarm;
     }
 };

@@ -9,9 +9,12 @@
             .hash = "websocket-0.1.0-ZPISdXNIAwCXG7oHBj4zc1CfmZcDeyR6hfTEOo8_YI4r",
         },
         .backstage = .{
-            .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
-            .hash = "backstage-0.1.0-Lti6bKt0AAAen2XWCzDuNQFWBwB4l2-zL5TJ8Q35St_g",
+            .path = "../../backstage",
         },
+        // .backstage = .{
+        //     .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
+        //     .hash = "backstage-0.1.0-Lti6bKt0AAAen2XWCzDuNQFWBwB4l2-zL5TJ8Q35St_g",
+        // },
         .xevzocket = .{
             .url = "https://github.com/Thomvanoorschot/xevzocket/archive/main.tar.gz",
             .hash = "xevzocket-0.0.1-6kfuPt54AAArqlQsJkNRkUCGUxQdhpWr0zNVpUHTizyh",

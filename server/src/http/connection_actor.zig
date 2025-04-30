@@ -92,11 +92,14 @@ pub const ConnectionActor = struct {
             return .disarm;
         }
         const bytes_read = result catch |err| {
+            if (err == error.ConnectionResetByPeer) {
+                self.is_closing = true;
+                self.close() catch |close_err| {
+                    std.log.err("Failed to close connection: {any}", .{close_err});
+                };
+                return .disarm;
+            }
             std.log.err("Read error for fd={d}, closing connection: {any}", .{ self.socket.fd, err });
-            self.is_closing = true;
-            self.close() catch |close_err| {
-                std.log.err("Failed to close connection: {any}", .{close_err});
-            };
             return .disarm;
         };
         var it = std.mem.tokenizeAny(u8, buf.slice[0..bytes_read], "\r\n");

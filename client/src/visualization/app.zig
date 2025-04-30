@@ -33,7 +33,7 @@ pub const App = struct {
     read_completion: xev.Completion = undefined,
     read_buf: [1024]u8 = undefined,
 
-    orderbook: ?*OrderBook = null,
+    orderbook: ?*const OrderBook = null,
     ohlc_list: ?[]OHLC = null,
     pub fn init(
         allocator: std.mem.Allocator,
@@ -271,11 +271,10 @@ pub const App = struct {
             std.debug.print("Read error: {s}\n", .{@errorName(err)});
             return .disarm;
         };
-
+        std.debug.print("num_bytes {d}\n", .{n});
         const received_data = buf.slice[0..n];
         const ob = parseOrderbook(self.allocator, received_data) catch |err| {
             std.log.err("Failed to parse orderbook data: {s}\nRaw data was: {s}", .{ @errorName(err), received_data });
-
             return .disarm;
         };
         self.orderbook = ob;

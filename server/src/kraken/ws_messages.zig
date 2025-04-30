@@ -100,13 +100,11 @@ pub const OHLCUpdateData = struct {
 };
 
 pub fn parseMessage(allocator: std.mem.Allocator, json_str: []const u8) !?WsResponseMessage {
-    std.debug.print("json_str: {s}\n", .{json_str});
     var raw_json = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
     defer raw_json.deinit();
 
     const raw_value = raw_json.value;
     const channel_str = if (raw_value.object.get("channel")) |c| c.string else "";
-    std.debug.print("channel: {s}\n", .{channel_str});
     if (std.mem.eql(u8, channel_str, "book")) {
         return parseOrderbookUpdate(allocator, raw_value);
     } else if (std.mem.eql(u8, channel_str, "ohlc")) {

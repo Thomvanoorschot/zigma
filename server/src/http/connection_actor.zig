@@ -15,13 +15,11 @@ const stringify = @import("zbor").stringify;
 const parse = @import("zbor").parse;
 const DataItem = @import("zbor").DataItem;
 pub const ConnectionMessage = union(enum) {
-    listen: ListenMessage,
     orderbook_update: *Orderbook,
     ohlc_update: OHLCList,
 };
 
 pub const InitMessage = struct {};
-pub const ListenMessage = struct {};
 
 pub const ConnectionActor = struct {
     allocator: std.mem.Allocator,
@@ -36,6 +34,7 @@ pub const ConnectionActor = struct {
     keep_alive: bool = false,
     write_buffers: std.ArrayList(std.ArrayList(u8)),
     write_completions: std.ArrayList(*xev.Completion),
+    is_closing: bool = false,
 
     const Self = @This();
 
@@ -52,12 +51,16 @@ pub const ConnectionActor = struct {
         return self;
     }
 
+    pub fn deinit(self: *Self) void {
+        self.write_completions.deinit();
+        self.write_buffers.deinit();
+    }
+
     pub fn receive(self: *Self, message: *const Envelope(ConnectionMessage)) !void {
+        if (self.is_closing) {
+            return;
+        }
         switch (message.payload) {
-            .listen => |_| {
-                std.log.info("Received 'listen' message (already listening).", .{});
-                // try self.server.listen();
-            },
             .orderbook_update => |m| {
                 const str = try m.stringify(self.allocator);
                 self.write_buffers.append(str) catch unreachable;
@@ -84,10 +87,14 @@ pub const ConnectionActor = struct {
     ) xev.CallbackAction {
         const self = self_ orelse unreachable;
 
-        std.debug.print("Read callback\n", .{});
+        if (self.is_closing) {
+            std.debug.print("Read callback: is_closing\n", .{});
+            return .disarm;
+        }
         const bytes_read = result catch |err| {
             std.log.err("Read error for fd={d}, closing connection: {any}", .{ self.socket.fd, err });
-            self.close_callback(self.close_context, self) catch |close_err| {
+            self.is_closing = true;
+            self.close() catch |close_err| {
                 std.log.err("Failed to close connection: {any}", .{close_err});
             };
             return .disarm;
@@ -95,19 +102,21 @@ pub const ConnectionActor = struct {
         var it = std.mem.tokenizeAny(u8, buf.slice[0..bytes_read], "\r\n");
 
         while (it.next()) |line| {
-            std.log.info("{s}", .{line});
             if (std.mem.eql(u8, line, "Connection: keep-alive")) {
                 self.keep_alive = true;
             }
             if (std.mem.eql(u8, line, "start")) {
                 // Temporary way of starting the sending
-                _ = self.ctx.send("orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
+                self.ctx.send("orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
                 // _ = self.ctx.send("ohlc_actor", OHLCMessage{ .subscribe = .{} }) catch unreachable;
             }
         }
         if (bytes_read == 0) {
             std.log.info("Client sent 0 bytes (potentially closed). Closing connection.", .{});
-            self.close_callback(self.close_context, self) catch unreachable;
+            self.is_closing = true;
+            self.close() catch |close_err| {
+                std.log.err("Failed to close connection: {any}", .{close_err});
+            };
             return .disarm;
         }
 
@@ -138,6 +147,10 @@ pub const ConnectionActor = struct {
         result: xev.WriteError!usize,
     ) xev.CallbackAction {
         const self = self_ orelse unreachable;
+        if (self.is_closing) {
+            std.debug.print("Write callback: is_closing\n", .{});
+            return .disarm;
+        }
         for (self.write_completions.items, 0..) |item, idx| {
             if (item == c) {
                 _ = self.write_completions.orderedRemove(idx);
@@ -149,7 +162,7 @@ pub const ConnectionActor = struct {
         defer self.write_completions.allocator.destroy(c);
         const bytes_written = result catch |err| {
             std.log.err("Write error to client: {any}. Closing connection.", .{err});
-            self.close_callback(self.close_context, self) catch |close_err| {
+            self.close() catch |close_err| {
                 std.log.err("Failed to close connection: {any}", .{close_err});
             };
             return .disarm;
@@ -157,8 +170,17 @@ pub const ConnectionActor = struct {
 
         if (!self.keep_alive) {
             std.log.info("Wrote {d} bytes to client. Closing connection as requested.", .{bytes_written});
-            self.close_callback(self.close_context, self) catch unreachable;
+            self.close() catch |close_err| {
+                std.log.err("Failed to close connection: {any}", .{close_err});
+            };
         }
         return .disarm;
+    }
+    pub fn close(self: *Self) !void {
+        self.is_closing = true;
+        try self.ctx.send("orderbook_actor", OrderbookMessage{
+            .unsubscribe = .{},
+        });
+        try self.close_callback(self.close_context, self);
     }
 };

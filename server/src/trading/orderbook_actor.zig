@@ -23,6 +23,7 @@ pub const OrderbookMessage = union(enum) {
     start: OrderbookStartRequest,
     orderbook_update: OrderbookUpdate,
     subscribe: OrderbookSubscribeRequest,
+    unsubscribe: OrderbookSubscribeRequest,
 };
 
 pub const OrderbookInitRequest = struct {
@@ -32,6 +33,7 @@ pub const OrderbookStartRequest = struct {
     ticker: []const u8,
 };
 pub const OrderbookSubscribeRequest = struct {};
+pub const OrderbookUnsubscribeRequest = struct {};
 
 pub const OrderbookActor = struct {
     allocator: Allocator,
@@ -85,7 +87,6 @@ pub const OrderbookActor = struct {
                 );
             },
             .orderbook_update => |m| {
-                std.debug.print("Orderbook Update\n", .{});
                 var ob_update: OrderbookUpdate = m;
 
                 // TODO Probably move this to some other better place
@@ -103,6 +104,9 @@ pub const OrderbookActor = struct {
             },
             .subscribe => |_| {
                 try self.subscriptions.append(message.sender.?);
+            },
+            .unsubscribe => |_| {
+                _ = self.subscriptions.orderedRemove(0);
             },
         }
     }

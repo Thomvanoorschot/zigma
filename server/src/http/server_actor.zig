@@ -6,6 +6,7 @@ const xev = backstage.xev;
 const Context = backstage.Context;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
+const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
 
 pub const ServerMessage = union(enum) {
     init: InitMessage,
@@ -66,24 +67,14 @@ pub const ServerActor = struct {
         const socket: xev.TCP = result catch {
             return .rearm;
         };
-
+        std.debug.print("Accepted TCP connection\n", .{});
         const actor_interface = self.ctx.spawnChildActor(ConnectionActor, ConnectionMessage, .{
             .id = "connection_actor",
         }) catch unreachable;
-        const actor: *ConnectionActor = @as(*ConnectionActor, @ptrCast(@alignCast(actor_interface.ptr)));
+        const actor = unsafeAnyOpaqueCast(ConnectionActor, actor_interface.ptr);
         actor.socket = socket;
         actor.close_context = self;
         actor.close_callback = closeConnection;
-        // const conn = Connection.init(
-        //     self.allocator,
-        //     socket,
-        //     l,
-        //     @ptrCast(self),
-        //     closeConnection,
-        // ) catch |err| {
-        //     std.log.err("Failed to initialize connection: {any}", .{err});
-        //     return .rearm;
-        // };
 
         std.debug.print("connections: {d}\n", .{self.connections.count()});
         if (self.connections.count() >= self.max_connections) {
@@ -100,39 +91,18 @@ pub const ServerActor = struct {
         actor.read();
         return .rearm;
     }
-
-    const closeContext = struct {
-        self: *Self,
-        conn: *ConnectionActor,
-    };
-
     fn closeConnection(self_: *anyopaque, conn: *ConnectionActor) !void {
-        const self: *Self = @ptrCast(@alignCast(self_));
+        const self = unsafeAnyOpaqueCast(Self, self_);
 
-        const close_context = try self.allocator.create(closeContext);
-        conn.close_completion = .{
-            .op = .{ .close = .{ .fd = conn.socket.fd } },
-            .userdata = close_context,
-            .callback = closeCallback,
-        };
-        close_context.* = .{
-            .self = self,
-            .conn = conn,
-        };
-        self.ctx.getLoop().add(&conn.close_completion);
-    }
-
-    fn closeCallback(
-        ctx_: ?*anyopaque,
-        _: *xev.Loop,
-        _: *xev.Completion,
-        _: xev.Result,
-    ) xev.CallbackAction {
-        const ctx: *closeContext = @ptrCast(@alignCast(ctx_));
-        _ = ctx.self.connections.remove(ctx.conn.socket.fd);
-        ctx.self.allocator.destroy(ctx.conn);
-        ctx.self.allocator.destroy(ctx);
+        const removed_conn = self.connections.fetchRemove(conn.socket.fd);
+        if (removed_conn) |rc| {
+            rc.value.deinit();
+            
+            // Replace with destroying actor
+            conn.deinit();
+            self.ctx.deinitChildActorByID(conn.ctx.actor_id);
+            // self.allocator.destroy(conn);
+        }
         std.debug.print("Closed connection\n", .{});
-        return .disarm;
     }
 };

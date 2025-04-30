@@ -5,6 +5,7 @@ const brkr_impl = @import("trading/broker_impl.zig");
 const ob_actr = @import("trading/orderbook_actor.zig");
 const ohlc_actr = @import("trading/ohlc_actor.zig");
 const server_actr = @import("http/server_actor.zig");
+const unsafeAnyOpaqueCast = @import("utils/type_utils.zig").unsafeAnyOpaqueCast;
 
 const xev = backstage.xev;
 const Timer = xev.Timer;
@@ -75,7 +76,7 @@ const listenForMessagesFn = struct {
         _: *xev.Completion,
         _: xev.Result,
     ) xev.CallbackAction {
-        const s: *Engine = @as(*Engine, @ptrCast(@alignCast(ud.?)));
+        const s = unsafeAnyOpaqueCast(Engine, ud.?);
         std.debug.print("Timer fired: Signaling engine loop to stop.\n", .{});
         s.deinit();
 

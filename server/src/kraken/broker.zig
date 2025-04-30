@@ -6,6 +6,7 @@ const backstage = @import("backstage");
 const brkr_impl = @import("../trading/broker_impl.zig");
 const obu = @import("../trading/orderbook_update.zig");
 const ohlcu = @import("../trading/ohlc_update.zig");
+const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
 const xev = backstage.xev;
 const Loop = xev.Loop;
 const BrokerPayload = brkr_impl.BrokerPayload;
@@ -85,7 +86,7 @@ pub const Broker = struct {
     }
 
     fn wsReadCb(context: *anyopaque, payload: []const u8) !void {
-        const self: *Self = @ptrCast(@alignCast(context));
+        const self = unsafeAnyOpaqueCast(Self, context);
         try self.read(payload);
     }
     fn read(self: *Self, payload: []const u8) !void {

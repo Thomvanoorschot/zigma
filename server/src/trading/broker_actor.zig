@@ -6,7 +6,7 @@ const orderbook_actor = @import("orderbook_actor.zig");
 const ohlcu = @import("ohlc_update.zig");
 const obu = @import("orderbook_update.zig");
 const ohlc_actor = @import("ohlc_actor.zig");
-
+const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
 const xev = backstage.xev;
 const Context = backstage.Context;
 const BrokerImpl = brkr_impl.BrokerImpl;
@@ -79,7 +79,7 @@ pub const BrokerActor = struct {
     }
 
     fn readMessage(context: *anyopaque, message: anyerror!?BrokerPayload) !void {
-        const self: *Self = @ptrCast(@alignCast(context));
+        const self = unsafeAnyOpaqueCast(Self, context);
 
         if (try message) |m| {
             switch (m) {

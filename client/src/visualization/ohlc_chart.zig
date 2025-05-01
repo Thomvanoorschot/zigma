@@ -82,7 +82,7 @@ fn plotCandlestick(
         const color = if (ohlc.close > ohlc.open) bull_col else bear_col;
 
         // Draw wicks
-        plot.pushStyleColor_Vec4(.line, color);
+        plot.pushPlotStyleColor_Vec4(.line, color);
         plot.plotLine("", f64, .{
             .xv = &[_]f64{ xs[i], xs[i] },
             .yv = &[_]f64{ ohlc.low, ohlc.high },
@@ -93,7 +93,7 @@ fn plotCandlestick(
         // const bottom = @min(ohlc.open, ohlc.close);
         // const top = @max(ohlc.open, ohlc.close);
 
-        plot.pushStyleVar_Float(.line_weight, 5.0);
+        plot.pushPlotStyleVar_Float(.line_weight, 5.0);
         // plot.pushStyleColor_Vec4(.line, color);
 
         plot.plotLine("", f64, .{
@@ -101,8 +101,8 @@ fn plotCandlestick(
             .yv = &[_]f64{ ohlc.open, ohlc.close },
         });
 
-        plot.popStyleColor(1);
-        plot.popStyleVar(1);
+        plot.popPlotStyleColor(1);
+        plot.popPlotStyleVar(1);
 
         // const open_pos = plot.plotToPixels(xs[i] - half_width, ohlc.open);
         // const close_pos = plot.plotToPixels(xs[i] + half_width, ohlc.close);

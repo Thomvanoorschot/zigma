@@ -916,21 +916,21 @@ pub const StyleCol = enum(c_int) {
     modal_window_dim_bg,
 };
 
-pub fn pushStyleColor4f(args: struct {
+pub fn pushStyleColor_Vec4(args: struct {
     idx: StyleCol,
     c: [4]f32,
 }) void {
-    igPushStyleColor4f(args.idx, &args.c);
+    igPushStyleColor_Vec4(args.idx, &args.c);
 }
-extern fn igPushStyleColor4f(idx: StyleCol, col: *const [4]f32) void;
+extern fn igPushStyleColor_Vec4(idx: StyleCol, col: *const [4]f32) void;
 
-pub fn pushStyleColor1u(args: struct {
+pub fn pushStyleColor_U32(args: struct {
     idx: StyleCol,
     c: u32,
 }) void {
-    igPushStyleColor1u(args.idx, args.c);
+    igPushStyleColor_U32(args.idx, args.c);
 }
-extern fn igPushStyleColor1u(idx: StyleCol, col: c_uint) void;
+extern fn igPushStyleColor_U32(idx: StyleCol, col: u32) void;
 
 pub fn popStyleColor(args: struct {
     count: i32 = 1,
@@ -1013,14 +1013,13 @@ pub fn colorConvertFloat4ToU32(in: [4]f32) u32 {
 extern fn igColorConvertFloat4ToU32(in: *const [4]f32) u32;
 
 /// --- Text API ---
-
 pub fn textUnformatted(txt: []const u8) void {
     igTextUnformatted(txt.ptr, txt.ptr + txt.len);
 }
-pub fn textUnformattedColored(color: [4]f32, txt: []const u8) void {
-    pushStyleColor4f(.{ .idx = .text, .c = color });
+pub fn textUnformattedColored(color: u32, txt: []const u8) void {
+    pushStyleColor_U32(.{ .idx = .text, .c = color });
     textUnformatted(txt);
-    popStyleColor(.{});
+    popStyleColor(.{ .count = 1 });
 }
 //--------------------------------------------------------------------------------------------------
 pub fn text(comptime fmt: []const u8, args: anytype) void {
@@ -1028,11 +1027,12 @@ pub fn text(comptime fmt: []const u8, args: anytype) void {
     igTextUnformatted(result.ptr, result.ptr + result.len);
 }
 pub fn textColored(color: [4]f32, comptime fmt: []const u8, args: anytype) void {
-    pushStyleColor4f(.{ .idx = .text, .c = color });
+    pushStyleColor_Vec4(.{ .idx = .text, .c = color });
     text(fmt, args);
-    popStyleColor(.{});
+    popStyleColor(.{ .count = 1 });
 }
 extern fn igTextUnformatted(txt: [*]const u8, txt_end: [*]const u8) void;
+
 //--------------------------------------------------------------------------------------------------
 pub fn textDisabled(comptime fmt: []const u8, args: anytype) void {
     igTextDisabled("%s", formatZ(fmt, args).ptr);
@@ -1317,8 +1317,6 @@ pub fn tableSetBgColor(args: struct {
     igTableSetBgColor(args.target, args.color, args.column_n);
 }
 extern fn igTableSetBgColor(target: TableBgTarget, color: c_uint, column_n: c_int) void;
-
-
 
 // --- Utility ---
 

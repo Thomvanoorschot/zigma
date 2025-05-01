@@ -44,7 +44,7 @@ pub fn plotOrderbookWindow(orderbook: *const OrderBook) !void {
 
             gui.tableNextRow(.{});
             _ = gui.tableSetColumnIndex(0);
-            gui.textUnformatted("Asks");
+            gui.textUnformattedColored(0xFF0000FF, "Asks");
 
             gui.tableHeadersRow();
 
@@ -57,11 +57,12 @@ pub fn plotOrderbookWindow(orderbook: *const OrderBook) !void {
 
                 _ = gui.tableSetColumnIndex(0);
                 const price_fmt = std.fmt.bufPrint(&text_buf, "{d:.2}", .{ask.price}) catch "ERR";
-                gui.textUnformatted(price_fmt);
+                // Colors are AABBGGRR
+                gui.textUnformattedColored(0xFF0000FF, price_fmt);
 
                 _ = gui.tableSetColumnIndex(1);
                 const vol_fmt = std.fmt.bufPrint(&text_buf, "{d:.3}", .{ask.qty}) catch "ERR";
-                gui.textUnformatted(vol_fmt);
+                gui.textUnformattedColored(0xFF0000FF, vol_fmt);
             }
         }
 
@@ -76,10 +77,9 @@ pub fn plotOrderbookWindow(orderbook: *const OrderBook) !void {
 
             gui.tableSetupColumn("Price", .{ .flags = .{ .width_fixed = true }, .init_width_or_height = 80.0 });
             gui.tableSetupColumn("Volume", .{ .flags = .{ .width_fixed = true }, .init_width_or_height = 80.0 });
-
             gui.tableNextRow(.{});
             _ = gui.tableSetColumnIndex(0);
-            gui.textUnformatted("Bids");
+            gui.textUnformattedColored(0xFF00FF00, "Bids");
 
             gui.tableHeadersRow();
 
@@ -91,11 +91,10 @@ pub fn plotOrderbookWindow(orderbook: *const OrderBook) !void {
 
                 _ = gui.tableSetColumnIndex(0);
                 const price_fmt = std.fmt.bufPrint(&text_buf, "{d:.2}", .{bid.price}) catch "ERR";
-                gui.textUnformatted(price_fmt);
-
+                gui.textUnformattedColored(0xFF00FF00, price_fmt);
                 _ = gui.tableSetColumnIndex(1);
                 const vol_fmt = std.fmt.bufPrint(&text_buf, "{d:.3}", .{bid.qty}) catch "ERR";
-                gui.textUnformatted(vol_fmt);
+                gui.textUnformattedColored(0xFF00FF00, vol_fmt);
             }
         }
     }

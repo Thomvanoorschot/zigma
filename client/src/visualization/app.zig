@@ -32,7 +32,7 @@ pub const App = struct {
     connect_completion: xev.Completion = undefined,
     read_completion: xev.Completion = undefined,
     // TODO Do this in a smarter way
-    read_buf: [20000]u8 = undefined,
+    read_buf: [4096]u8 = undefined,
 
     orderbook: ?*const OrderBook = null,
     ohlc_list: ?[]OHLC = null,
@@ -272,14 +272,12 @@ pub const App = struct {
             std.debug.print("Read error: {s}\n", .{@errorName(err)});
             return .disarm;
         };
-        std.debug.print("num_bytes {d}\n", .{n});
         const received_data = buf.slice[0..n];
         const ob = parseOrderbook(self.allocator, received_data) catch |err| {
             std.log.err("Failed to parse orderbook data: {s}", .{@errorName(err)});
             return .disarm;
         };
         self.orderbook = ob;
-        ob.display();
         self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);
         return .disarm;
     }

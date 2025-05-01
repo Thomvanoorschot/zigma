@@ -444,22 +444,22 @@ pub const StyleVar = enum(u32) {
     plot_min_size,
     count,
 };
-pub fn pushStyleVar_Float(idx: StyleVar, val: f32) void {
+pub fn pushPlotStyleVar_Float(idx: StyleVar, val: f32) void {
     ImPlot_PushStyleVar_Float(idx, val);
 }
 extern fn ImPlot_PushStyleVar_Float(idx: StyleVar, val: f32) void;
 
-pub fn popStyleVar(count: i32) void {
+pub fn popPlotStyleVar(count: i32) void {
     ImPlot_PopStyleVar(count);
 }
 extern fn ImPlot_PopStyleVar(count: i32) void;
 
-pub fn pushStyleColor_Vec4(idx: StyleCol, col: [4]f32) void {
+pub fn pushPlotStyleColor_Vec4(idx: StyleCol, col: [4]f32) void {
     ImPlot_PushStyleColor_Vec4(idx, &col);
 }
 extern fn ImPlot_PushStyleColor_Vec4(idx: StyleCol, col: *const [4]f32) void;
 
-pub fn popStyleColor(count: i32) void {
+pub fn popPlotStyleColor(count: i32) void {
     ImPlot_PopStyleColor(count);
 }
 extern fn ImPlot_PopStyleColor(count: i32) void;

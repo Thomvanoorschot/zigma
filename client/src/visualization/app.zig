@@ -31,7 +31,8 @@ pub const App = struct {
     server_addr: std.net.Address,
     connect_completion: xev.Completion = undefined,
     read_completion: xev.Completion = undefined,
-    read_buf: [1024]u8 = undefined,
+    // TODO Do this in a smarter way
+    read_buf: [20000]u8 = undefined,
 
     orderbook: ?*const OrderBook = null,
     ohlc_list: ?[]OHLC = null,
@@ -274,7 +275,7 @@ pub const App = struct {
         std.debug.print("num_bytes {d}\n", .{n});
         const received_data = buf.slice[0..n];
         const ob = parseOrderbook(self.allocator, received_data) catch |err| {
-            std.log.err("Failed to parse orderbook data: {s}\nRaw data was: {s}", .{ @errorName(err), received_data });
+            std.log.err("Failed to parse orderbook data: {s}", .{@errorName(err)});
             return .disarm;
         };
         self.orderbook = ob;

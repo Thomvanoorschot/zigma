@@ -99,7 +99,7 @@ pub const OrderbookActor = struct {
                     bids[i] = .{ .price = bid.price, .qty = bid.qty };
                 }
 
-                self.orderbook.?.processUpdates(asks, bids);
+                try self.orderbook.?.processUpdates(bids, asks);
                 ob_update.deinit();
             },
             .subscribe => |_| {

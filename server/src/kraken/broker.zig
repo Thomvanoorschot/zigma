@@ -90,7 +90,6 @@ pub const Broker = struct {
         try self.read(payload);
     }
     fn read(self: *Self, payload: []const u8) !void {
-        // std.debug.print("Received text: {s}\n", .{payload});
         var arena_state = std.heap.ArenaAllocator.init(self.allocator);
         defer arena_state.deinit();
         const message = try parseMessage(arena_state.allocator(), payload);

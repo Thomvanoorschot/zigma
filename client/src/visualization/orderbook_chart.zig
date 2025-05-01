@@ -18,8 +18,8 @@ pub fn plotOrderbookWindow(orderbook: *const OrderBook) !void {
         const asks = orderbook.asks;
 
         var max_vol: f64 = 0.0;
-        for (bids) |bid| max_vol = @max(max_vol, bid.qty);
-        for (asks) |ask| max_vol = @max(max_vol, ask.qty);
+        for (bids.items) |bid| max_vol = @max(max_vol, bid.qty);
+        for (asks.items) |ask| max_vol = @max(max_vol, ask.qty);
 
         if (max_vol > 0) {
             max_vol *= 1.05;
@@ -41,13 +41,16 @@ pub fn plotOrderbookWindow(orderbook: *const OrderBook) !void {
 
             gui.tableSetupColumn("Price", .{ .flags = .{ .width_fixed = true }, .init_width_or_height = 80.0 });
             gui.tableSetupColumn("Volume", .{ .flags = .{ .width_fixed = true }, .init_width_or_height = 80.0 });
+
+            gui.tableNextRow(.{});
+            _ = gui.tableSetColumnIndex(0);
+            gui.textUnformatted("Asks");
+
             gui.tableHeadersRow();
 
             var ask_cum_vol: f64 = 0;
-            var i: usize = asks.len;
-            while (i > 0) : (i -= 1) {
-                const index = i - 1;
-                const ask = asks[index];
+            for (asks.items, 0..) |_, i| {
+                const ask = asks.items[asks.items.len - 1 - i];
                 ask_cum_vol += ask.qty;
 
                 gui.tableNextRow(.{});
@@ -63,7 +66,7 @@ pub fn plotOrderbookWindow(orderbook: *const OrderBook) !void {
         }
 
         gui.separator();
-        const spread_val = if (asks.len > 0 and bids.len > 0) asks[0].price - bids[0].price else 0.0;
+        const spread_val = if (asks.items.len > 0 and bids.items.len > 0) asks.items[0].price - bids.items[0].price else 0.0;
         const spread_text = std.fmt.bufPrint(&text_buf, "Spread: {d:.2}", .{spread_val}) catch "ERR SPREAD";
         gui.textUnformatted(spread_text);
         gui.separator();
@@ -73,10 +76,15 @@ pub fn plotOrderbookWindow(orderbook: *const OrderBook) !void {
 
             gui.tableSetupColumn("Price", .{ .flags = .{ .width_fixed = true }, .init_width_or_height = 80.0 });
             gui.tableSetupColumn("Volume", .{ .flags = .{ .width_fixed = true }, .init_width_or_height = 80.0 });
+
+            gui.tableNextRow(.{});
+            _ = gui.tableSetColumnIndex(0);
+            gui.textUnformatted("Bids");
+
             gui.tableHeadersRow();
 
             var bid_cum_vol: f64 = 0;
-            for (bids) |bid| {
+            for (bids.items) |bid| {
                 bid_cum_vol += bid.qty;
 
                 gui.tableNextRow(.{});

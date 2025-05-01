@@ -32,7 +32,6 @@ pub const ConnectionActor = struct {
     close_completion: xev.Completion = undefined,
     io_buf: [8192]u8 = std.mem.zeroes([8192]u8),
     keep_alive: bool = false,
-    write_buffers: std.ArrayList(std.ArrayList(u8)),
     write_completions: std.ArrayList(*xev.Completion),
     is_closing: bool = false,
 
@@ -46,14 +45,12 @@ pub const ConnectionActor = struct {
             .ctx = ctx,
             .allocator = allocator,
             .write_completions = std.ArrayList(*xev.Completion).init(allocator),
-            .write_buffers = std.ArrayList(std.ArrayList(u8)).init(allocator),
         };
         return self;
     }
 
     pub fn deinit(self: *Self) void {
         self.write_completions.deinit();
-        self.write_buffers.deinit();
     }
 
     pub fn receive(self: *Self, message: *const Envelope(ConnectionMessage)) !void {
@@ -63,12 +60,11 @@ pub const ConnectionActor = struct {
         switch (message.payload) {
             .orderbook_update => |m| {
                 const str = try m.stringify(self.allocator);
-                self.write_buffers.append(str) catch unreachable;
                 self.write(str);
             },
             .ohlc_update => |m| {
                 const str = try stringifyOHLCList(self.allocator, m);
-                self.write_buffers.append(str) catch unreachable;
+                
                 self.write(str);
             },
         }
@@ -157,8 +153,6 @@ pub const ConnectionActor = struct {
         for (self.write_completions.items, 0..) |item, idx| {
             if (item == c) {
                 _ = self.write_completions.orderedRemove(idx);
-                const wb = self.write_buffers.orderedRemove(idx);
-                defer wb.deinit();
                 break;
             }
         }

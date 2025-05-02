@@ -16,15 +16,13 @@ fn CallbackDispatchTable(comptime MsgType: type, comptime CbCtx: type) type {
     var fields_array: [union_info.fields.len]std.builtin.Type.StructField = undefined;
 
     inline for (union_info.fields, 0..) |field, i| {
-        // Define the signature for each callback function
-        // It receives the client pointer and the specific message payload type
         const MessagePayloadType = @TypeOf(@field((@as(MsgType, undefined)), field.name)); // Get type of the union field
-        const CallbackType = fn (*CbCtx, MessagePayloadType) anyerror!void;
+        const CallbackType = *const fn (*CbCtx, MessagePayloadType) anyerror!void;
 
         fields_array[i] = .{
             .name = field.name,
             .type = CallbackType,
-            .default_value_ptr = null, // Require explicit callback provision
+            .default_value_ptr = null, 
             .is_comptime = false,
             .alignment = @alignOf(CallbackType),
         };
@@ -76,8 +74,10 @@ pub fn Client(
         @compileError("MessageTypeUnion must be a tagged union");
     };
 
+    const CallbackDispatchTableType = CallbackDispatchTable(MessageTypeUnion, CallbackContext);
+    const ReadBuffersType = ReadBuffersStruct(MessageTypeUnion);
+
     return struct {
-        allocator: std.mem.Allocator,
         options: ClientOptions,
 
         socket: TCP,
@@ -86,38 +86,31 @@ pub fn Client(
         write_completion: Completion = undefined,
         read_completion: Completion = undefined,
 
-        read_buffers: ReadBuffersStruct(MessageTypeUnion) = undefined,
-        callback_dispatch_table: CallbackDispatchTable(MessageTypeUnion, CallbackContext) = undefined,
+        read_buffers: ReadBuffersType = undefined,
+        callback_dispatch_table: CallbackDispatchTableType = undefined,
         callback_context: *anyopaque = undefined,
 
         const Self = @This();
 
         pub fn init(
-            allocator: std.mem.Allocator,
             loop: *Loop,
             options: ClientOptions,
+            comptime callback_dispatch_table_instance: CallbackDispatchTableType,
+            callback_context_instance: *CallbackContext,
         ) !Self {
-            var initialized_buffers: ReadBuffersStruct(MessageTypeUnion) = undefined;
+            var initialized_buffers: ReadBuffersType = undefined;
 
-            inline for (@typeInfo(ReadBuffersStruct(MessageTypeUnion)).@"struct".fields) |field_info| {
+            inline for (@typeInfo(ReadBuffersType).@"struct".fields) |field_info| {
                 @field(initialized_buffers, field_info.name) = undefined;
             }
             return Self{
-                .allocator = allocator,
                 .loop = loop,
                 .socket = try TCP.init(options.server_addr),
                 .options = options,
                 .read_buffers = initialized_buffers,
+                .callback_dispatch_table = callback_dispatch_table_instance,
+                .callback_context = callback_context_instance,
             };
-        }
-
-        pub fn setupCallbacks(
-            self: *Self,
-            callback_dispatch_table: CallbackDispatchTable(MessageTypeUnion, CallbackContext),
-            callback_context: *CallbackContext,
-        ) void {
-            self.callback_dispatch_table = callback_dispatch_table;
-            self.callback_context = callback_context;
         }
 
         pub fn connect(self: *Self) void {
@@ -180,7 +173,7 @@ pub fn Client(
             };
             std.debug.print("Wrote to server\n", .{});
 
-            self.socket.read(l, &self.read_completion, .{ .slice = &self.read_buf }, Self, self, readCallback);
+            self.socket.read(l, &self.read_completion, .{ .slice = &self.read_buffers.ping }, Self, self, readCallback);
 
             return .disarm;
         }
@@ -215,11 +208,14 @@ pub fn Client(
             buf: xev.ReadBuffer,
             r: xev.ReadError!usize,
         ) xev.CallbackAction {
-            _ = self_;
-            _ = l;
-            _ = c;
+            const self = self_.?;
+            // // _ = l;
+            // _ = c;
             _ = buf;
             _ = r catch unreachable;
+            std.debug.print("Read from server\n", .{});
+            self.socket.read(l, c, .{ .slice = &self.read_buffers.ping }, Self, self, readCallback);
+
             return .disarm;
         }
     };

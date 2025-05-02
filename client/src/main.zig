@@ -20,16 +20,6 @@ pub fn main() !void {
     var allocator_state = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = allocator_state.allocator();
 
-    const tcp_client = try Client(
-        Message,
-        App,
-    ).init(
-        allocator,
-        &loop,
-        .{
-            .server_addr = try std.net.Address.parseIp4("127.0.0.1", 8081),
-        },
-    );
     var app = try App.init(
         allocator,
         &loop,
@@ -37,10 +27,17 @@ pub fn main() !void {
         3456,
         2234,
     );
-
-    tcp_client.setupCallbacks(
+    var tcp_client = try Client(
+        Message,
+        App,
+    ).init(
+        &loop,
+        .{
+            .server_addr = try std.net.Address.parseIp4("127.0.0.1", 8081),
+        },
         .{
             .ping = App.pingCallback,
+            .pong = App.pingCallback,
         },
         app,
     );

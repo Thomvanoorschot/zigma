@@ -117,7 +117,7 @@ pub const App = struct {
             }
         }.inner;
         self.loop.timer(&self.render_frame_completion, 0, @ptrCast(self), callback);
-        self.tcp_client.connect();
+        // self.tcp_client.connect();
         // self.socket.connect(self.loop, &self.connect_completion, self.server_addr, Self, self, connectCallback);
     }
 
@@ -284,7 +284,7 @@ pub const App = struct {
         self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);
         return .disarm;
     }
-    fn pingCallback(
+    pub fn pingCallback(
         self_: ?*Self,
         payload: PingMessage,
     ) anyerror!void {

@@ -7,7 +7,9 @@ const xev = @import("xev");
 const orderbook_chart = @import("orderbook_chart.zig");
 const ohlc_chart = @import("ohlc_chart.zig");
 const shared_models = @import("shared_models");
+const xevtcp = @import("xevtcp");
 
+const Client = xevtcp.Client;
 const wgpu = zgpu.wgpu;
 const OrderBook = shared_models.OrderBook;
 const PriceLevel = shared_models.PriceLevel;
@@ -19,6 +21,14 @@ const parseOHLCList = shared_models.parseOHLCList;
 const TCP = xev.TCP;
 const plotOHLCListWindow = ohlc_chart.plotOHLCListWindow;
 
+pub const Message = union(enum) {
+    ping: PingMessage,
+    pong: PingMessage,
+};
+pub const PingMessage = struct {
+    test_field: []u8,
+};
+
 pub const App = struct {
     const Self = @This();
     allocator: std.mem.Allocator,
@@ -27,12 +37,6 @@ pub const App = struct {
     gctx: *zgpu.GraphicsContext,
     render_frame_completion: xev.Completion = undefined,
 
-    socket: TCP,
-    server_addr: std.net.Address,
-    connect_completion: xev.Completion = undefined,
-    read_completion: xev.Completion = undefined,
-    // TODO Do this in a smarter way
-    read_buf: [4096]u8 = undefined,
 
     orderbook: ?*const OrderBook = null,
     ohlc_list: ?[]OHLC = null,
@@ -79,16 +83,14 @@ pub const App = struct {
         plot.init();
 
         const self = try allocator.create(Self);
-        const server_addr = try std.net.Address.parseIp4("127.0.0.1", 8081);
 
         self.* = Self{
             .allocator = allocator,
             .loop = loop,
             .window = window,
             .gctx = gctx,
-            .socket = try TCP.init(server_addr),
-            .server_addr = server_addr,
         };
+
         return self;
     }
 
@@ -115,7 +117,8 @@ pub const App = struct {
             }
         }.inner;
         self.loop.timer(&self.render_frame_completion, 0, @ptrCast(self), callback);
-        self.socket.connect(self.loop, &self.connect_completion, self.server_addr, Self, self, connectCallback);
+        self.tcp_client.connect();
+        // self.socket.connect(self.loop, &self.connect_completion, self.server_addr, Self, self, connectCallback);
     }
 
     pub fn deinit(self: *Self) void {
@@ -280,5 +283,13 @@ pub const App = struct {
         self.orderbook = ob;
         self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);
         return .disarm;
+    }
+    fn pingCallback(
+        self_: ?*Self,
+        payload: PingMessage,
+    ) anyerror!void {
+        _ = self_;
+        _ = payload;
+        std.debug.print("ping\n", .{});
     }
 };

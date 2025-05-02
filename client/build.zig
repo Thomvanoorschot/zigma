@@ -25,6 +25,10 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
     });
+    const xevtcp_dep = b.dependency("xevtcp", .{
+        .target = target,
+        .optimize = optimize,
+    });
     const xev_dep = b.dependency("libxev", .{
         .target = target,
         .optimize = optimize,
@@ -45,6 +49,7 @@ pub fn build(b: *std.Build) !void {
     client_mod.addImport("zglfw", zglfw_dep.module("root"));
     client_mod.addImport("zgpu", zgpu_dep.module("root"));
     client_mod.addImport("xev", xev_dep.module("xev"));
+    client_mod.addImport("xevtcp", xevtcp_dep.module("xevtcp"));
     client_mod.addImport("shared_models", shared_models_dep.module("shared_models"));
     client_mod.addImport("zul", zul_dep.module("zul"));
 
@@ -58,6 +63,7 @@ pub fn build(b: *std.Build) !void {
     exe.root_module.addImport("zglfw", zglfw_dep.module("root"));
     exe.linkLibrary(zglfw_dep.artifact("glfw"));
     exe.root_module.addImport("xev", xev_dep.module("xev"));
+    exe.root_module.addImport("xevtcp", xevtcp_dep.module("xevtcp"));
     exe.root_module.addImport("shared_models", shared_models_dep.module("shared_models"));
     exe.root_module.addImport("zul", zul_dep.module("zul"));
     @import("zgpu").addLibraryPathsTo(exe);

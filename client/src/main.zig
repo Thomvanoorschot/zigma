@@ -2,9 +2,13 @@ const std = @import("std");
 const xev = @import("xev");
 const Loop = xev.Loop;
 const App = @import("visualization/app.zig").App;
+const Message = @import("visualization/app.zig").Message;
 const window_title = "zigma_client";
+const xevtcp = @import("xevtcp");
+const Client = xevtcp.Client;
 
 pub fn main() !void {
+
     // var thread_pool = xev.ThreadPool.init(.{
     //     .max_threads = 0,
     // });
@@ -16,6 +20,16 @@ pub fn main() !void {
     var allocator_state = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = allocator_state.allocator();
 
+    const tcp_client = try Client(
+        Message,
+        App,
+    ).init(
+        allocator,
+        &loop,
+        .{
+            .server_addr = try std.net.Address.parseIp4("127.0.0.1", 8081),
+        },
+    );
     var app = try App.init(
         allocator,
         &loop,
@@ -23,6 +37,14 @@ pub fn main() !void {
         3456,
         2234,
     );
+
+    tcp_client.setupCallbacks(
+        .{
+            .ping = App.pingCallback,
+        },
+        app,
+    );
+    tcp_client.connect();
     app.start();
 
     try loop.run(.until_done);

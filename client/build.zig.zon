@@ -15,6 +15,9 @@
         .shared_models = .{
             .path = "../shared_models",
         },
+        .xevtcp = .{
+            .path = "../xevtcp",
+        },
         .zul = .{
             .url = "https://github.com/karlseguin/zul/archive/master.tar.gz",
             .hash = "zul-0.0.0-1oDotyJMBwBli3UBm47WYeNZSMNni_DbkT-jTtDpowDW",

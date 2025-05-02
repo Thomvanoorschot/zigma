@@ -22,7 +22,7 @@ fn CallbackDispatchTable(comptime MsgType: type, comptime CbCtx: type) type {
         fields_array[i] = .{
             .name = field.name,
             .type = CallbackType,
-            .default_value_ptr = null, 
+            .default_value_ptr = null,
             .is_comptime = false,
             .alignment = @alignOf(CallbackType),
         };
@@ -45,7 +45,7 @@ fn ReadBuffersStruct(comptime U: type) type {
     inline for (union_fields, 0..) |field, i| {
         fields_array[i] = .{
             .name = field.name,
-            .type = [4096]u8,
+            .type = [20000]u8,
             .default_value_ptr = null,
             .is_comptime = false,
             .alignment = @alignOf([4096]u8),
@@ -88,15 +88,15 @@ pub fn Client(
 
         read_buffers: ReadBuffersType = undefined,
         callback_dispatch_table: CallbackDispatchTableType = undefined,
-        callback_context: *anyopaque = undefined,
+        callback_context: *CallbackContext = undefined,
 
         const Self = @This();
 
         pub fn init(
             loop: *Loop,
             options: ClientOptions,
-            comptime callback_dispatch_table_instance: CallbackDispatchTableType,
-            callback_context_instance: *CallbackContext,
+            comptime callback_dispatch_table: CallbackDispatchTableType,
+            callback_context: *CallbackContext,
         ) !Self {
             var initialized_buffers: ReadBuffersType = undefined;
 
@@ -108,8 +108,8 @@ pub fn Client(
                 .socket = try TCP.init(options.server_addr),
                 .options = options,
                 .read_buffers = initialized_buffers,
-                .callback_dispatch_table = callback_dispatch_table_instance,
-                .callback_context = callback_context_instance,
+                .callback_dispatch_table = callback_dispatch_table,
+                .callback_context = callback_context,
             };
         }
 
@@ -173,7 +173,7 @@ pub fn Client(
             };
             std.debug.print("Wrote to server\n", .{});
 
-            self.socket.read(l, &self.read_completion, .{ .slice = &self.read_buffers.ping }, Self, self, readCallback);
+            self.socket.read(l, &self.read_completion, .{ .slice = &self.read_buffers.orderbook }, Self, self, readCallback);
 
             return .disarm;
         }
@@ -211,10 +211,13 @@ pub fn Client(
             const self = self_.?;
             // // _ = l;
             // _ = c;
-            _ = buf;
+            // _ = buf;
             _ = r catch unreachable;
-            std.debug.print("Read from server\n", .{});
-            self.socket.read(l, c, .{ .slice = &self.read_buffers.ping }, Self, self, readCallback);
+
+            // TODO: Read from the buffer, look at the frame header, and call the appropriate callback
+
+            self.callback_dispatch_table.orderbook(self.callback_context, buf.slice) catch unreachable;
+            self.socket.read(l, c, .{ .slice = &self.read_buffers.orderbook }, Self, self, readCallback);
 
             return .disarm;
         }

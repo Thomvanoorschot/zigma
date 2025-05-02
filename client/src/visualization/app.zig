@@ -21,12 +21,8 @@ const parseOHLCList = shared_models.parseOHLCList;
 const TCP = xev.TCP;
 const plotOHLCListWindow = ohlc_chart.plotOHLCListWindow;
 
-pub const Message = union(enum) {
-    ping: PingMessage,
-    pong: PingMessage,
-};
-pub const PingMessage = struct {
-    test_field: []u8,
+pub const TCPMessage = union(enum) {
+    orderbook: []const u8,
 };
 
 pub const App = struct {
@@ -36,7 +32,6 @@ pub const App = struct {
     window: *glfw.Window,
     gctx: *zgpu.GraphicsContext,
     render_frame_completion: xev.Completion = undefined,
-
 
     orderbook: ?*const OrderBook = null,
     ohlc_list: ?[]OHLC = null,
@@ -284,12 +279,16 @@ pub const App = struct {
         self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);
         return .disarm;
     }
-    pub fn pingCallback(
-        self_: ?*Self,
-        payload: PingMessage,
+    pub fn orderbookCallback(
+                self_: ?*Self,
+
+        payload: []const u8,
     ) anyerror!void {
-        _ = self_;
-        _ = payload;
-        std.debug.print("ping\n", .{});
+        const self = self_.?;
+        const ob = parseOrderbook(self.allocator, payload) catch |err| {
+            std.log.err("Failed to parse orderbook data: {s}", .{@errorName(err)});
+            return error.FailedToParseOrderbook;
+        };
+        self.orderbook = ob;
     }
 };

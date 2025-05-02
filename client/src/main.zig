@@ -2,7 +2,7 @@ const std = @import("std");
 const xev = @import("xev");
 const Loop = xev.Loop;
 const App = @import("visualization/app.zig").App;
-const Message = @import("visualization/app.zig").Message;
+const TCPMessage = @import("visualization/app.zig").TCPMessage;
 const window_title = "zigma_client";
 const xevtcp = @import("xevtcp");
 const Client = xevtcp.Client;
@@ -28,7 +28,7 @@ pub fn main() !void {
         2234,
     );
     var tcp_client = try Client(
-        Message,
+        TCPMessage,
         App,
     ).init(
         &loop,
@@ -36,8 +36,7 @@ pub fn main() !void {
             .server_addr = try std.net.Address.parseIp4("127.0.0.1", 8081),
         },
         .{
-            .ping = App.pingCallback,
-            .pong = App.pingCallback,
+            .orderbook = App.orderbookCallback,
         },
         app,
     );

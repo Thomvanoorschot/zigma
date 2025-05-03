@@ -2,7 +2,7 @@ const std = @import("std");
 const xev = @import("xev");
 const Loop = xev.Loop;
 const App = @import("visualization/app.zig").App;
-const TCPMessage = @import("visualization/app.zig").TCPMessage;
+const TCPMessageCallbacks = @import("visualization/app.zig").TCPMessageCallbacks;
 const window_title = "zigma_client";
 const xevtcp = @import("xevtcp");
 const Client = xevtcp.Client;
@@ -28,8 +28,7 @@ pub fn main() !void {
         2234,
     );
     var tcp_client = try Client(
-        TCPMessage,
-        App,
+        TCPMessageCallbacks,
     ).init(
         &loop,
         .{

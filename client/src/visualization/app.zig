@@ -21,8 +21,8 @@ const parseOHLCList = shared_models.parseOHLCList;
 const TCP = xev.TCP;
 const plotOHLCListWindow = ohlc_chart.plotOHLCListWindow;
 
-pub const TCPMessage = union(enum) {
-    orderbook: []const u8,
+pub const TCPMessageCallbacks = union(enum) {
+    orderbook: *const fn (*anyopaque, []u8) anyerror!void,
 };
 
 pub const App = struct {
@@ -280,11 +280,10 @@ pub const App = struct {
         return .disarm;
     }
     pub fn orderbookCallback(
-                self_: ?*Self,
-
+        self_: ?*anyopaque,
         payload: []const u8,
     ) anyerror!void {
-        const self = self_.?;
+        const self = @as(*Self, @ptrCast(@alignCast(self_)));
         const ob = parseOrderbook(self.allocator, payload) catch |err| {
             std.log.err("Failed to parse orderbook data: {s}", .{@errorName(err)});
             return error.FailedToParseOrderbook;

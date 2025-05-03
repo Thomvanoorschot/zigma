@@ -3,6 +3,7 @@ const xev = @import("xev");
 const frm = @import("frame.zig");
 const rb = @import("read_buffer.zig");
 const validation = @import("validation.zig");
+const cb = @import("callback.zig");
 
 const TCP = xev.TCP;
 const Loop = xev.Loop;
@@ -10,6 +11,7 @@ const Completion = xev.Completion;
 const frameHeader = frm.frameHeader;
 const validateMessageCallbacks = validation.validateMessageCallbacks;
 const ReadBuffers = rb.ReadBuffers;
+const Callbacks = cb.Callbacks;
 
 pub const ClientOptions = struct {
     server_addr: std.net.Address,
@@ -17,11 +19,11 @@ pub const ClientOptions = struct {
 };
 
 pub fn Client(
-    comptime MessageCallbacks: type,
+    comptime MessageCallbacksUnion: type,
 ) type {
-    comptime validateMessageCallbacks(MessageCallbacks);
+    comptime validateMessageCallbacks(MessageCallbacksUnion);
 
-    const ReadBuffersType = ReadBuffers(MessageCallbacks);
+    const ReadBuffersType = ReadBuffers(MessageCallbacksUnion);
 
     return struct {
         options: ClientOptions,
@@ -34,29 +36,31 @@ pub fn Client(
 
         read_buffers: ReadBuffersType = undefined,
         callback_context: *anyopaque = undefined,
-        message_callbacks: MessageCallbacks = undefined,
+        callbacks: Callbacks(MessageCallbacksUnion) = undefined,
 
         const Self = @This();
 
         pub fn init(
             loop: *Loop,
             options: ClientOptions,
-            comptime message_callbacks: MessageCallbacks,
+            comptime cbs: Callbacks(MessageCallbacksUnion),
             callback_context: *anyopaque,
         ) !Self {
             var initialized_buffers: ReadBuffersType = undefined;
-
             inline for (@typeInfo(ReadBuffersType).@"struct".fields) |field_info| {
                 @field(initialized_buffers, field_info.name) = undefined;
             }
+            // var initialized_callbacks: Callbacks(MessageCallbacksUnion) = undefined;
+            // inline for (@typeInfo(Callbacks(MessageCallbacksUnion)).@"struct".fields) |field_info| {
+            //     @field(initialized_callbacks, field_info.name) = undefined;
+            // }
             return Self{
                 .loop = loop,
                 .socket = try TCP.init(options.server_addr),
                 .options = options,
                 .read_buffers = initialized_buffers,
-                // .callback_dispatch_table = callback_dispatch_table,
                 .callback_context = callback_context,
-                .message_callbacks = message_callbacks,
+                .callbacks = cbs,
             };
         }
 
@@ -141,7 +145,7 @@ pub fn Client(
 
             // TODO: Read from the buffer, look at the frame header, and call the appropriate callback
 
-            self.message_callbacks.orderbook(self.callback_context, buf.slice) catch unreachable;
+            self.callbacks.orderbook(self.callback_context, buf.slice) catch unreachable;
             self.socket.read(l, c, .{ .slice = &self.read_buffers.orderbook }, Self, self, readCallback);
 
             return .disarm;

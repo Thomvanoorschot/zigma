@@ -27,19 +27,6 @@ pub fn main() !void {
         3456,
         2234,
     );
-    var tcp_client = try Client(
-        TCPMessageCallbacks,
-    ).init(
-        &loop,
-        .{
-            .server_addr = try std.net.Address.parseIp4("127.0.0.1", 8081),
-        },
-        .{
-            .orderbook = App.orderbookCallback,
-        },
-        app,
-    );
-    tcp_client.connect();
     app.start();
 
     try loop.run(.until_done);

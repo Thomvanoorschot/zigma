@@ -23,6 +23,7 @@ const plotOHLCListWindow = ohlc_chart.plotOHLCListWindow;
 
 pub const TCPMessageCallbacks = union(enum) {
     orderbook: *const fn (*anyopaque, []u8) anyerror!void,
+    ohlc: *const fn (*anyopaque, []u8) anyerror!void,
 };
 
 pub const App = struct {
@@ -35,6 +36,7 @@ pub const App = struct {
 
     orderbook: ?*const OrderBook = null,
     ohlc_list: ?[]OHLC = null,
+    tcp_client: Client(TCPMessageCallbacks),
     pub fn init(
         allocator: std.mem.Allocator,
         loop: *xev.Loop,
@@ -78,12 +80,26 @@ pub const App = struct {
         plot.init();
 
         const self = try allocator.create(Self);
+        const tcp_client = try Client(
+            TCPMessageCallbacks,
+        ).init(
+            loop,
+            .{
+                .server_addr = try std.net.Address.parseIp4("127.0.0.1", 8081),
+            },
+            .{
+                .orderbook = orderbookCallback,
+                .ohlc = ohlcCallback,
+            },
+            self,
+        );
 
         self.* = Self{
             .allocator = allocator,
             .loop = loop,
             .window = window,
             .gctx = gctx,
+            .tcp_client = tcp_client,
         };
 
         return self;
@@ -112,7 +128,7 @@ pub const App = struct {
             }
         }.inner;
         self.loop.timer(&self.render_frame_completion, 0, @ptrCast(self), callback);
-        // self.tcp_client.connect();
+        self.tcp_client.connect();
         // self.socket.connect(self.loop, &self.connect_completion, self.server_addr, Self, self, connectCallback);
     }
 
@@ -132,33 +148,6 @@ pub const App = struct {
             self.gctx.swapchain_descriptor.width,
             self.gctx.swapchain_descriptor.height,
         );
-
-        // if (gui.begin("candlestick", .{})) {
-        //     defer gui.end();
-        //     if (plot.beginPlot("candlestick", .{
-        //         .h = -1,
-        //     })) {
-        //         defer plot.endPlot();
-        //         // plot.setupAxis(.x1, .{ .flags = .{ .auto_fit = true } });
-        //         // plot.setupAxis(.y1, .{ .flags = .{ .auto_fit = true } });
-
-        //         // plot.setupAxisLimits(.x1, .{ .min = 0.0, .max = 1.0, .cond = .once });
-        //         // plot.setupAxisLimits(.y1, .{ .min = 0.0, .max = 1.0, .cond = .once });
-        //         // plot.setupLegend(.{ .south = true, .west = true }, .{});
-        //         plot.setupFinish();
-
-        //         plot.plotLine("", f64, .{
-        //             .xv = &[_]f64{ 0.1, 0.1 },
-        //             .yv = &[_]f64{ 0.1, 0.5 },
-        //         });
-
-        //         // plot.plotBars("", f64, .{
-        //         //     .xv = &[_]f64{ 0.1, 0.2 },
-        //         //     .yv = &[_]f64{ 0.3, 0.4 },
-        //         //     .bar_size = 0.01,
-        //         // });
-        //     }
-        // }
 
         if (self.ohlc_list) |ohlc_list| {
             try plotOHLCListWindow(self.allocator, ohlc_list);
@@ -196,89 +185,18 @@ pub const App = struct {
         _ = self.gctx.present();
     }
 
-    fn connectCallback(
-        self_: ?*Self,
-        l: *xev.Loop,
-        c: *xev.Completion,
-        _: TCP,
-        r: xev.ConnectError!void,
-    ) xev.CallbackAction {
-        const self = self_.?;
-
-        r catch |err| {
-            std.debug.print("Callback error: {s}\n", .{@errorName(err)});
-            return .disarm;
+    pub fn ohlcCallback(
+        self_: ?*anyopaque,
+        payload: []const u8,
+    ) anyerror!void {
+        const self = @as(*Self, @ptrCast(@alignCast(self_)));
+        const ohlc_list = parseOHLCList(self.allocator, payload) catch |err| {
+            std.log.err("Failed to parse ohlc data: {s}", .{@errorName(err)});
+            return error.FailedToParseOHLC;
         };
-
-        std.debug.print("Connected to server\n", .{});
-
-        self.socket.write(l, c, .{ .slice = "Connection: keep-alive\r\nstart" }, Self, self, writeCallback);
-        return .disarm;
+        self.ohlc_list = ohlc_list;
     }
 
-    fn writeCallback(
-        self_: ?*Self,
-        l: *xev.Loop,
-        _: *xev.Completion,
-        _: TCP,
-        _: xev.WriteBuffer,
-        r: xev.WriteError!usize,
-    ) xev.CallbackAction {
-        const self = self_.?;
-        _ = r catch |err| {
-            std.debug.print("Callback error: {s}\n", .{@errorName(err)});
-            return .disarm;
-        };
-        std.debug.print("Wrote to server\n", .{});
-
-        self.socket.read(l, &self.read_completion, .{ .slice = &self.read_buf }, Self, self, readCallback);
-
-        return .disarm;
-    }
-
-    // fn readCallback(
-    //     self_: ?*Self,
-    //     l: *xev.Loop,
-    //     c: *xev.Completion,
-    //     _: TCP,
-    //     buf: xev.ReadBuffer,
-    //     r: xev.ReadError!usize,
-    // ) xev.CallbackAction {
-    //     const self = self_.?;
-    //     const n = r catch |err| {
-    //         std.debug.print("Read error: {s}\n", .{@errorName(err)});
-    //         return .disarm;
-    //     };
-
-    //     const received_data = buf.slice[0..n];
-    //     const ohlc_list = parseOHLCList(self.allocator, received_data) catch unreachable;
-    //     self.ohlc_list = ohlc_list;
-
-    //     self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);
-    //     return .disarm;
-    // }
-    fn readCallback(
-        self_: ?*Self,
-        l: *xev.Loop,
-        c: *xev.Completion,
-        _: TCP,
-        buf: xev.ReadBuffer,
-        r: xev.ReadError!usize,
-    ) xev.CallbackAction {
-        const self = self_.?;
-        const n = r catch |err| {
-            std.debug.print("Read error: {s}\n", .{@errorName(err)});
-            return .disarm;
-        };
-        const received_data = buf.slice[0..n];
-        const ob = parseOrderbook(self.allocator, received_data) catch |err| {
-            std.log.err("Failed to parse orderbook data: {s}", .{@errorName(err)});
-            return .disarm;
-        };
-        self.orderbook = ob;
-        self.socket.read(l, c, .{ .slice = &self.read_buf }, Self, self, readCallback);
-        return .disarm;
-    }
     pub fn orderbookCallback(
         self_: ?*anyopaque,
         payload: []const u8,

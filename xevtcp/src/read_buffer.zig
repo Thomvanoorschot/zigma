@@ -7,6 +7,7 @@ pub fn ReadBuffers(comptime U: type) type {
     inline for (union_fields, 0..) |field, i| {
         fields_array[i] = .{
             .name = field.name,
+            // TODO This is obviously not the best way to do this
             .type = [20000]u8,
             .default_value_ptr = null,
             .is_comptime = false,

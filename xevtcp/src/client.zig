@@ -24,7 +24,7 @@ pub fn Client(
     comptime validateMessageCallbacks(MessageCallbacksUnion);
 
     const ReadBuffersType = ReadBuffers(MessageCallbacksUnion);
-
+    const CallbacksType = Callbacks(MessageCallbacksUnion);
     return struct {
         options: ClientOptions,
 
@@ -36,24 +36,21 @@ pub fn Client(
 
         read_buffers: ReadBuffersType = undefined,
         callback_context: *anyopaque = undefined,
-        callbacks: Callbacks(MessageCallbacksUnion) = undefined,
+        callbacks: CallbacksType = undefined,
 
         const Self = @This();
 
         pub fn init(
             loop: *Loop,
             options: ClientOptions,
-            comptime cbs: Callbacks(MessageCallbacksUnion),
+            comptime cbs: CallbacksType,
             callback_context: *anyopaque,
         ) !Self {
             var initialized_buffers: ReadBuffersType = undefined;
             inline for (@typeInfo(ReadBuffersType).@"struct".fields) |field_info| {
                 @field(initialized_buffers, field_info.name) = undefined;
             }
-            // var initialized_callbacks: Callbacks(MessageCallbacksUnion) = undefined;
-            // inline for (@typeInfo(Callbacks(MessageCallbacksUnion)).@"struct".fields) |field_info| {
-            //     @field(initialized_callbacks, field_info.name) = undefined;
-            // }
+ 
             return Self{
                 .loop = loop,
                 .socket = try TCP.init(options.server_addr),

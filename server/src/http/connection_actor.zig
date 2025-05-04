@@ -26,6 +26,8 @@ pub const ConnectionMessage = union(enum) {
 
 pub const SetupMessage = struct {
     client_conn: *ClientConnection,
+    close_context: *anyopaque,
+    close_callback: *const fn (self: *anyopaque, conn: *ConnectionActor) anyerror!void,
 };
 
 pub const InitMessage = struct {};
@@ -36,8 +38,8 @@ pub const ConnectionActor = struct {
     client_conn: *ClientConnection = undefined,
     // socket: xev.TCP = undefined,
     // read_completion: xev.Completion = undefined,
-    // close_context: *anyopaque = undefined,
-    // close_callback: *const fn (self: *anyopaque, conn: *Self) anyerror!void = undefined,
+    close_context: *anyopaque = undefined,
+    close_callback: *const fn (self: *anyopaque, conn: *Self) anyerror!void = undefined,
     // io_buf: [8192]u8 = std.mem.zeroes([8192]u8),
     // keep_alive: bool = false,
     // write_completions: std.ArrayList(*xev.Completion),
@@ -62,7 +64,9 @@ pub const ConnectionActor = struct {
         switch (message.payload) {
             .setup => |m| {
                 self.client_conn = m.client_conn;
-                self.client_conn.setCloseCallback(closeCallback);
+                self.client_conn.setCloseCallback(@ptrCast(self), closeCallback);
+                self.close_context = m.close_context;
+                self.close_callback = m.close_callback;
                 self.read();
             },
             .orderbook_update => |m| {
@@ -106,5 +110,6 @@ pub const ConnectionActor = struct {
         try self.ctx.send("orderbook_actor", OrderbookMessage{
             .unsubscribe = .{},
         });
+        try self.close_callback(self.close_context, self);
     }
 };

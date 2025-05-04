@@ -85,6 +85,8 @@ pub const ServerActor = struct {
         };
         actor_interface.send(self.ctx.actor, ConnectionMessage{ .setup = .{
             .client_conn = client_conn,
+            .close_context = self,
+            .close_callback = closeConnection,
         } }) catch unreachable;
 
         return .rearm;

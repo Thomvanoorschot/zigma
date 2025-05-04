@@ -16,6 +16,7 @@ pub const ClientConnection = struct {
     keep_alive: bool = false,
     is_closing: bool = false,
 
+    close_context: *anyopaque = undefined,
     close_cb: ?*const fn (
         self_: ?*anyopaque,
     ) anyerror!void = null,
@@ -66,8 +67,8 @@ pub const ClientConnection = struct {
                 const userdata = ud orelse unreachable;
                 const inner_self = userdata.self;
                 const inner_cb_context = userdata.cb_context;
-                defer inner_self.allocator.destroy(userdata);
                 if (inner_self.is_closing) {
+                    inner_self.allocator.destroy(userdata);
                     return .disarm;
                 }
                 const bytes_read = r catch |err| {
@@ -159,15 +160,20 @@ pub const ClientConnection = struct {
         }
         return .disarm;
     }
-    pub fn setCloseCallback(self: *Self, cb: *const fn (
-        self_: ?*anyopaque,
-    ) anyerror!void) void {
+    pub fn setCloseCallback(
+        self: *Self,
+        close_context: *anyopaque,
+        cb: *const fn (
+            self_: ?*anyopaque,
+        ) anyerror!void,
+    ) void {
+        self.close_context = close_context;
         self.close_cb = cb;
     }
     fn close(self: *Self) void {
         self.is_closing = true;
         if (self.close_cb) |cb| {
-            cb(self) catch |close_err| {
+            cb(self.close_context) catch |close_err| {
                 std.log.err("Failed to close connection: {any}", .{close_err});
             };
         }

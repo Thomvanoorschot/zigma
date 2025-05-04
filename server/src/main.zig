@@ -38,7 +38,7 @@ pub fn main() !void {
         .address = try std.net.Address.parseIp4("127.0.0.1", 8081),
         .max_connections = 1024,
     } });
-    try server_actor.send(null, ServerMessage{ .listen = .{} });
+    try server_actor.send(null, ServerMessage{ .accept = .{} });
 
     const orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
         .id = "orderbook_actor",

@@ -14,10 +14,9 @@ pub const ClientConnection = struct {
     read_completion: Completion = undefined,
     write_completions: std.ArrayList(*Completion),
     keep_alive: bool = false,
-    is_closing: bool = false,
 
-    close_context: *anyopaque = undefined,
-    close_cb: ?*const fn (
+    on_close_ctx: *anyopaque = undefined,
+    on_close_cb: ?*const fn (
         self_: ?*anyopaque,
     ) anyerror!void = null,
 
@@ -67,13 +66,8 @@ pub const ClientConnection = struct {
                 const userdata = ud orelse unreachable;
                 const inner_self = userdata.self;
                 const inner_cb_context = userdata.cb_context;
-                if (inner_self.is_closing) {
-                    inner_self.allocator.destroy(userdata);
-                    return .disarm;
-                }
                 const bytes_read = r catch |err| {
                     if (err == error.ConnectionResetByPeer) {
-                        inner_self.is_closing = true;
                         inner_self.close();
                         return .disarm;
                     }
@@ -90,7 +84,6 @@ pub const ClientConnection = struct {
                 }
                 if (bytes_read == 0) {
                     std.log.info("Client sent 0 bytes (potentially closed). Closing connection.", .{});
-                    inner_self.is_closing = true;
                     inner_self.close();
                     return .disarm;
                 }
@@ -100,6 +93,9 @@ pub const ClientConnection = struct {
                 if (inner_self.keep_alive) {
                     return .rearm;
                 }
+                // TODO: This isn't destroying it in all cases
+                inner_self.allocator.destroy(userdata);
+
                 return .disarm;
             }
         }.inner;
@@ -137,10 +133,7 @@ pub const ClientConnection = struct {
         r: xev.WriteError!usize,
     ) xev.CallbackAction {
         const self = self_ orelse unreachable;
-        if (self.is_closing) {
-            std.debug.print("Write callback: is_closing\n", .{});
-            return .disarm;
-        }
+
         for (self.write_completions.items, 0..) |item, idx| {
             if (item == c) {
                 _ = self.write_completions.orderedRemove(idx);
@@ -162,18 +155,18 @@ pub const ClientConnection = struct {
     }
     pub fn setCloseCallback(
         self: *Self,
-        close_context: *anyopaque,
-        cb: *const fn (
+        on_close_ctx: *anyopaque,
+        on_close_cb: *const fn (
             self_: ?*anyopaque,
         ) anyerror!void,
     ) void {
-        self.close_context = close_context;
-        self.close_cb = cb;
+        self.on_close_ctx = on_close_ctx;
+        self.on_close_cb = on_close_cb;
     }
-    fn close(self: *Self) void {
-        self.is_closing = true;
-        if (self.close_cb) |cb| {
-            cb(self.close_context) catch |close_err| {
+    pub fn close(self: *Self) void {
+        self.server.returnConnection(self);
+        if (self.on_close_cb) |cb| {
+            cb(self.on_close_ctx) catch |close_err| {
                 std.log.err("Failed to close connection: {any}", .{close_err});
             };
         }

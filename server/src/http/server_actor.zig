@@ -13,14 +13,14 @@ const Server = xevtcp.Server;
 
 pub const ServerMessage = union(enum) {
     init: InitMessage,
-    listen: ListenMessage,
+    accept: AcceptMessage,
 };
 
 pub const InitMessage = struct {
     address: std.net.Address,
     max_connections: u31,
 };
-pub const ListenMessage = struct {};
+pub const AcceptMessage = struct {};
 
 pub const ServerActor = struct {
     allocator: std.mem.Allocator,
@@ -53,8 +53,8 @@ pub const ServerActor = struct {
                     acceptCallback,
                 );
             },
-            .listen => |_| {
-                self.server.startAccepting();
+            .accept => |_| {
+                self.server.accept();
             },
         }
     }

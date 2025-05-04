@@ -26,10 +26,8 @@ pub const ConnectionActor = struct {
     ctx: *Context,
     socket: xev.TCP = undefined,
     read_completion: xev.Completion = undefined,
-    write_completion: xev.Completion = undefined,
     close_context: *anyopaque = undefined,
     close_callback: *const fn (self: *anyopaque, conn: *Self) anyerror!void = undefined,
-    close_completion: xev.Completion = undefined,
     io_buf: [8192]u8 = std.mem.zeroes([8192]u8),
     keep_alive: bool = false,
     write_completions: std.ArrayList(*xev.Completion),
@@ -64,7 +62,7 @@ pub const ConnectionActor = struct {
             },
             .ohlc_update => |m| {
                 const str = try stringifyOHLCList(self.allocator, m);
-                
+
                 self.write(str);
             },
         }

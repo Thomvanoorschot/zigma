@@ -66,10 +66,6 @@ pub const ServerActor = struct {
         client_conn: *xevtcp.ClientConnection,
     ) xev.CallbackAction {
         const self = unsafeAnyOpaqueCast(Self, self_);
-        // This is a socket per connection -- DO NOT FORGET
-        // const socket: xev.TCP = result catch {
-        //     return .rearm;
-        // };
         const fd_string = std.fmt.allocPrint(self.allocator, "{}", .{client_conn.socket.fd}) catch |err| {
             std.log.err("Failed to allocate string for socket fd {d}: {any}", .{ client_conn.socket.fd, err });
             // TODO: Close connection

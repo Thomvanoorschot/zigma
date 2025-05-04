@@ -36,14 +36,9 @@ pub const ConnectionActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context,
     client_conn: *ClientConnection = undefined,
-    // socket: xev.TCP = undefined,
-    // read_completion: xev.Completion = undefined,
-    close_context: *anyopaque = undefined,
-    close_callback: *const fn (self: *anyopaque, conn: *Self) anyerror!void = undefined,
-    // io_buf: [8192]u8 = std.mem.zeroes([8192]u8),
-    // keep_alive: bool = false,
-    // write_completions: std.ArrayList(*xev.Completion),
-    // is_closing: bool = false,
+
+    return_connection_context: *anyopaque = undefined,
+    return_connection: *const fn (self: *anyopaque, conn: *Self) anyerror!void = undefined,
 
     const Self = @This();
 
@@ -58,15 +53,17 @@ pub const ConnectionActor = struct {
         return self;
     }
 
-    pub fn deinit(_: *Self) void {}
+    pub fn deinit(_: *Self) void {
+        // TODO: add proper deinit
+    }
 
     pub fn receive(self: *Self, message: *const Envelope(ConnectionMessage)) !void {
         switch (message.payload) {
             .setup => |m| {
                 self.client_conn = m.client_conn;
-                self.client_conn.setCloseCallback(@ptrCast(self), closeCallback);
-                self.close_context = m.close_context;
-                self.close_callback = m.close_callback;
+                self.client_conn.setCloseCallback(@ptrCast(self), close);
+                self.return_connection_context = m.close_context;
+                self.return_connection = m.close_callback;
                 self.read();
             },
             .orderbook_update => |m| {
@@ -75,7 +72,6 @@ pub const ConnectionActor = struct {
             },
             .ohlc_update => |m| {
                 const str = try stringifyOHLCList(self.allocator, m);
-
                 self.write(str);
             },
         }
@@ -103,13 +99,13 @@ pub const ConnectionActor = struct {
         self.client_conn.write(buf.items);
     }
 
-    fn closeCallback(
+    fn close(
         self_: ?*anyopaque,
     ) !void {
         const self = unsafeAnyOpaqueCast(Self, self_);
         try self.ctx.send("orderbook_actor", OrderbookMessage{
             .unsubscribe = .{},
         });
-        try self.close_callback(self.close_context, self);
+        try self.return_connection(self.return_connection_context, self);
     }
 };

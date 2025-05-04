@@ -7,9 +7,10 @@ const Loop = xev.Loop;
 const TCP = xev.TCP;
 const Completion = xev.Completion;
 const ClientConnection = clnt_conn.ClientConnection;
+
 pub const ServerOptions = struct {
     address: std.net.Address,
-    max_connections: usize = 1024,
+    max_connections: u31 = 1024,
 };
 
 pub const Server = struct {
@@ -55,18 +56,18 @@ pub const Server = struct {
 
         try self.listen_socket.bind(options.address);
         try self.listen_socket.listen(options.max_connections);
-
+        
         return self;
     }
 
-    pub fn deinit(self: *Self) void {
-        self.listen_socket.close();
-        self.accept_completion.cancel(self.loop);
+    pub fn deinit(_: *Self) void {
+        // self.listen_socket.close();
+        // self.accept_completion.cancel(self.loop);
 
-        while (self.connections.popOrNull()) |client_conn| {
-            self.closeClientResources(client_conn);
-        }
-        self.connections.deinit();
+        // while (self.connections.popOrNull()) |client_conn| {
+        //     self.closeClientResources(client_conn);
+        // }
+        // self.connections.deinit();
     }
 
     pub fn startAccepting(self: *Self) void {
@@ -99,7 +100,11 @@ pub const Server = struct {
             return .rearm; // Keep listening
         }
 
-        const client_conn = ClientConnection.init(self.allocator) catch |err| {
+        const client_conn = ClientConnection.init(
+            self.allocator,
+            self,
+            client_socket,
+        ) catch |err| {
             std.log.err("Failed to allocate memory for client connection: {s}", .{@errorName(err)});
             // client_socket.close();
             return .rearm; // Keep listening

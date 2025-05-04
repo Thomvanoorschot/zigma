@@ -26,6 +26,9 @@
         .shared_models = .{
             .path = "../shared_models",
         },
+        .xevtcp = .{
+            .path = "../xevtcp",
+        },
     },
     .paths = .{
         "src",

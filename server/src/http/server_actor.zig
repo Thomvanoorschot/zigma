@@ -8,6 +8,9 @@ const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
 const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
 
+const xevtcp = @import("xevtcp");
+const Server = xevtcp.Server;
+
 pub const ServerMessage = union(enum) {
     init: InitMessage,
     listen: ListenMessage,
@@ -26,6 +29,7 @@ pub const ServerActor = struct {
     max_connections: usize = 1024,
     accept_completion: xev.Completion = undefined,
 
+    server: xevtcp.Server,
     const Self = @This();
 
     pub fn init(ctx: *Context, allocator: std.mem.Allocator) !*Self {
@@ -35,8 +39,32 @@ pub const ServerActor = struct {
         self.* = .{
             .ctx = ctx,
             .allocator = allocator,
+            .server = try xevtcp.Server.init(
+                allocator,
+                ctx.getLoop(),
+                .{
+                    .address = std.net.Address.parseIp("0.0.0.0", 8082) catch unreachable,
+                    .max_connections = 1024,
+                },
+                self,
+                testAcceptCallback,
+            ),
         };
         return self;
+    }
+
+    fn testAcceptCallback(
+        self_: ?*anyopaque,
+        _: *xev.Loop,
+        _: *xev.Completion,
+        client_conn: *xevtcp.ClientConnection,
+    ) xev.CallbackAction {
+        const self = unsafeAnyOpaqueCast(Self, self_);
+        _ = self;
+        _ = client_conn;
+        std.log.info("testAcceptCallback", .{});
+        // client_conn.read();
+        return .rearm;
     }
 
     pub fn receive(self: *Self, message: *const Envelope(ServerMessage)) !void {
@@ -46,6 +74,8 @@ pub const ServerActor = struct {
                 self.max_connections = m.max_connections;
                 try self.socket.?.bind(m.address);
                 try self.socket.?.listen(m.max_connections);
+
+                self.server.startAccepting();
             },
             .listen => |_| {
                 std.log.info("Received 'listen' message (already listening).", .{});

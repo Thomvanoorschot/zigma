@@ -118,7 +118,7 @@ pub const ClientConnection = struct {
         completion: *xev.Completion = undefined,
         frame: []u8,
     };
-    pub fn write(self: *Self, data: []const u8) !void {
+    pub fn write(self: *Self, data: []u8) !void {
         const write_context = self.write_contexts.allocator.create(writeContext) catch unreachable;
         const write_completion = self.allocator.create(xev.Completion) catch unreachable;
         write_context.* = .{
@@ -129,7 +129,7 @@ pub const ClientConnection = struct {
         self.socket.write(
             self.server.loop,
             write_context.completion,
-            .{ .slice = data },
+            .{ .slice = write_context.frame },
             Self,
             self,
             internalWriteCallback,

@@ -29,8 +29,8 @@ pub fn validateMessageCallbacks(comptime MessageCallbacks: type) void {
         comptime if (fn_info.params[0].type.? != *anyopaque) {
             @compileError("First argument of callback function type for '" ++ field.name ++ "' must be '*anyopaque', found '" ++ @typeName(fn_info.params[0].type.?) ++ "'");
         };
-        comptime if (fn_info.params[1].type.? != []u8) {
-            @compileError("Second argument of callback function type for '" ++ field.name ++ "' must be '[]u8', found '" ++ @typeName(fn_info.params[1].type.?) ++ "'");
+        comptime if (fn_info.params[1].type.? != []const u8) {
+            @compileError("Second argument of callback function type for '" ++ field.name ++ "' must be '[]const u8', found '" ++ @typeName(fn_info.params[1].type.?) ++ "'");
         };
     }
 }

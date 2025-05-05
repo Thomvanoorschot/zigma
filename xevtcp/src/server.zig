@@ -124,7 +124,7 @@ pub const Server = struct {
 
         for (self.connections.items, 0..) |conn, i| {
             if (conn == client_conn) {
-                _ = self.connections.orderedRemove(i);
+                _ = self.connections.swapRemove(i);
                 break;
             }
         }

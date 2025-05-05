@@ -22,8 +22,8 @@ const TCP = xev.TCP;
 const plotOHLCListWindow = ohlc_chart.plotOHLCListWindow;
 
 pub const TCPMessageCallbacks = union(enum) {
-    orderbook: *const fn (*anyopaque, []u8) anyerror!void,
-    ohlc: *const fn (*anyopaque, []u8) anyerror!void,
+    orderbook: *const fn (*anyopaque, []const u8) anyerror!void,
+    ohlc: *const fn (*anyopaque, []const u8) anyerror!void,
 };
 
 pub const App = struct {
@@ -83,6 +83,7 @@ pub const App = struct {
         const tcp_client = try Client(
             TCPMessageCallbacks,
         ).init(
+            allocator,
             loop,
             .{
                 .server_addr = try std.net.Address.parseIp4("127.0.0.1", 8081),
@@ -129,6 +130,7 @@ pub const App = struct {
         }.inner;
         self.loop.timer(&self.render_frame_completion, 0, @ptrCast(self), callback);
         self.tcp_client.connect();
+        self.tcp_client.startReading();
         // self.socket.connect(self.loop, &self.connect_completion, self.server_addr, Self, self, connectCallback);
     }
 

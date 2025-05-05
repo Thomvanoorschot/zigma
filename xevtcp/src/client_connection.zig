@@ -1,18 +1,21 @@
 const std = @import("std");
 const xev = @import("xev");
 const svr = @import("server.zig");
+const frm = @import("frame.zig");
 
 const TCP = xev.TCP;
 const Completion = xev.Completion;
 const Loop = xev.Loop;
 const Server = svr.Server;
+const Frame = frm.Frame;
+
 pub const ClientConnection = struct {
     allocator: std.mem.Allocator,
     server: *Server,
     socket: TCP,
     read_buffer: [1024]u8 = undefined,
     read_completion: Completion = undefined,
-    write_completions: std.ArrayList(*Completion),
+    write_contexts: std.ArrayList(*writeContext),
     keep_alive: bool = false,
 
     on_close_ctx: *anyopaque = undefined,
@@ -34,13 +37,13 @@ pub const ClientConnection = struct {
             .allocator = allocator,
             .server = server,
             .socket = socket,
-            .write_completions = std.ArrayList(*xev.Completion).init(allocator),
+            .write_contexts = std.ArrayList(*writeContext).init(allocator),
         };
         return self;
     }
 
     pub fn deinit(self: *Self) void {
-        self.write_completions.deinit();
+        self.write_contexts.deinit();
     }
     pub fn read(
         self: *Self,
@@ -111,12 +114,21 @@ pub const ClientConnection = struct {
         );
     }
 
-    pub fn write(self: *Self, data: []const u8) void {
-        const new_completion = self.write_completions.allocator.create(Completion) catch unreachable;
-        self.write_completions.append(new_completion) catch unreachable;
+    const writeContext = struct {
+        completion: *xev.Completion = undefined,
+        frame: []u8,
+    };
+    pub fn write(self: *Self, data: []const u8) !void {
+        const write_context = self.write_contexts.allocator.create(writeContext) catch unreachable;
+        const write_completion = self.allocator.create(xev.Completion) catch unreachable;
+        write_context.* = .{
+            .completion = write_completion,
+            .frame = try Frame.init(self.allocator, 0, data),
+        };
+        self.write_contexts.append(write_context) catch unreachable;
         self.socket.write(
             self.server.loop,
-            new_completion,
+            write_context.completion,
             .{ .slice = data },
             Self,
             self,
@@ -134,13 +146,15 @@ pub const ClientConnection = struct {
     ) xev.CallbackAction {
         const self = self_ orelse unreachable;
 
-        for (self.write_completions.items, 0..) |item, idx| {
-            if (item == c) {
-                _ = self.write_completions.orderedRemove(idx);
+        for (self.write_contexts.items, 0..) |item, idx| {
+            if (item.completion == c) {
+                // TODO: This can be done better
+                self.write_contexts.allocator.destroy(c);
+                self.write_contexts.allocator.destroy(item);
+                _ = self.write_contexts.orderedRemove(idx);
                 break;
             }
         }
-        defer self.write_completions.allocator.destroy(c);
         const bytes_written = r catch |err| {
             std.log.err("Write error to client: {any}. Closing connection.", .{err});
             self.close();

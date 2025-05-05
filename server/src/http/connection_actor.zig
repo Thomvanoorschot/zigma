@@ -68,11 +68,11 @@ pub const ConnectionActor = struct {
             },
             .orderbook_update => |m| {
                 const str = try m.stringify(self.allocator);
-                self.write(str);
+                try self.write(str);
             },
             .ohlc_update => |m| {
                 const str = try stringifyOHLCList(self.allocator, m);
-                self.write(str);
+                try self.write(str);
             },
         }
     }
@@ -95,8 +95,8 @@ pub const ConnectionActor = struct {
         }
     }
 
-    pub fn write(self: *Self, buf: std.ArrayList(u8)) void {
-        self.client_conn.write(buf.items);
+    pub fn write(self: *Self, buf: std.ArrayList(u8)) !void {
+        try self.client_conn.write(buf.items);
     }
 
     fn close(

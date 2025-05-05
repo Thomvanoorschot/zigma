@@ -1,20 +1,19 @@
 const std = @import("std");
 
-pub fn frameHeader(comptime UserFrameType: type) type {
-    comptime {
-        const info = @typeInfo(UserFrameType);
-        if (info != .Enum) {
-            @compileError("UserFrameType must be an enum.");
-        }
-        if (info.Enum.tag_type != u8) {
-            @compileError("UserFrameType enum must be backed by u8.");
-        }
+pub const Frame = struct {
+    pub fn init(
+        allocator: std.mem.Allocator,
+        msg_type: u8,
+        payload: []const u8,
+    ) ![]u8 {
+        const headerSize = 1 + @sizeOf(u32);
+        const totalSize = headerSize + payload.len;
+
+        var buf = try allocator.alloc(u8, totalSize);
+        buf[0] = msg_type;
+
+        std.mem.writeInt(u32, buf[1..headerSize], @intCast(payload.len), .big);
+        @memcpy(buf[headerSize..], payload);
+        return buf;
     }
-
-    return packed struct {
-        type: UserFrameType,
-        payload_len: u32,
-
-        pub const HEADER_SIZE = @sizeOf(@This());
-    };
-}
+};

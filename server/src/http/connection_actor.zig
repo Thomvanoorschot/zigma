@@ -18,6 +18,12 @@ const DataItem = @import("zbor").DataItem;
 const ClientConnection = xevtcp.ClientConnection;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
+// TODO: This is the wrong place for this
+pub const MessageTypes = enum {
+    orderbook,
+    ohlc,
+};
+
 pub const ConnectionMessage = union(enum) {
     orderbook_update: *Orderbook,
     ohlc_update: OHLCList,
@@ -68,16 +74,18 @@ pub const ConnectionActor = struct {
             },
             .orderbook_update => |m| {
                 const str = try m.stringify(self.allocator);
-                try self.write(str);
+                try self.write(.orderbook, str);
             },
             .ohlc_update => |m| {
                 const str = try stringifyOHLCList(self.allocator, m);
-                try self.write(str);
+                try self.write(.ohlc, str);
             },
         }
     }
 
-    pub fn read(self: *Self) void {
+    pub fn read(
+        self: *Self,
+    ) void {
         self.client_conn.read(@ptrCast(self), readCallback);
     }
     fn readCallback(
@@ -95,8 +103,8 @@ pub const ConnectionActor = struct {
         }
     }
 
-    pub fn write(self: *Self, buf: std.ArrayList(u8)) !void {
-        try self.client_conn.write(buf.items);
+    pub fn write(self: *Self, message_type: MessageTypes, buf: std.ArrayList(u8)) !void {
+        try self.client_conn.write(MessageTypes, message_type, buf.items);
     }
 
     fn close(

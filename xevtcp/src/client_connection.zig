@@ -118,12 +118,21 @@ pub const ClientConnection = struct {
         completion: *xev.Completion = undefined,
         frame: []u8,
     };
-    pub fn write(self: *Self, data: []u8) !void {
+    pub fn write(
+        self: *Self,
+        comptime MessageTypes: type,
+        message_type: MessageTypes,
+        data: []u8,
+    ) !void {
         const write_context = self.write_contexts.allocator.create(writeContext) catch unreachable;
         const write_completion = self.allocator.create(xev.Completion) catch unreachable;
         write_context.* = .{
             .completion = write_completion,
-            .frame = try Frame.init(self.allocator, 0, data),
+            .frame = try Frame.init(
+                self.allocator,
+                @intFromEnum(message_type),
+                data,
+            ),
         };
         self.write_contexts.append(write_context) catch unreachable;
         self.socket.write(

@@ -1,16 +1,16 @@
 const std = @import("std");
 
 pub fn Callbacks(comptime U: type) type {
-    const union_fields = @typeInfo(U).@"union".fields;
-    var fields_array: [union_fields.len]std.builtin.Type.StructField = undefined;
+    const enum_fields = @typeInfo(U).@"enum".fields;
+    var fields_array: [enum_fields.len]std.builtin.Type.StructField = undefined;
 
-    inline for (union_fields, 0..) |field, i| {
+    inline for (enum_fields, 0..) |field, i| {
         fields_array[i] = .{
             .name = field.name,
-            .type = field.type,
+            .type = *const fn (*anyopaque, []const u8) anyerror!void,
             .default_value_ptr = null,
             .is_comptime = false,
-            .alignment = @alignOf(field.type),
+            .alignment = @alignOf(*const fn (*anyopaque, []const u8) anyerror!void),
         };
     }
 

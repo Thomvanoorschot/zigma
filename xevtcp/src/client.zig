@@ -1,14 +1,12 @@
 const std = @import("std");
 const xev = @import("xev");
 const rb = @import("read_buffer.zig");
-const validation = @import("validation.zig");
 const cb = @import("callback.zig");
 const frm = @import("frame.zig");
 
 const TCP = xev.TCP;
 const Loop = xev.Loop;
 const Completion = xev.Completion;
-const validateMessageCallbacks = validation.validateMessageCallbacks;
 const ReadBuffers = rb.ReadBuffers;
 const Callbacks = cb.Callbacks;
 const Frame = frm.Frame;
@@ -19,12 +17,10 @@ pub const ClientOptions = struct {
 };
 
 pub fn Client(
-    comptime MessageCallbacksUnion: type,
+    comptime MessageTypes: type,
 ) type {
-    comptime validateMessageCallbacks(MessageCallbacksUnion);
-
-    const ReadBuffersType = ReadBuffers(MessageCallbacksUnion);
-    const CallbacksType = Callbacks(MessageCallbacksUnion);
+    const ReadBuffersType = ReadBuffers(MessageTypes);
+    const CallbacksType = Callbacks(MessageTypes);
     return struct {
         allocator: std.mem.Allocator,
         options: ClientOptions,
@@ -36,7 +32,7 @@ pub fn Client(
         read_completion: Completion = undefined,
 
         // TODO: For now this works since we only have a single thread and sequential reads
-        frame_header_buf: FrameHeader = undefined,
+        frame_header: FrameHeader = undefined,
         read_buffers: ReadBuffersType = undefined,
         callback_context: *anyopaque = undefined,
         callbacks: CallbacksType = undefined,
@@ -120,7 +116,7 @@ pub fn Client(
             self.socket.read(
                 self.loop,
                 &self.read_completion,
-                .{ .slice = &self.frame_header_buf.header_bytes },
+                .{ .slice = &self.frame_header.header_bytes },
                 Self,
                 self,
                 readHeaderCallback,
@@ -155,22 +151,30 @@ pub fn Client(
             const self = self_.?;
             _ = r catch unreachable;
 
-            if (self.read_buffers.orderbook.payload.len > 0) {
-                self.allocator.free(self.read_buffers.orderbook.payload);
-                self.read_buffers.orderbook.payload = &.{};
+            const message_type: MessageTypes = @enumFromInt(self.frame_header.messageType());
+            inline for (@typeInfo(MessageTypes).@"enum".fields) |field_info| {
+                if (std.mem.eql(u8, @tagName(message_type), field_info.name)) {
+                    var read_buffer = &@field(self.read_buffers, field_info.name);
+
+                    if (read_buffer.payload.len > 0) {
+                        self.allocator.free(read_buffer.payload);
+                        read_buffer.payload = &.{};
+                    }
+                    read_buffer.payload = self.allocator.alloc(
+                        u8,
+                        @intCast(self.frame_header.payloadLength()),
+                    ) catch unreachable;
+                    self.socket.read(
+                        l,
+                        c,
+                        .{ .slice = read_buffer.payload },
+                        Self,
+                        self,
+                        readPayloadCallback,
+                    );
+                    return .disarm;
+                }
             }
-            self.read_buffers.orderbook.payload = self.allocator.alloc(
-                u8,
-                @intCast(self.frame_header_buf.payloadLength()),
-            ) catch unreachable;
-            self.socket.read(
-                l,
-                c,
-                .{ .slice = self.read_buffers.orderbook.payload },
-                Self,
-                self,
-                readPayloadCallback,
-            );
             return .disarm;
         }
 
@@ -184,11 +188,22 @@ pub fn Client(
         ) xev.CallbackAction {
             const self = self_.?;
             _ = r catch unreachable;
-            self.callbacks.orderbook(self.callback_context, self.read_buffers.orderbook.payload) catch unreachable;
+
+            const message_type: MessageTypes = @enumFromInt(self.frame_header.messageType());
+            inline for (@typeInfo(MessageTypes).@"enum".fields) |field_info| {
+                if (std.mem.eql(u8, @tagName(message_type), field_info.name)) {
+                    const callback_fn = @field(self.callbacks, field_info.name);
+                    const buffer_frame = @field(self.read_buffers, field_info.name);
+                    callback_fn(self.callback_context, buffer_frame.payload) catch |err| {
+                        std.log.err("Callback error for message type '{s}': {s}", .{ field_info.name, @errorName(err) });
+                    };
+                    break;
+                }
+            }
             self.socket.read(
                 l,
                 c,
-                .{ .slice = &self.frame_header_buf.header_bytes },
+                .{ .slice = &self.frame_header.header_bytes },
                 Self,
                 self,
                 readHeaderCallback,

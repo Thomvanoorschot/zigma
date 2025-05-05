@@ -21,9 +21,9 @@ const parseOHLCList = shared_models.parseOHLCList;
 const TCP = xev.TCP;
 const plotOHLCListWindow = ohlc_chart.plotOHLCListWindow;
 
-pub const TCPMessageCallbacks = union(enum) {
-    orderbook: *const fn (*anyopaque, []const u8) anyerror!void,
-    ohlc: *const fn (*anyopaque, []const u8) anyerror!void,
+pub const MessageTypes = enum {
+    orderbook,
+    ohlc,
 };
 
 pub const App = struct {
@@ -36,7 +36,7 @@ pub const App = struct {
 
     orderbook: ?*const OrderBook = null,
     ohlc_list: ?[]OHLC = null,
-    tcp_client: Client(TCPMessageCallbacks),
+    tcp_client: Client(MessageTypes),
     pub fn init(
         allocator: std.mem.Allocator,
         loop: *xev.Loop,
@@ -81,7 +81,7 @@ pub const App = struct {
 
         const self = try allocator.create(Self);
         const tcp_client = try Client(
-            TCPMessageCallbacks,
+            MessageTypes,
         ).init(
             allocator,
             loop,

@@ -36,6 +36,9 @@ pub const SetupMessage = struct {
     close_callback: *const fn (self: *anyopaque, conn: *ConnectionActor) anyerror!void,
 };
 
+var btc_done = false;
+var eth_done = false;
+
 pub const InitMessage = struct {};
 
 pub const ConnectionActor = struct {
@@ -74,7 +77,6 @@ pub const ConnectionActor = struct {
             },
             .orderbook_update => |m| {
                 const str = try m.stringify(self.allocator);
-                std.debug.print("orderbook_update: {s} str length: {d}\n", .{ m.ticker, str.items.len });
                 try self.write(.orderbook, str);
             },
             .ohlc_update => |m| {
@@ -99,8 +101,8 @@ pub const ConnectionActor = struct {
 
         while (it.next()) |line| {
             if (std.mem.eql(u8, line, "start")) {
-                self.ctx.send("BTC/USD_orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
                 self.ctx.send("ETH/USD_orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
+                self.ctx.send("BTC/USD_orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
             }
         }
     }

@@ -61,7 +61,7 @@ pub const Broker = struct {
             .params = .{
                 .orderbook = .{
                     .channel = "book",
-                    // TODO: hardcoded for now
+                    // TODO: Need to overhaul websocket client to support multiple writes
                     .symbol = &[_][]const u8{ "BTC/USD", "ETH/USD" },
                 },
             },

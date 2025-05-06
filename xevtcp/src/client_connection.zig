@@ -17,6 +17,7 @@ pub const ClientConnection = struct {
     read_completion: Completion = undefined,
     write_contexts: std.ArrayList(*writeContext),
     keep_alive: bool = false,
+    write_queue: xev.WriteQueue,
 
     on_close_ctx: *anyopaque = undefined,
     on_close_cb: ?*const fn (
@@ -38,6 +39,7 @@ pub const ClientConnection = struct {
             .server = server,
             .socket = socket,
             .write_contexts = std.ArrayList(*writeContext).init(allocator),
+            .write_queue = xev.WriteQueue{},
         };
         return self;
     }
@@ -115,7 +117,7 @@ pub const ClientConnection = struct {
     }
 
     const writeContext = struct {
-        completion: *xev.Completion = undefined,
+        req: xev.WriteRequest = undefined,
         frame: []u8,
     };
     pub fn write(
@@ -125,19 +127,20 @@ pub const ClientConnection = struct {
         data: []u8,
     ) !void {
         const write_context = self.write_contexts.allocator.create(writeContext) catch unreachable;
-        const write_completion = self.allocator.create(xev.Completion) catch unreachable;
         write_context.* = .{
-            .completion = write_completion,
             .frame = try Frame.init(
                 self.allocator,
                 @intFromEnum(message_type),
                 data,
             ),
         };
+
         self.write_contexts.append(write_context) catch unreachable;
-        self.socket.write(
+
+        self.socket.queueWrite(
             self.server.loop,
-            write_context.completion,
+            &self.write_queue,
+            &write_context.req,
             .{ .slice = write_context.frame },
             Self,
             self,
@@ -156,9 +159,8 @@ pub const ClientConnection = struct {
         const self = self_ orelse unreachable;
 
         for (self.write_contexts.items, 0..) |item, idx| {
-            if (item.completion == c) {
+            if (&item.req.completion == c) {
                 // TODO: This can be done better
-                self.write_contexts.allocator.destroy(c);
                 self.write_contexts.allocator.destroy(item);
                 _ = self.write_contexts.orderedRemove(idx);
                 break;
@@ -169,7 +171,6 @@ pub const ClientConnection = struct {
             self.close();
             return .disarm;
         };
-
         if (!self.keep_alive) {
             std.log.info("Wrote {d} bytes to client. Closing connection as requested.", .{bytes_written});
             self.close();

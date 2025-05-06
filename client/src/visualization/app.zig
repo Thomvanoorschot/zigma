@@ -212,7 +212,15 @@ pub const App = struct {
             std.log.err("Failed to parse orderbook data: {s}", .{@errorName(err)});
             return error.FailedToParseOrderbook;
         };
-        std.debug.print("orderbookCallback: {s}\n", .{ob.ticker});
         try self.orderbooks.?.put(ob.ticker, ob);
+    }
+
+    pub fn orderbookTestCallback(
+        self_: ?*anyopaque,
+        payload: []const u8,
+    ) anyerror!void {
+        const self = @as(*Self, @ptrCast(@alignCast(self_)));
+        _ = self;
+        std.debug.print("orderbookTestCallback: {s}\n", .{payload});
     }
 };

@@ -36,8 +36,9 @@ pub const BrokerActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context,
     broker: ?BrokerImpl = null,
-    orderbook_subscriptions: std.ArrayList(*ActorInterface),
-    ohlc_subscriptions: std.ArrayList(*ActorInterface),
+    // TODO: This currently limits to a single subscriber per ticker, need to change this
+    orderbook_subscriptions: std.StringHashMap(*ActorInterface),
+    ohlc_subscriptions: std.StringHashMap(*ActorInterface),
     completion: xev.Completion = undefined,
 
     const Self = @This();
@@ -48,8 +49,8 @@ pub const BrokerActor = struct {
         self.* = .{
             .ctx = ctx,
             .allocator = allocator,
-            .orderbook_subscriptions = std.ArrayList(*ActorInterface).init(allocator),
-            .ohlc_subscriptions = std.ArrayList(*ActorInterface).init(allocator),
+            .orderbook_subscriptions = std.StringHashMap(*ActorInterface).init(allocator),
+            .ohlc_subscriptions = std.StringHashMap(*ActorInterface).init(allocator),
         };
 
         return self;
@@ -69,11 +70,11 @@ pub const BrokerActor = struct {
             .orderbook_subscribe => |m| {
                 // TODO Split this up into seperate messages?
                 try self.broker.?.subscribeToOrderbook(m.ticker);
-                try self.orderbook_subscriptions.append(message.sender.?);
+                try self.orderbook_subscriptions.put(m.ticker, message.sender.?);
             },
             .ohlc_subscribe => |m| {
                 try self.broker.?.subscribeToOHLC(m.ticker);
-                try self.ohlc_subscriptions.append(message.sender.?);
+                try self.ohlc_subscriptions.put(m.ticker, message.sender.?);
             },
         }
     }
@@ -84,15 +85,15 @@ pub const BrokerActor = struct {
         if (try message) |m| {
             switch (m) {
                 .orderbook_update => |update| {
-                    for (self.orderbook_subscriptions.items) |actor| {
-                        try actor.send(self.ctx.actor, OrderbookMessage{
+                    if (self.orderbook_subscriptions.get(update.data.symbol)) |subscriber| {
+                        try subscriber.send(self.ctx.actor, OrderbookMessage{
                             .orderbook_update = update,
                         });
                     }
                 },
                 .ohlc_update => |update| {
-                    for (self.ohlc_subscriptions.items) |actor| {
-                        try actor.send(self.ctx.actor, OHLCMessage{
+                    if (self.ohlc_subscriptions.get(update.data.symbol)) |subscriber| {
+                        try subscriber.send(self.ctx.actor, OHLCMessage{
                             .ohlc_update = update,
                         });
                     }

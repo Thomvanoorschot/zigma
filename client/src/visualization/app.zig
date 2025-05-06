@@ -34,7 +34,7 @@ pub const App = struct {
     gctx: *zgpu.GraphicsContext,
     render_frame_completion: xev.Completion = undefined,
 
-    orderbook: ?*const OrderBook = null,
+    orderbooks: ?std.StringHashMap(*const OrderBook) = null,
     ohlc_list: ?[]OHLC = null,
     tcp_client: Client(MessageTypes),
     pub fn init(
@@ -101,6 +101,7 @@ pub const App = struct {
             .window = window,
             .gctx = gctx,
             .tcp_client = tcp_client,
+            .orderbooks = std.StringHashMap(*const OrderBook).init(allocator),
         };
 
         return self;
@@ -154,8 +155,11 @@ pub const App = struct {
         if (self.ohlc_list) |ohlc_list| {
             try plotOHLCListWindow(self.allocator, ohlc_list);
         }
-        if (self.orderbook) |orderbook| {
-            try plotOrderbookWindow(orderbook);
+        if (self.orderbooks) |orderbooks| {
+            var it = orderbooks.valueIterator();
+            while (it.next()) |orderbook| {
+                try plotOrderbookWindow(orderbook.*);
+            }
         }
 
         const swapchain_texv = self.gctx.swapchain.getCurrentTextureView();
@@ -208,6 +212,7 @@ pub const App = struct {
             std.log.err("Failed to parse orderbook data: {s}", .{@errorName(err)});
             return error.FailedToParseOrderbook;
         };
-        self.orderbook = ob;
+        std.debug.print("orderbookCallback: {s}\n", .{ob.ticker});
+        try self.orderbooks.?.put(ob.ticker, ob);
     }
 };

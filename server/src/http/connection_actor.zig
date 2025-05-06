@@ -74,6 +74,7 @@ pub const ConnectionActor = struct {
             },
             .orderbook_update => |m| {
                 const str = try m.stringify(self.allocator);
+                std.debug.print("orderbook_update: {s} str length: {d}\n", .{ m.ticker, str.items.len });
                 try self.write(.orderbook, str);
             },
             .ohlc_update => |m| {
@@ -98,7 +99,8 @@ pub const ConnectionActor = struct {
 
         while (it.next()) |line| {
             if (std.mem.eql(u8, line, "start")) {
-                self.ctx.send("orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
+                self.ctx.send("BTC/USD_orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
+                self.ctx.send("ETH/USD_orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
             }
         }
     }
@@ -111,7 +113,10 @@ pub const ConnectionActor = struct {
         self_: ?*anyopaque,
     ) !void {
         const self = unsafeAnyOpaqueCast(Self, self_);
-        try self.ctx.send("orderbook_actor", OrderbookMessage{
+        try self.ctx.send("BTC/USD_orderbook_actor", OrderbookMessage{
+            .unsubscribe = .{},
+        });
+        try self.ctx.send("ETH/USD_orderbook_actor", OrderbookMessage{
             .unsubscribe = .{},
         });
         try self.return_connection(self.return_connection_context, self);

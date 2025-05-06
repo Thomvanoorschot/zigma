@@ -61,7 +61,8 @@ pub const Broker = struct {
             .params = .{
                 .orderbook = .{
                     .channel = "book",
-                    .symbol = &[_][]const u8{ticker},
+                    // TODO: hardcoded for now
+                    .symbol = &[_][]const u8{ "BTC/USD", "ETH/USD" },
                 },
             },
         }, &buffer);

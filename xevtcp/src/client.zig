@@ -198,6 +198,8 @@ pub fn Client(
                         std.log.err("Callback error for message type '{s}': {s}", .{ field_info.name, @errorName(err) });
                     };
                     break;
+                } else {
+                    std.log.err("readPayloadCallback: Unknown message type or enum issue for tag {any}\\n", .{self.frame_header.messageType()});
                 }
             }
             self.socket.read(

@@ -37,7 +37,7 @@ pub const OrderbookUnsubscribeRequest = struct {};
 
 pub const OrderbookActor = struct {
     allocator: Allocator,
-    arena: std.heap.ArenaAllocator,
+    arena_state: std.heap.ArenaAllocator,
     ticker: []const u8 = "",
     ctx: *Context,
     broker_actor: ?*ActorInterface = null,
@@ -48,12 +48,12 @@ pub const OrderbookActor = struct {
     pub fn init(ctx: *Context, allocator: Allocator) !*Self {
         const self = try allocator.create(Self);
 
-        var arena = std.heap.ArenaAllocator.init(allocator);
-        errdefer arena.deinit();
+        var arena_state = std.heap.ArenaAllocator.init(allocator);
+        errdefer arena_state.deinit();
 
         self.* = .{
             .allocator = allocator,
-            .arena = arena,
+            .arena_state = arena_state,
             .ctx = ctx,
             .subscriptions = std.ArrayList(*ActorInterface).init(allocator),
         };
@@ -61,7 +61,7 @@ pub const OrderbookActor = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        self.arena.deinit();
+        self.arena_state.deinit();
     }
 
     pub fn receive(self: *Self, message: *const Envelope(OrderbookMessage)) !void {
@@ -90,7 +90,7 @@ pub const OrderbookActor = struct {
                 var ob_update: OrderbookUpdate = m;
 
                 // TODO Probably move this to some other better place
-                const asks = try ob_update.arena_state.allocator().alloc(shared_models.PriceLevel, ob_update.data.asks.len);
+                const asks = try self.arena_state.allocator().alloc(shared_models.PriceLevel, ob_update.data.asks.len);
                 for (ob_update.data.asks, 0..) |ask, i| {
                     asks[i] = .{ .price = ask.price, .qty = ask.qty };
                 }
@@ -98,7 +98,6 @@ pub const OrderbookActor = struct {
                 for (ob_update.data.bids, 0..) |bid, i| {
                     bids[i] = .{ .price = bid.price, .qty = bid.qty };
                 }
-
                 try self.orderbook.?.processUpdates(bids, asks);
                 ob_update.deinit();
             },
@@ -106,7 +105,12 @@ pub const OrderbookActor = struct {
                 try self.subscriptions.append(message.sender.?);
             },
             .unsubscribe => |_| {
-                _ = self.subscriptions.orderedRemove(0);
+                for (self.subscriptions.items, 0..) |actor, i| {
+                    if (actor == message.sender.?) {
+                        _ = self.subscriptions.orderedRemove(i);
+                        break;
+                    }
+                }
             },
         }
     }

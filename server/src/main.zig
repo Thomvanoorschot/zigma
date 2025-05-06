@@ -40,11 +40,16 @@ pub fn main() !void {
     } });
     try server_actor.send(null, ServerMessage{ .accept = .{} });
 
-    const orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
-        .id = "orderbook_actor",
+    const eth_orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
+        .id = "ETH/USD_orderbook_actor",
     });
-    try orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
-    try orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "BTC/USD" } });
+    try eth_orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
+    try eth_orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "ETH/USD" } });
+    const btc_orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
+        .id = "BTC/USD_orderbook_actor",
+    });
+    try btc_orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
+    try btc_orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "BTC/USD" } });
 
     // const ohlc_actor = try engine.spawnActor(OHLCActor, OHLCMessage, .{
     //     .id = "ohlc_actor",

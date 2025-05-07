@@ -553,6 +553,37 @@ pub fn button(label: [:0]const u8, args: Button) bool {
 }
 extern fn igButton(label: [*:0]const u8, w: f32, h: f32) bool;
 
+pub fn setNextWindowPos(pos: [2]f32, cond: Condition, pivot: [2]f32) void {
+    igSetNextWindowPos(&pos, cond, &pivot);
+}
+extern fn igSetNextWindowPos(pos: *const [2]f32, cond: Condition, pivot: *const [2]f32) void;
+
+// --- Draw List API ---
+
+pub const getWindowDrawList = igGetWindowDrawList;
+pub const getBackgroundDrawList = igGetBackgroundDrawList_Nil;
+pub const getForegroundDrawList = igGetForegroundDrawList_Nil;
+
+extern fn igGetWindowDrawList() DrawList;
+extern fn igGetBackgroundDrawList_Nil() DrawList;
+extern fn igGetForegroundDrawList_Nil() DrawList;
+extern fn igCreateDrawList() DrawList;
+extern fn igDestroyDrawList(draw_list: DrawList) void;
+
+pub const DrawList = *opaque {
+    pub fn addTextVec2(draw_list: DrawList, pos: [2]f32, col: u32, txt: []const u8) void {
+        const pos_imvec = ImVec2{ .x = pos[0], .y = pos[1] };
+        ImDrawList_AddText_Vec2(draw_list, pos_imvec, col, txt.ptr, txt.ptr + txt.len);
+    }
+    extern fn ImDrawList_AddText_Vec2(
+        self: DrawList,
+        pos: ImVec2,
+        col: u32,
+        text_begin: [*]const u8,
+        text_end: [*]const u8,
+    ) void;
+};
+
 // --- Input/Output (IO) ---
 
 /// Access IO structure (mouse/keyboard/gamepad inputs, time, various configuration options/flags)
@@ -580,11 +611,8 @@ pub const io = struct {
     }
 
     pub fn getDisplaySize() [2]f32 {
-        var size: [2]f32 = undefined;
-        igIoGetDisplaySize(&size);
-        return size;
+        return io.getIO().display_size;
     }
-    extern fn igIoGetDisplaySize(size: *[2]f32) void;
 
     /// Set display framebuffer scale. For retina displays. Generally (1, 1) or (2, 2).
     pub fn setDisplayFramebufferScale(sx: f32, sy: f32) void {

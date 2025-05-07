@@ -23,6 +23,7 @@ pub const ClientConnection = struct {
     on_close_cb: ?*const fn (
         self_: ?*anyopaque,
     ) anyerror!void = null,
+    is_closing: bool = false,
 
     const Self = @This();
 
@@ -188,6 +189,10 @@ pub const ClientConnection = struct {
         self.on_close_cb = on_close_cb;
     }
     pub fn close(self: *Self) void {
+        if (self.is_closing) {
+            return;
+        }
+        self.is_closing = true;
         self.server.returnConnection(self);
         if (self.on_close_cb) |cb| {
             cb(self.on_close_ctx) catch |close_err| {

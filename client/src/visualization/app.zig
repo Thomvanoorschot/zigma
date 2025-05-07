@@ -37,6 +37,10 @@ pub const App = struct {
     orderbooks: ?std.StringHashMap(*const OrderBook) = null,
     ohlc_list: ?[]OHLC = null,
     tcp_client: Client(MessageTypes),
+
+    last_fps_update_time: f64 = 0.0,
+    frame_count_since_last_update: u32 = 0,
+    current_fps: f32 = 0.0,
     pub fn init(
         allocator: std.mem.Allocator,
         loop: *xev.Loop,
@@ -102,6 +106,7 @@ pub const App = struct {
             .gctx = gctx,
             .tcp_client = tcp_client,
             .orderbooks = std.StringHashMap(*const OrderBook).init(allocator),
+            .last_fps_update_time = glfw.getTime(),
         };
 
         return self;
@@ -122,14 +127,14 @@ pub const App = struct {
                 app.renderFrame() catch unreachable;
                 if (!app.window.shouldClose() and app.window.getKey(.escape) != .press) {
                     // l.timer(c, 16, ud, inner);
-                    l.timer(c, 0, ud, inner);
+                    l.timer(c, 16, ud, inner);
                     return .disarm;
                 }
                 app.deinit();
                 return .disarm;
             }
         }.inner;
-        self.loop.timer(&self.render_frame_completion, 0, @ptrCast(self), callback);
+        self.loop.timer(&self.render_frame_completion, 16, @ptrCast(self), callback);
         self.tcp_client.connect();
         self.tcp_client.startReading();
         // self.socket.connect(self.loop, &self.connect_completion, self.server_addr, Self, self, connectCallback);
@@ -147,10 +152,26 @@ pub const App = struct {
     pub fn renderFrame(self: *Self) !void {
         glfw.pollEvents();
 
+        const current_time = glfw.getTime();
+        self.frame_count_since_last_update += 1;
+        const delta_time = current_time - self.last_fps_update_time;
+
+        if (delta_time >= 1.0) {
+            self.current_fps = @as(f32, @floatFromInt(self.frame_count_since_last_update)) / @as(f32, @floatCast(delta_time));
+            self.frame_count_since_last_update = 0;
+            self.last_fps_update_time = current_time;
+        }
+
         gui.backend.newFrame(
             self.gctx.swapchain_descriptor.width,
             self.gctx.swapchain_descriptor.height,
         );
+
+ 
+        var fps_buf: [16]u8 = undefined;
+        const fps_text = try std.fmt.bufPrint(&fps_buf, "FPS: {d:.1}", .{self.current_fps});
+        const draw_list = gui.getBackgroundDrawList();
+        draw_list.addTextVec2(.{ 10, 10 }, 0xFF00FF00, fps_text);
 
         if (self.ohlc_list) |ohlc_list| {
             try plotOHLCListWindow(self.allocator, ohlc_list);

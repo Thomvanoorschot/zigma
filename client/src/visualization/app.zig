@@ -126,7 +126,6 @@ pub const App = struct {
                 var app = @as(*Self, @ptrCast(@alignCast(ud.?)));
                 app.renderFrame() catch unreachable;
                 if (!app.window.shouldClose() and app.window.getKey(.escape) != .press) {
-                    // l.timer(c, 16, ud, inner);
                     l.timer(c, 16, ud, inner);
                     return .disarm;
                 }
@@ -137,7 +136,6 @@ pub const App = struct {
         self.loop.timer(&self.render_frame_completion, 16, @ptrCast(self), callback);
         self.tcp_client.connect();
         self.tcp_client.startReading();
-        // self.socket.connect(self.loop, &self.connect_completion, self.server_addr, Self, self, connectCallback);
     }
 
     pub fn deinit(self: *Self) void {
@@ -189,8 +187,6 @@ pub const App = struct {
         const commands = commands: {
             const encoder = self.gctx.device.createCommandEncoder(null);
             defer encoder.release();
-
-            // GUI pass
             {
                 const pass = zgpu.beginRenderPassSimple(
                     encoder,

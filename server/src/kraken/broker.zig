@@ -1,5 +1,5 @@
 const std = @import("std");
-const ws = @import("xevzocket");
+const ws = @import("jolt");
 const json_utils = @import("../utils/json_utils.zig");
 const ws_messages = @import("./ws_messages.zig");
 const backstage = @import("backstage");
@@ -18,6 +18,7 @@ const WsSubsribeRequest = ws_messages.WsSubscribeRequest;
 const parseMessage = ws_messages.parseMessage;
 const BrokerImpl = brkr_impl.BrokerImpl;
 
+var broker: ?*Broker = null;
 pub const Broker = struct {
     allocator: std.mem.Allocator,
     ws_client: ws.Client,
@@ -30,6 +31,9 @@ pub const Broker = struct {
         callback_context: *anyopaque,
         comptime read_callback: *const fn (*anyopaque, anyerror!?BrokerPayload) anyerror!void,
     ) !*Self {
+        if (broker) |b| {
+            return b;
+        }
         const self = try allocator.create(Self);
 
         self.* = .{
@@ -37,14 +41,21 @@ pub const Broker = struct {
             .ws_client = try ws.Client.init(
                 allocator,
                 loop,
-                try std.net.Address.parseIp4("127.0.0.1", 8080),
+                .{
+                    .host = "127.0.0.1",
+                    .port = 8080,
+                    .path = "/ws",
+                },
                 wsReadCb,
                 @ptrCast(self),
             ),
             .callback_context = callback_context,
             .read_callback = read_callback,
         };
-        try self.ws_client.start();
+        std.debug.print("Connecting to kraken\n", .{});
+        try self.ws_client.connect();
+        try self.ws_client.read();
+        broker = self;
         return self;
     }
 
@@ -62,7 +73,7 @@ pub const Broker = struct {
                 .orderbook = .{
                     .channel = "book",
                     // TODO: Need to overhaul websocket client to support multiple writes
-                    .symbol = &[_][]const u8{ "BTC/USD", "ETH/USD" },
+                    .symbol = &[_][]const u8{ ticker },
                 },
             },
         }, &buffer);

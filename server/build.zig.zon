@@ -15,12 +15,12 @@
         //     .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
         //     .hash = "backstage-0.1.0-Lti6bKt0AAAen2XWCzDuNQFWBwB4l2-zL5TJ8Q35St_g",
         // },
-        .xevzocket = .{
-            .path = "../../xevzocket",
+        .jolt = .{
+            .path = "../../jolt",
         },
-        // .xevzocket = .{
-        //     .url = "https://github.com/Thomvanoorschot/xevzocket/archive/main.tar.gz",
-        //     .hash = "xevzocket-0.0.1-6kfuPt54AAArqlQsJkNRkUCGUxQdhpWr0zNVpUHTizyh",
+        // .jolt = .{
+        //     .url = "https://github.com/Thomvanoorschot/jolt/archive/main.tar.gz",
+        //     .hash = "jolt-0.0.1-jsk1Jsp4AADz3Th0qSuQXKz7RPzFjhI_H9PfeNou3M8a",
         // },
         .zbor = .{
             .url = "https://github.com/r4gus/zbor/archive/refs/tags/0.17.2.tar.gz",

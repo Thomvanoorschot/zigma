@@ -45,11 +45,25 @@ pub fn main() !void {
     });
     try eth_orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
     try eth_orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "ETH/USD" } });
+
     const btc_orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
         .id = "BTC/USD_orderbook_actor",
     });
     try btc_orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
     try btc_orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "BTC/USD" } });
+
+    const xrp_orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
+        .id = "XRP/USD_orderbook_actor",
+    });
+    try xrp_orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
+    try xrp_orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "XRP/USD" } });
+
+    const ada_orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
+        .id = "ADA/USD_orderbook_actor",
+    });
+    try ada_orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
+    try ada_orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "ADA/USD" } });
+
 
     // const ohlc_actor = try engine.spawnActor(OHLCActor, OHLCMessage, .{
     //     .id = "ohlc_actor",

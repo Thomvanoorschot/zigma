@@ -7,9 +7,9 @@ const xev = @import("xev");
 const orderbook_chart = @import("orderbook_chart.zig");
 const ohlc_chart = @import("ohlc_chart.zig");
 const shared_models = @import("shared_models");
-const xevtcp = @import("xevtcp");
+const wire = @import("wire");
 
-const Client = xevtcp.Client;
+const Client = wire.Client;
 const wgpu = zgpu.wgpu;
 const OrderBook = shared_models.OrderBook;
 const PriceLevel = shared_models.PriceLevel;

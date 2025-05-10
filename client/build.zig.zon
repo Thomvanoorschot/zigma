@@ -15,9 +15,6 @@
         .shared_models = .{
             .path = "../shared_models",
         },
-        .xevtcp = .{
-            .path = "../xevtcp",
-        },
         .zul = .{
             .url = "https://github.com/karlseguin/zul/archive/master.tar.gz",
             .hash = "zul-0.0.0-1oDotyJMBwBli3UBm47WYeNZSMNni_DbkT-jTtDpowDW",
@@ -31,6 +28,13 @@
             .hash = "N-V-__8AALVIRAIf5nfpx8-4mEo2RGsynVryPQPcHk95qFM5",
             .lazy = true,
         },
+        .wire = .{
+            .path = "../../wire",
+        },
+        // .wire = .{
+        //     .url = "https://github.com/Thomvanoorschot/wire/archive/main.tar.gz",
+        //     .hash = "wire-0.0.1-kK_aNfZYAACoUpVGAcf3QkiBPu935rh2PtvnJntLDdQX",
+        // },
     },
     .paths = .{
         "build.zig",

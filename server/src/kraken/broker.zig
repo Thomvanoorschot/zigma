@@ -52,7 +52,7 @@ pub const Broker = struct {
             .callback_context = callback_context,
             .read_callback = read_callback,
         };
-        std.debug.print("Connecting to kraken\n", .{});
+        std.log.info("Connecting to kraken", .{});
         try self.ws_client.connect();
         try self.ws_client.read();
         broker = self;
@@ -65,7 +65,7 @@ pub const Broker = struct {
     }
 
     pub fn subscribeToOrderbook(self: *Self, ticker: []const u8) !void {
-        std.debug.print("Subscribing to orderbook for {s}\n", .{ticker});
+        std.log.info("Subscribing to orderbook for {s}", .{ticker});
         var buffer: [128]u8 = undefined;
         const req = try ws_messages.stringifySubscribeRequestFixed(WsSubsribeRequest{
             .method = "subscribe",
@@ -82,7 +82,7 @@ pub const Broker = struct {
     }
 
     pub fn subscribeToOHLC(self: *Self, ticker: []const u8) !void {
-        std.debug.print("Subscribing to OHLC for {s}\n", .{ticker});
+        std.log.info("Subscribing to OHLC for {s}", .{ticker});
         var buffer: [128]u8 = undefined;
         const req = try ws_messages.stringifySubscribeRequestFixed(WsSubsribeRequest{
             .method = "subscribe",

@@ -22,7 +22,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    const xevtcp_dep = b.dependency("xevtcp", .{
+    const wire_dep = b.dependency("wire", .{
         .target = target,
         .optimize = optimize,
     });
@@ -39,7 +39,7 @@ pub fn build(b: *std.Build) void {
     server_mod.addImport("jolt", jolt_dep.module("jolt"));
     server_mod.addImport("zbor", zbor_dep.module("zbor"));
     server_mod.addImport("shared_models", shared_models_dep.module("shared_models"));
-    server_mod.addImport("xevtcp", xevtcp_dep.module("xevtcp"));
+    server_mod.addImport("wire", wire_dep.module("wire"));
     // Add executable
     const exe = b.addExecutable(.{
         .name = "zigma_server",
@@ -51,7 +51,7 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("jolt", jolt_dep.module("jolt"));
     exe.root_module.addImport("zbor", zbor_dep.module("zbor"));
     exe.root_module.addImport("shared_models", shared_models_dep.module("shared_models"));
-    exe.root_module.addImport("xevtcp", xevtcp_dep.module("xevtcp"));
+    exe.root_module.addImport("wire", wire_dep.module("wire"));
     b.installArtifact(exe);
     // Add a run step
     const run_cmd = b.addRunArtifact(exe);

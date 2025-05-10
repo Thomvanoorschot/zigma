@@ -4,8 +4,6 @@ const Loop = xev.Loop;
 const App = @import("visualization/app.zig").App;
 const TCPMessageCallbacks = @import("visualization/app.zig").TCPMessageCallbacks;
 const window_title = "zigma_client";
-const xevtcp = @import("xevtcp");
-const Client = xevtcp.Client;
 
 pub fn main() !void {
 

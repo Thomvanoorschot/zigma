@@ -8,8 +8,9 @@ const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
 const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
 
-const xevtcp = @import("xevtcp");
-const Server = xevtcp.Server;
+const wire = @import("wire");
+const Server = wire.Server;
+const ClientConnection = wire.ClientConnection;
 
 pub const ServerMessage = union(enum) {
     init: InitMessage,
@@ -25,7 +26,7 @@ pub const AcceptMessage = struct {};
 pub const ServerActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context,
-    server: xevtcp.Server = undefined,
+    server: Server = undefined,
     const Self = @This();
 
     pub fn init(ctx: *Context, allocator: std.mem.Allocator) !*Self {
@@ -42,7 +43,7 @@ pub const ServerActor = struct {
     pub fn receive(self: *Self, message: *const Envelope(ServerMessage)) !void {
         switch (message.payload) {
             .init => |m| {
-                self.server = try xevtcp.Server.init(
+                self.server = try Server.init(
                     self.allocator,
                     self.ctx.getLoop(),
                     .{
@@ -63,7 +64,7 @@ pub const ServerActor = struct {
         self_: ?*anyopaque,
         _: *xev.Loop,
         _: *xev.Completion,
-        client_conn: *xevtcp.ClientConnection,
+        client_conn: *ClientConnection,
     ) xev.CallbackAction {
         const self = unsafeAnyOpaqueCast(Self, self_);
         const fd_string = std.fmt.allocPrint(self.allocator, "{}", .{client_conn.socket.fd}) catch |err| {
@@ -95,6 +96,6 @@ pub const ServerActor = struct {
         if (!could_remove) {
             return error.FailedToRemoveConnection;
         }
-        std.debug.print("Closed connection\n", .{});
+        std.log.info("Closed connection {s}", .{conn.ctx.actor_id});
     }
 };

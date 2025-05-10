@@ -1,7 +1,7 @@
 const std = @import("std");
 const backstage = @import("backstage");
 const shared_models = @import("shared_models");
-const xevtcp = @import("xevtcp");
+const wire = @import("wire");
 const type_utils = @import("../utils/type_utils.zig");
 const xev = backstage.xev;
 const Context = backstage.Context;
@@ -15,7 +15,7 @@ const OHLCMessage = @import("../trading/ohlc_actor.zig").OHLCMessage;
 const stringify = @import("zbor").stringify;
 const parse = @import("zbor").parse;
 const DataItem = @import("zbor").DataItem;
-const ClientConnection = xevtcp.ClientConnection;
+const ClientConnection = wire.ClientConnection;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
 // TODO: This is the wrong place for this
@@ -103,6 +103,8 @@ pub const ConnectionActor = struct {
             if (std.mem.eql(u8, line, "start")) {
                 self.ctx.send("ETH/USD_orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
                 self.ctx.send("BTC/USD_orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
+                self.ctx.send("XRP/USD_orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
+                self.ctx.send("ADA/USD_orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
             }
         }
     }
@@ -119,6 +121,12 @@ pub const ConnectionActor = struct {
             .unsubscribe = .{},
         });
         try self.ctx.send("ETH/USD_orderbook_actor", OrderbookMessage{
+            .unsubscribe = .{},
+        });
+        try self.ctx.send("XRP/USD_orderbook_actor", OrderbookMessage{
+            .unsubscribe = .{},
+        });
+        try self.ctx.send("ADA/USD_orderbook_actor", OrderbookMessage{
             .unsubscribe = .{},
         });
         try self.return_connection(self.return_connection_context, self);

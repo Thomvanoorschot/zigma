@@ -60,7 +60,8 @@ pub const OrderbookActor = struct {
         return self;
     }
 
-    pub fn deinit(self: *Self) void {
+    pub fn deinit(self: *Self) !void {
+        try self.ctx.deinit();
         self.arena_state.deinit();
     }
 

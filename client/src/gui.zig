@@ -584,6 +584,48 @@ pub const DrawList = *opaque {
     ) void;
 };
 
+// --- Menu API ---
+
+pub const beginMenuBar = igBeginMenuBar;
+/// `pub fn endMenuBar() void`
+pub const endMenuBar = igEndMenuBar;
+/// `pub fn beginMainMenuBar() bool`
+pub const beginMainMenuBar = igBeginMainMenuBar;
+/// `pub fn endMainMenuBar() void`
+pub const endMainMenuBar = igEndMainMenuBar;
+
+pub fn beginMenu(label: [:0]const u8, enabled: bool) bool {
+    return igBeginMenu(label, enabled);
+}
+/// `pub fn endMenu() void`
+pub const endMenu = igEndMenu;
+
+const MenuItem = struct {
+    shortcut: ?[:0]const u8 = null,
+    selected: bool = false,
+    enabled: bool = true,
+};
+pub fn menuItem(label: [:0]const u8, args: MenuItem) bool {
+    return igMenuItem_Bool(label, if (args.shortcut) |s| s.ptr else null, args.selected, args.enabled);
+}
+
+const MenuItemPtr = struct {
+    shortcut: ?[:0]const u8 = null,
+    selected: *bool,
+    enabled: bool = true,
+};
+pub fn menuItemPtr(label: [:0]const u8, args: MenuItemPtr) bool {
+    return igMenuItemPtr(label, if (args.shortcut) |s| s.ptr else null, args.selected, args.enabled);
+}
+
+extern fn igBeginMenuBar() bool;
+extern fn igEndMenuBar() void;
+extern fn igBeginMainMenuBar() bool;
+extern fn igEndMainMenuBar() void;
+extern fn igBeginMenu(label: [*:0]const u8, enabled: bool) bool;
+extern fn igEndMenu() void;
+extern fn igMenuItem_Bool(label: [*:0]const u8, shortcut: ?[*:0]const u8, selected: bool, enabled: bool) bool;
+extern fn igMenuItemPtr(label: [*:0]const u8, shortcut: ?[*:0]const u8, selected: *bool, enabled: bool) bool;
 // --- Input/Output (IO) ---
 
 /// Access IO structure (mouse/keyboard/gamepad inputs, time, various configuration options/flags)

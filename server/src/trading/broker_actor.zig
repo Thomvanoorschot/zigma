@@ -56,6 +56,10 @@ pub const BrokerActor = struct {
         return self;
     }
 
+    pub fn deinit(self: *Self) !void {
+        try self.ctx.deinit();
+    }
+
     pub fn receive(self: *Self, message: *const Envelope(BrokerMessage)) !void {
         switch (message.payload) {
             .init => |m| {

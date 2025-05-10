@@ -50,10 +50,8 @@ pub const App = struct {
     ) !*Self {
         try glfw.init();
 
-        _ = width;
-        _ = height;
         glfw.windowHint(.client_api, .no_api);
-        const window = try glfw.Window.create(1920, 1080, title, null);
+        const window = try glfw.Window.create(width, height, title, null);
         // window.setSizeLimits(450, 800, -1, -1);
         glfw.makeContextCurrent(window);
 
@@ -113,9 +111,6 @@ pub const App = struct {
     }
 
     pub fn start(self: *Self) void {
-        // while (true) {
-        //     self.renderFrame();
-        // }
         const callback = struct {
             fn inner(
                 ud: ?*anyopaque,
@@ -165,11 +160,33 @@ pub const App = struct {
             self.gctx.swapchain_descriptor.height,
         );
 
- 
+        if (gui.beginMainMenuBar()) {
+            defer gui.endMainMenuBar();
+            if (gui.beginMenu("Orderbook", true)) {
+                if (gui.menuItem("BTC/USD", .{})) {
+                    std.debug.print("AAAAAAAAA\n", .{});
+                    // self.tcp_client.send(.orderbook, "BTC/USD");
+                }
+                if (gui.menuItem("ETH/USD", .{})) {
+                    // self.tcp_client.send(.orderbook, "ETH/USD");
+                }
+                if (gui.menuItem("XRP/USD", .{})) {
+                    // self.tcp_client.send(.orderbook, "XRP/USD");
+                }
+                gui.endMenu();
+            }
+        }
+
         var fps_buf: [16]u8 = undefined;
         const fps_text = try std.fmt.bufPrint(&fps_buf, "FPS: {d:.1}", .{self.current_fps});
         const draw_list = gui.getBackgroundDrawList();
-        draw_list.addTextVec2(.{ 10, 10 }, 0xFF00FF00, fps_text);
+        // const screen_width: f32 = @floatFromInt(self.gctx.swapchain_descriptor.width);
+        const padding: f32 = 10.0;
+
+        // const fps_pos_x = screen_width - padding;
+        const fps_pos_y = padding * 2;
+
+        draw_list.addTextVec2(.{ 1600, fps_pos_y }, 0xFF00FF00, fps_text);
 
         if (self.ohlc_list) |ohlc_list| {
             try plotOHLCListWindow(self.allocator, ohlc_list);

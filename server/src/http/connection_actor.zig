@@ -31,8 +31,6 @@ pub const ConnectionMessage = union(enum) {
 
 pub const SetupMessage = struct {
     client_conn: *ClientConnection,
-    close_context: *anyopaque,
-    close_callback: *const fn (self: *anyopaque, conn: *ConnectionActor) anyerror!void,
 };
 
 pub const InitMessage = struct {};
@@ -41,9 +39,6 @@ pub const ConnectionActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context,
     client_conn: *ClientConnection = undefined,
-
-    return_connection_context: *anyopaque = undefined,
-    return_connection: *const fn (self: *anyopaque, conn: *Self) anyerror!void = undefined,
 
     const Self = @This();
 
@@ -58,8 +53,20 @@ pub const ConnectionActor = struct {
         return self;
     }
 
-    pub fn deinit(_: *Self) void {
-        // TODO: add proper deinit
+    pub fn deinit(self: *Self) !void {
+        try self.ctx.deinit();
+        try self.ctx.send("BTC/USD_orderbook_actor", OrderbookMessage{
+            .unsubscribe = .{},
+        });
+        try self.ctx.send("ETH/USD_orderbook_actor", OrderbookMessage{
+            .unsubscribe = .{},
+        });
+        try self.ctx.send("XRP/USD_orderbook_actor", OrderbookMessage{
+            .unsubscribe = .{},
+        });
+        try self.ctx.send("ADA/USD_orderbook_actor", OrderbookMessage{
+            .unsubscribe = .{},
+        });
     }
 
     pub fn receive(self: *Self, message: *const Envelope(ConnectionMessage)) !void {
@@ -67,8 +74,6 @@ pub const ConnectionActor = struct {
             .setup => |m| {
                 self.client_conn = m.client_conn;
                 self.client_conn.setCloseCallback(@ptrCast(self), close);
-                self.return_connection_context = m.close_context;
-                self.return_connection = m.close_callback;
                 self.read();
             },
             .orderbook_update => |m| {
@@ -113,18 +118,6 @@ pub const ConnectionActor = struct {
         self_: ?*anyopaque,
     ) !void {
         const self = unsafeAnyOpaqueCast(Self, self_);
-        try self.ctx.send("BTC/USD_orderbook_actor", OrderbookMessage{
-            .unsubscribe = .{},
-        });
-        try self.ctx.send("ETH/USD_orderbook_actor", OrderbookMessage{
-            .unsubscribe = .{},
-        });
-        try self.ctx.send("XRP/USD_orderbook_actor", OrderbookMessage{
-            .unsubscribe = .{},
-        });
-        try self.ctx.send("ADA/USD_orderbook_actor", OrderbookMessage{
-            .unsubscribe = .{},
-        });
-        try self.return_connection(self.return_connection_context, self);
+        try self.deinit();
     }
 };

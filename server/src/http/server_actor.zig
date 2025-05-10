@@ -40,6 +40,10 @@ pub const ServerActor = struct {
         return self;
     }
 
+    pub fn deinit(self: *Self) !void {
+        try self.ctx.deinit();
+    }
+
     pub fn receive(self: *Self, message: *const Envelope(ServerMessage)) !void {
         switch (message.payload) {
             .init => |m| {
@@ -80,20 +84,8 @@ pub const ServerActor = struct {
         };
         actor_interface.send(self.ctx.actor, ConnectionMessage{ .setup = .{
             .client_conn = client_conn,
-            .close_context = self,
-            .close_callback = closeConnection,
         } }) catch unreachable;
 
         return .rearm;
-    }
-    fn closeConnection(self_: *anyopaque, conn: *ConnectionActor) !void {
-        const self = unsafeAnyOpaqueCast(Self, self_);
-
-        conn.deinit();
-        const could_remove = self.ctx.deinitChildActorByID(conn.ctx.actor_id);
-        if (!could_remove) {
-            return error.FailedToRemoveConnection;
-        }
-        std.log.info("Closed connection {s}", .{conn.ctx.actor_id});
     }
 };

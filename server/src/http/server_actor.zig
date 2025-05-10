@@ -68,16 +68,14 @@ pub const ServerActor = struct {
     ) xev.CallbackAction {
         const self = unsafeAnyOpaqueCast(Self, self_);
         const fd_string = std.fmt.allocPrint(self.allocator, "{}", .{client_conn.socket.fd}) catch |err| {
-            std.log.err("Failed to allocate string for socket fd {d}: {any}", .{ client_conn.socket.fd, err });
-            // TODO: Close connection
+            client_conn.close(err);
             return .rearm;
         };
-        
+
         const actor_interface = self.ctx.spawnChildActor(ConnectionActor, ConnectionMessage, .{
             .id = fd_string,
         }) catch |err| {
-            std.log.err("Failed to spawn connection actor: {any}", .{err});
-            // TODO: Close connection
+            client_conn.close(err);
             return .rearm;
         };
         actor_interface.send(self.ctx.actor, ConnectionMessage{ .setup = .{

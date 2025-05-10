@@ -18,7 +18,6 @@ const DataItem = @import("zbor").DataItem;
 const ClientConnection = wire.ClientConnection;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
-// TODO: This is the wrong place for this
 pub const MessageTypes = enum {
     orderbook,
     ohlc,
@@ -35,9 +34,6 @@ pub const SetupMessage = struct {
     close_context: *anyopaque,
     close_callback: *const fn (self: *anyopaque, conn: *ConnectionActor) anyerror!void,
 };
-
-var btc_done = false;
-var eth_done = false;
 
 pub const InitMessage = struct {};
 

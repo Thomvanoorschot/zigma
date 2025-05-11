@@ -4,10 +4,6 @@
     .version = "0.0.1",
     .minimum_zig_version = "0.15.0-dev.45+24db007cd",
     .dependencies = .{
-        .websocket = .{
-            .url = "https://github.com/karlseguin/websocket.zig/archive/master.tar.gz",
-            .hash = "websocket-0.1.0-ZPISdXNIAwCXG7oHBj4zc1CfmZcDeyR6hfTEOo8_YI4r",
-        },
         .backstage = .{
             .path = "../../backstage",
         },

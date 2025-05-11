@@ -39,6 +39,7 @@ pub const ConnectionActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context,
     client_conn: *ClientConnection = undefined,
+    subscribed_to_orderbooks: std.ArrayList([]const u8),
 
     const Self = @This();
 
@@ -49,24 +50,19 @@ pub const ConnectionActor = struct {
         self.* = .{
             .ctx = ctx,
             .allocator = allocator,
+            .subscribed_to_orderbooks = std.ArrayList([]const u8).init(allocator),
         };
         return self;
     }
 
     pub fn deinit(self: *Self) !void {
         try self.ctx.deinit();
-        try self.ctx.send("BTC/USD_orderbook_actor", OrderbookMessage{
-            .unsubscribe = .{},
-        });
-        try self.ctx.send("ETH/USD_orderbook_actor", OrderbookMessage{
-            .unsubscribe = .{},
-        });
-        try self.ctx.send("XRP/USD_orderbook_actor", OrderbookMessage{
-            .unsubscribe = .{},
-        });
-        try self.ctx.send("ADA/USD_orderbook_actor", OrderbookMessage{
-            .unsubscribe = .{},
-        });
+        for (self.subscribed_to_orderbooks.items) |ticker| {
+            std.debug.print("unsubscribing from {s}\n", .{ticker});
+            try self.ctx.send(ticker, OrderbookMessage{
+                .unsubscribe = .{},
+            });
+        }
     }
 
     pub fn receive(self: *Self, message: *const Envelope(ConnectionMessage)) !void {
@@ -101,11 +97,13 @@ pub const ConnectionActor = struct {
         var it = std.mem.tokenizeAny(u8, payload, "\r\n");
 
         while (it.next()) |line| {
-            if (std.mem.eql(u8, line, "start")) {
-                self.ctx.send("ETH/USD_orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
-                self.ctx.send("BTC/USD_orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
-                self.ctx.send("XRP/USD_orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
-                self.ctx.send("ADA/USD_orderbook_actor", OrderbookMessage{ .subscribe = .{} }) catch unreachable;
+            std.debug.print("line: {s}\n", .{line});
+            if (std.mem.startsWith(u8, line, "orderbook:")) {
+                const ticker = std.fmt.allocPrintZ(self.allocator, "{s}_orderbook_actor", .{line[10..]}) catch unreachable;
+                // TODO: Need a better way to free this memory
+                // defer self.allocator.free(ticker);
+                self.ctx.send(ticker, OrderbookMessage{ .subscribe = .{} }) catch unreachable;
+                self.subscribed_to_orderbooks.append(ticker) catch unreachable;
             }
         }
     }

@@ -6,11 +6,11 @@
     .dependencies = .{
         .libxev = .{
             .url = "https://github.com/mitchellh/libxev/archive/main.tar.gz",
-            .hash = "libxev-0.0.0-86vtc-zkEgB7uv1i0Sa6ytJETZQi_lHJrImu9mLb9moi",
+            .hash = "libxev-0.0.0-86vtc87kEgBxgbJ1RI1R6Elynb7zydCgNR8dt3uw01My",
         },
         .zglfw = .{
             .url = "https://github.com/zig-gamedev/zglfw/archive/main.tar.gz",
-            .hash = "zglfw-0.10.0-dev-zgVDNJmZIQCIiO_94Sp5jqrPtz4Eumk3bDcxS7dSZfIj",
+            .hash = "zglfw-0.10.0-dev-zgVDNMacIQA-k7kNSfwUc9Lfzx-bb_wklVm25K-p8Tr7",
         },
         .shared_models = .{
             .path = "../shared_models",
@@ -21,7 +21,7 @@
         },
         .zgpu = .{
             .url = "https://github.com/zig-gamedev/zgpu/archive/main.tar.gz",
-            .hash = "zgpu-0.12.0-dev-nqFT5BCgCADqzg95ZvomJREp6oIl3NTubfyiUNHc18Pr",
+            .hash = "zgpu-0.12.0-dev-nqFT5EKgCADkhwAf97_pfSOmPWEguKmljSECs9ihpFS7",
         },
         .dawn_aarch64_macos = .{
             .url = "https://github.com/michal-z/webgpu_dawn-aarch64-macos/archive/d2360cdfff0cf4a780cb77aa47c57aca03cc6dfe.tar.gz",

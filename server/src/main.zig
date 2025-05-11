@@ -40,30 +40,14 @@ pub fn main() !void {
     } });
     try server_actor.send(null, ServerMessage{ .accept = .{} });
 
-    const eth_orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
-        .id = "ETH/USD_orderbook_actor",
-    });
-    try eth_orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
-    try eth_orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "ETH/USD" } });
-
-    const btc_orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
-        .id = "BTC/USD_orderbook_actor",
-    });
-    try btc_orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
-    try btc_orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "BTC/USD" } });
-
-    const xrp_orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
-        .id = "XRP/USD_orderbook_actor",
-    });
-    try xrp_orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
-    try xrp_orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "XRP/USD" } });
-
-    const ada_orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
-        .id = "ADA/USD_orderbook_actor",
-    });
-    try ada_orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
-    try ada_orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "ADA/USD" } });
-
+    const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
+    for (tickers) |ticker| {
+        const orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookMessage, .{
+            .id = try std.fmt.allocPrintZ(allocator, "{s}_orderbook_actor", .{ticker}),
+        });
+        try orderbook_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
+        try orderbook_actor.send(null, OrderbookMessage{ .start = .{ .ticker = ticker } });
+    }
 
     // const ohlc_actor = try engine.spawnActor(OHLCActor, OHLCMessage, .{
     //     .id = "ohlc_actor",

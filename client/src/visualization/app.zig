@@ -160,18 +160,19 @@ pub const App = struct {
             self.gctx.swapchain_descriptor.height,
         );
 
+        const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
         if (gui.beginMainMenuBar()) {
             defer gui.endMainMenuBar();
             if (gui.beginMenu("Orderbook", true)) {
-                if (gui.menuItem("BTC/USD", .{})) {
-                    std.debug.print("AAAAAAAAA\n", .{});
-                    // self.tcp_client.send(.orderbook, "BTC/USD");
-                }
-                if (gui.menuItem("ETH/USD", .{})) {
-                    // self.tcp_client.send(.orderbook, "ETH/USD");
-                }
-                if (gui.menuItem("XRP/USD", .{})) {
-                    // self.tcp_client.send(.orderbook, "XRP/USD");
+                for (tickers) |ticker| {
+                    const c_str = try std.fmt.allocPrintZ(self.allocator, "{s}\r\n", .{ticker});
+                    defer self.allocator.free(c_str);
+                    if (gui.menuItem(c_str, .{})) {
+                        // TODO: Need a good way of freeing this memory. The issue is that it needs to get allocated after callback(s) have been called
+                        const ob_msg = std.fmt.allocPrintZ(self.allocator, "orderbook:{s}", .{ticker}) catch unreachable;
+                        std.debug.print("ob_msg: {s}\n", .{ob_msg});
+                        self.tcp_client.write(ob_msg);
+                    }
                 }
                 gui.endMenu();
             }

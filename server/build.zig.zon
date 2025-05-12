@@ -18,10 +18,7 @@
         //     .url = "https://github.com/Thomvanoorschot/jolt/archive/main.tar.gz",
         //     .hash = "jolt-0.0.1-jsk1Jsp4AADz3Th0qSuQXKz7RPzFjhI_H9PfeNou3M8a",
         // },
-        .zbor = .{
-            .url = "https://github.com/r4gus/zbor/archive/refs/tags/0.17.2.tar.gz",
-            .hash = "zbor-0.17.0-kr-CoHIkAwCy2WhoS6MgwSvyQsLWzzNy6a7UTHqMPMmO",
-        },
+
         .shared_models = .{
             .path = "../shared_models",
         },
@@ -32,6 +29,10 @@
         //     .url = "https://github.com/Thomvanoorschot/wire/archive/main.tar.gz",
         //     .hash = "wire-0.0.1-kK_aNfZYAACoUpVGAcf3QkiBPu935rh2PtvnJntLDdQX",
         // },
+        .zbor = .{
+            .url = "https://github.com/r4gus/zbor/archive/master.tar.gz",
+            .hash = "zbor-0.17.3-kr-CoJQkAwDLIuC9SILI7Mw5BpLqoO6Xhxkg_Tnb7lCZ",
+        },
     },
     .paths = .{
         "src",

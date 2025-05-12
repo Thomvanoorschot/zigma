@@ -25,7 +25,7 @@ fn igMemAlloc(size: usize, _: ?*anyopaque) callconv(.C) ?*anyopaque {
 
     const mem = mem_allocator.?.alignedAlloc(
         u8,
-        mem_alignment,
+        .@"16",
         size,
     ) catch @panic("ig: out of memory");
 

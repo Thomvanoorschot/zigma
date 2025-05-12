@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.15.0-dev.45+24db007cd",
     .dependencies = .{
         .zbor = .{
-            .url = "https://github.com/r4gus/zbor/archive/refs/tags/0.17.2.tar.gz",
-            .hash = "zbor-0.17.0-kr-CoHIkAwCy2WhoS6MgwSvyQsLWzzNy6a7UTHqMPMmO",
+            .url = "https://github.com/r4gus/zbor/archive/master.tar.gz",
+            .hash = "zbor-0.17.3-kr-CoJQkAwDLIuC9SILI7Mw5BpLqoO6Xhxkg_Tnb7lCZ",
         },
     },
     .paths = .{

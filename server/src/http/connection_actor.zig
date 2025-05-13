@@ -97,13 +97,24 @@ pub const ConnectionActor = struct {
         var it = std.mem.tokenizeAny(u8, payload, "\r\n");
 
         while (it.next()) |line| {
-            std.debug.print("line: {s}\n", .{line});
-            if (std.mem.startsWith(u8, line, "orderbook:")) {
-                const ticker = std.fmt.allocPrintZ(self.allocator, "{s}_orderbook_actor", .{line[10..]}) catch unreachable;
+            if (std.mem.startsWith(u8, line, "open_orderbook:")) {
+                const ticker = std.fmt.allocPrintZ(self.allocator, "{s}_orderbook_actor", .{line[15..]}) catch unreachable;
                 // TODO: Need a better way to free this memory
                 // defer self.allocator.free(ticker);
                 self.ctx.send(ticker, OrderbookMessage{ .subscribe = .{} }) catch unreachable;
                 self.subscribed_to_orderbooks.append(ticker) catch unreachable;
+            } else if (std.mem.startsWith(u8, line, "close_orderbook:")) {
+                const ticker = std.fmt.allocPrintZ(self.allocator, "{s}_orderbook_actor", .{line[16..]}) catch unreachable;
+                // TODO: Need a better way to free this memory
+                // defer self.allocator.free(ticker);
+                self.ctx.send(ticker, OrderbookMessage{ .unsubscribe = .{} }) catch unreachable;
+
+                for (self.subscribed_to_orderbooks.items, 0..) |t, i| {
+                    if (std.mem.eql(u8, t, ticker)) {
+                        _ = self.subscribed_to_orderbooks.orderedRemove(i);
+                        break;
+                    }
+                }
             }
         }
     }

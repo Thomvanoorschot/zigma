@@ -4,22 +4,23 @@ const zgpu = @import("zgpu");
 const gui = @import("../gui.zig");
 const plot = @import("../plot.zig");
 const xev = @import("xev");
-const orderbook_chart = @import("orderbook_chart.zig");
+const ob = @import("orderbook.zig");
 const ohlc_chart = @import("ohlc_chart.zig");
 const shared_models = @import("shared_models");
 const wire = @import("wire");
 
 const Client = wire.Client;
+const TCP = xev.TCP;
 const wgpu = zgpu.wgpu;
+
 const OrderBook = shared_models.OrderBook;
 const PriceLevel = shared_models.PriceLevel;
-const parseOrderbook = shared_models.parseOrderbook;
-const plotOrderbookWindow = orderbook_chart.plotOrderbookWindow;
 const OHLCList = shared_models.OHLCList;
 const OHLC = shared_models.OHLC;
 const parseOHLCList = shared_models.parseOHLCList;
-const TCP = xev.TCP;
 const plotOHLCListWindow = ohlc_chart.plotOHLCListWindow;
+const OrderbookPlots = ob.OrderbookWindows;
+const orderbookCallback = ob.OrderbookWindows.orderbookCallback;
 
 pub const MessageTypes = enum {
     orderbook,
@@ -34,7 +35,7 @@ pub const App = struct {
     gctx: *zgpu.GraphicsContext,
     render_frame_completion: xev.Completion = undefined,
 
-    orderbooks: ?std.StringHashMap(*const OrderBook) = null,
+    orderbook_plots: *OrderbookPlots,
     ohlc_list: ?[]OHLC = null,
     tcp_client: Client(MessageTypes),
 
@@ -82,6 +83,8 @@ pub const App = struct {
         plot.init();
 
         const self = try allocator.create(Self);
+
+        const orderbook_plots = try OrderbookPlots.init(allocator);
         const tcp_client = try Client(
             MessageTypes,
         ).init(
@@ -91,21 +94,28 @@ pub const App = struct {
                 .server_addr = try std.net.Address.parseIp4("127.0.0.1", 8081),
             },
             .{
-                .orderbook = orderbookCallback,
-                .ohlc = ohlcCallback,
+                .orderbook = .{
+                    .context = @ptrCast(orderbook_plots),
+                    .cb = orderbookCallback,
+                },
+                .ohlc = .{
+                    // TODO: This is still incorrect
+                    .context = self,
+                    .cb = ohlcCallback,
+                },
             },
             self,
         );
-
         self.* = Self{
             .allocator = allocator,
             .loop = loop,
             .window = window,
             .gctx = gctx,
             .tcp_client = tcp_client,
-            .orderbooks = std.StringHashMap(*const OrderBook).init(allocator),
+            .orderbook_plots = orderbook_plots,
             .last_fps_update_time = glfw.getTime(),
         };
+        orderbook_plots.tcp_client = &self.tcp_client;
 
         return self;
     }
@@ -168,10 +178,7 @@ pub const App = struct {
                     const c_str = try std.fmt.allocPrintZ(self.allocator, "{s}\r\n", .{ticker});
                     defer self.allocator.free(c_str);
                     if (gui.menuItem(c_str, .{})) {
-                        // TODO: Need a good way of freeing this memory. The issue is that it needs to get allocated after callback(s) have been called
-                        const ob_msg = std.fmt.allocPrintZ(self.allocator, "orderbook:{s}", .{ticker}) catch unreachable;
-                        std.debug.print("ob_msg: {s}\n", .{ob_msg});
-                        self.tcp_client.write(ob_msg);
+                        try self.orderbook_plots.openWindow(ticker);
                     }
                 }
                 gui.endMenu();
@@ -192,12 +199,7 @@ pub const App = struct {
         if (self.ohlc_list) |ohlc_list| {
             try plotOHLCListWindow(self.allocator, ohlc_list);
         }
-        if (self.orderbooks) |orderbooks| {
-            var it = orderbooks.valueIterator();
-            while (it.next()) |orderbook| {
-                try plotOrderbookWindow(orderbook.*);
-            }
-        }
+        try self.orderbook_plots.plot();
 
         const swapchain_texv = self.gctx.swapchain.getCurrentTextureView();
         defer swapchain_texv.release();
@@ -236,26 +238,5 @@ pub const App = struct {
             return error.FailedToParseOHLC;
         };
         self.ohlc_list = ohlc_list;
-    }
-
-    pub fn orderbookCallback(
-        self_: ?*anyopaque,
-        payload: []const u8,
-    ) anyerror!void {
-        const self = @as(*Self, @ptrCast(@alignCast(self_)));
-        const ob = parseOrderbook(self.allocator, payload) catch |err| {
-            std.log.err("Failed to parse orderbook data: {s}", .{@errorName(err)});
-            return error.FailedToParseOrderbook;
-        };
-        try self.orderbooks.?.put(ob.ticker, ob);
-    }
-
-    pub fn orderbookTestCallback(
-        self_: ?*anyopaque,
-        payload: []const u8,
-    ) anyerror!void {
-        const self = @as(*Self, @ptrCast(@alignCast(self_)));
-        _ = self;
-        std.debug.print("orderbookTestCallback: {s}\n", .{payload});
     }
 };

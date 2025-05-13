@@ -2,7 +2,7 @@
     .name = .shared_models,
     .version = "0.0.1",
     .fingerprint = 0x872e323d83543718,
-    .minimum_zig_version = "0.15.0-dev.45+24db007cd",
+    .minimum_zig_version = "0.15.0-dev.483+837e0f9c3",
     .dependencies = .{
         .zbor = .{
             .url = "https://github.com/r4gus/zbor/archive/master.tar.gz",

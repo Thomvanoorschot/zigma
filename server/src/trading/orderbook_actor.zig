@@ -103,9 +103,11 @@ pub const OrderbookActor = struct {
                 ob_update.deinit();
             },
             .subscribe => |_| {
+                std.log.info("subscribing to orderbook: {s}", .{self.ticker});
                 try self.subscriptions.append(message.sender.?);
             },
             .unsubscribe => |_| {
+                std.log.info("unsubscribing from orderbook: {s}", .{self.ticker});
                 for (self.subscriptions.items, 0..) |actor, i| {
                     if (actor == message.sender.?) {
                         _ = self.subscriptions.orderedRemove(i);

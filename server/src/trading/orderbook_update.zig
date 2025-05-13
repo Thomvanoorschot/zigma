@@ -25,8 +25,8 @@ pub const PriceLevel = struct {
 
 pub const UpdateData = struct {
     symbol: []const u8,
-    bids: []const PriceLevel,
-    asks: []const PriceLevel,
+    bids: [][2]f64,
+    asks: [][2]f64,
     checksum: u64,
     timestamp: ?[]const u8 = null,
 };

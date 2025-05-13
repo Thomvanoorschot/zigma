@@ -149,20 +149,14 @@ pub const Broker = struct {
             symbol_copy = "";
         }
 
-        var converted_bids = try arena.alloc(PriceLevel, item.bids.len);
+        var converted_bids = try arena.alloc([2]f64, item.bids.len);
         for (item.bids, 0..) |bid, bid_idx| {
-            converted_bids[bid_idx] = PriceLevel{
-                .price = bid.price,
-                .qty = bid.qty,
-            };
+            converted_bids[bid_idx] = .{ bid.price, bid.qty };
         }
 
-        var converted_asks = try arena.alloc(PriceLevel, item.asks.len);
+        var converted_asks = try arena.alloc([2]f64, item.asks.len);
         for (item.asks, 0..) |ask, ask_idx| {
-            converted_asks[ask_idx] = PriceLevel{
-                .price = ask.price,
-                .qty = ask.qty,
-            };
+            converted_asks[ask_idx] = .{ ask.price, ask.qty };
         }
 
         var timestamp_copy: ?[]const u8 = null;

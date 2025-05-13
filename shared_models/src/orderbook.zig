@@ -5,18 +5,13 @@ const zborParse = zbor.parse;
 const zborStringify = zbor.stringify;
 const DataItem = zbor.DataItem;
 
-fn priceDescending(_: void, a: PriceLevel, b: PriceLevel) bool {
-    return a.price > b.price;
+fn priceDescending(_: void, a: [2]f64, b: [2]f64) bool {
+    return a[0] > b[0];
 }
 
-fn priceAscending(_: void, a: PriceLevel, b: PriceLevel) bool {
-    return a.price < b.price;
+fn priceAscending(_: void, a: [2]f64, b: [2]f64) bool {
+    return a[0] < b[0];
 }
-
-pub const PriceLevel = struct {
-    price: f64,
-    qty: f64,
-};
 
 pub fn parseOrderbook(allocator: Allocator, str: []const u8) !*const OrderBook {
     const di = try DataItem.new(str);
@@ -25,8 +20,8 @@ pub fn parseOrderbook(allocator: Allocator, str: []const u8) !*const OrderBook {
 }
 
 pub const OrderBook = struct {
-    bids: std.ArrayList(PriceLevel),
-    asks: std.ArrayList(PriceLevel),
+    bids: std.ArrayList([2]f64),
+    asks: std.ArrayList([2]f64),
     max_depth: usize,
     exchange: []const u8,
     ticker: []const u8,
@@ -35,8 +30,8 @@ pub const OrderBook = struct {
     const Self = @This();
     pub fn init(allocator: Allocator, exchange: []const u8, ticker: []const u8, depth: usize) !OrderBook {
         return OrderBook{
-            .bids = try std.ArrayList(PriceLevel).initCapacity(allocator, depth + 1),
-            .asks = try std.ArrayList(PriceLevel).initCapacity(allocator, depth + 1),
+            .bids = try std.ArrayList([2]f64).initCapacity(allocator, depth + 1),
+            .asks = try std.ArrayList([2]f64).initCapacity(allocator, depth + 1),
             .max_depth = depth,
             .exchange = try allocator.dupe(u8, exchange),
             .ticker = try allocator.dupe(u8, ticker),
@@ -66,22 +61,22 @@ pub const OrderBook = struct {
         var levels = if (is_bid) &self.bids else &self.asks;
         var is_update = false;
         for (levels.items, 0..) |level, i| {
-            if (std.math.approxEqAbs(f64, level.price, price, 1e-12)) {
+            if (std.math.approxEqAbs(f64, level[0], price, 1e-12)) {
                 if (qty == 0) {
                     _ = levels.swapRemove(i);
                 } else {
-                    levels.items[i] = .{ .price = price, .qty = qty };
+                    levels.items[i] = .{ price, qty };
                 }
                 is_update = true;
             }
         }
         if (!is_update) {
-            try levels.append(.{ .price = price, .qty = qty });
+            try levels.append(.{ price, qty });
         }
         if (is_bid) {
-            std.mem.sort(PriceLevel, levels.items, {}, comptime priceDescending);
+            std.mem.sort([2]f64, levels.items, {}, comptime priceDescending);
         } else {
-            std.mem.sort(PriceLevel, levels.items, {}, comptime priceAscending);
+            std.mem.sort([2]f64, levels.items, {}, comptime priceAscending);
         }
 
         if (levels.items.len > self.max_depth) {
@@ -89,13 +84,13 @@ pub const OrderBook = struct {
         }
     }
 
-    pub fn processUpdates(self: *Self, bids: []const PriceLevel, asks: []const PriceLevel) !void {
+    pub fn processUpdates(self: *Self, bids: []const [2]f64, asks: []const [2]f64) !void {
         for (bids) |bid| {
-            try self.update(bid.price, bid.qty, true);
+            try self.update(bid[0], bid[1], true);
         }
 
         for (asks) |ask| {
-            try self.update(ask.price, ask.qty, false);
+            try self.update(ask[0], ask[1], false);
         }
     }
 

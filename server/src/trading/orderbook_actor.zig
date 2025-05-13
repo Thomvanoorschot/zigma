@@ -89,17 +89,7 @@ pub const OrderbookActor = struct {
             },
             .orderbook_update => |m| {
                 var ob_update: OrderbookUpdate = m;
-
-                // TODO Probably move this to some other better place
-                const asks = try self.arena_state.allocator().alloc(shared_models.PriceLevel, ob_update.data.asks.len);
-                for (ob_update.data.asks, 0..) |ask, i| {
-                    asks[i] = .{ .price = ask.price, .qty = ask.qty };
-                }
-                const bids = try ob_update.arena_state.allocator().alloc(shared_models.PriceLevel, ob_update.data.bids.len);
-                for (ob_update.data.bids, 0..) |bid, i| {
-                    bids[i] = .{ .price = bid.price, .qty = bid.qty };
-                }
-                try self.orderbook.?.processUpdates(bids, asks);
+                try self.orderbook.?.processUpdates(ob_update.data.bids, ob_update.data.asks);
                 ob_update.deinit();
             },
             .subscribe => |_| {

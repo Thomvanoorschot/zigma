@@ -15,7 +15,6 @@ const MessageTypes = app.MessageTypes;
 
 var popen: bool = true;
 
-// TODO: Store a list of popen booleans per orderbook
 const OrderbookWindow = struct {
     ticker: []const u8,
     open_message: [:0]u8,
@@ -115,8 +114,8 @@ pub const OrderbookWindows = struct {
             const asks = orderbook.asks;
 
             var max_vol: f64 = 0.0;
-            for (bids.items) |bid| max_vol = @max(max_vol, bid.qty);
-            for (asks.items) |ask| max_vol = @max(max_vol, ask.qty);
+            for (bids.items) |bid| max_vol = @max(max_vol, bid[1]);
+            for (asks.items) |ask| max_vol = @max(max_vol, ask[1]);
 
             if (max_vol > 0) {
                 max_vol *= 1.05;
@@ -148,23 +147,23 @@ pub const OrderbookWindows = struct {
                 var ask_cum_vol: f64 = 0;
                 for (asks.items, 0..) |_, i| {
                     const ask = asks.items[asks.items.len - 1 - i];
-                    ask_cum_vol += ask.qty;
+                    ask_cum_vol += ask[1];
 
                     gui.tableNextRow(.{});
 
                     _ = gui.tableSetColumnIndex(0);
-                    const price_fmt = std.fmt.bufPrint(&text_buf, "{d:.2}", .{ask.price}) catch "ERR";
+                    const price_fmt = std.fmt.bufPrint(&text_buf, "{d:.2}", .{ask[0]}) catch "ERR";
                     // Colors are AABBGGRR
                     gui.textUnformattedColored(0xFF0000FF, price_fmt);
 
                     _ = gui.tableSetColumnIndex(1);
-                    const vol_fmt = std.fmt.bufPrint(&text_buf, "{d:.3}", .{ask.qty}) catch "ERR";
+                    const vol_fmt = std.fmt.bufPrint(&text_buf, "{d:.3}", .{ask[1]}) catch "ERR";
                     gui.textUnformattedColored(0xFF0000FF, vol_fmt);
                 }
             }
 
             gui.separator();
-            const spread_val = if (asks.items.len > 0 and bids.items.len > 0) asks.items[0].price - bids.items[0].price else 0.0;
+            const spread_val = if (asks.items.len > 0 and bids.items.len > 0) asks.items[0][0] - bids.items[0][0] else 0.0;
             const spread_text = std.fmt.bufPrint(&text_buf, "Spread: {d:.2}", .{spread_val}) catch "ERR SPREAD";
             gui.textUnformatted(spread_text);
             gui.separator();
@@ -182,15 +181,15 @@ pub const OrderbookWindows = struct {
 
                 var bid_cum_vol: f64 = 0;
                 for (bids.items) |bid| {
-                    bid_cum_vol += bid.qty;
+                    bid_cum_vol += bid[1];
 
                     gui.tableNextRow(.{});
 
                     _ = gui.tableSetColumnIndex(0);
-                    const price_fmt = std.fmt.bufPrint(&text_buf, "{d:.2}", .{bid.price}) catch "ERR";
+                    const price_fmt = std.fmt.bufPrint(&text_buf, "{d:.2}", .{bid[0]}) catch "ERR";
                     gui.textUnformattedColored(0xFF00FF00, price_fmt);
                     _ = gui.tableSetColumnIndex(1);
-                    const vol_fmt = std.fmt.bufPrint(&text_buf, "{d:.3}", .{bid.qty}) catch "ERR";
+                    const vol_fmt = std.fmt.bufPrint(&text_buf, "{d:.3}", .{bid[1]}) catch "ERR";
                     gui.textUnformattedColored(0xFF00FF00, vol_fmt);
                 }
             }

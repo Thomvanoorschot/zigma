@@ -21,7 +21,7 @@ const OHLCList = shared_models.OHLCList;
 pub const OHLCMessage = union(enum) {
     init: OHLCInitRequest,
     start: OHLCStartRequest,
-    ohlc_update: OHLCUpdate,
+    ohlc_update: *OHLCUpdate,
     subscribe: OHLCSubscribeRequest,
 };
 

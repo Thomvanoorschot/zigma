@@ -89,14 +89,14 @@ pub const BrokerActor = struct {
         if (try message) |m| {
             switch (m) {
                 .orderbook_update => |update| {
-                    if (self.orderbook_subscriptions.get(update.data.symbol)) |subscriber| {
+                    if (self.orderbook_subscriptions.get(update.symbol)) |subscriber| {
                         try subscriber.send(self.ctx.actor, OrderbookMessage{
                             .orderbook_update = update,
                         });
                     }
                 },
                 .ohlc_update => |update| {
-                    if (self.ohlc_subscriptions.get(update.data.symbol)) |subscriber| {
+                    if (self.ohlc_subscriptions.get(update.symbol)) |subscriber| {
                         try subscriber.send(self.ctx.actor, OHLCMessage{
                             .ohlc_update = update,
                         });

@@ -11,8 +11,6 @@ const xev = backstage.xev;
 const Loop = xev.Loop;
 const BrokerPayload = brkr_impl.BrokerPayload;
 const OrderbookUpdate = obu.OrderbookUpdate;
-const PriceLevel = obu.PriceLevel;
-const UpdateData = obu.UpdateData;
 const OHLCUpdate = ohlcu.OHLCUpdate;
 const WsSubsribeRequest = ws_messages.WsSubscribeRequest;
 const parseMessage = ws_messages.parseMessage;
@@ -72,7 +70,7 @@ pub const Broker = struct {
             .params = .{
                 .orderbook = .{
                     .channel = "book",
-                    .symbol = &[_][]const u8{ ticker },
+                    .symbol = &[_][]const u8{ticker},
                 },
             },
         }, &buffer);
@@ -138,57 +136,34 @@ pub const Broker = struct {
         }
     }
 
-    fn convertUpdateData(self: *Self, update: ws_messages.OrderbookUpdateMessage) !OrderbookUpdate {
-        var orderbook_update = try OrderbookUpdate.init(self.allocator);
-        var arena = orderbook_update.arena_state.allocator();
-        var symbol_copy: []const u8 = undefined;
+    fn convertUpdateData(self: *Self, update: ws_messages.OrderbookUpdateMessage) !*OrderbookUpdate {
         const item = update.data[0];
-        if (item.symbol.len > 0) {
-            symbol_copy = try arena.dupe(u8, item.symbol);
-        } else {
-            symbol_copy = "";
-        }
 
-        var converted_bids = try arena.alloc([2]f64, item.bids.len);
+        const converted_bids = try self.allocator.alloc([2]f64, item.bids.len);
+        defer self.allocator.free(converted_bids);
         for (item.bids, 0..) |bid, bid_idx| {
             converted_bids[bid_idx] = .{ bid.price, bid.qty };
         }
 
-        var converted_asks = try arena.alloc([2]f64, item.asks.len);
+        const converted_asks = try self.allocator.alloc([2]f64, item.asks.len);
+        defer self.allocator.free(converted_asks);
         for (item.asks, 0..) |ask, ask_idx| {
             converted_asks[ask_idx] = .{ ask.price, ask.qty };
         }
 
-        var timestamp_copy: ?[]const u8 = null;
-        if (item.timestamp) |ts| {
-            timestamp_copy = try arena.dupe(u8, ts);
-        }
-
-        orderbook_update.data.* = UpdateData{
-            .symbol = symbol_copy,
+        return try OrderbookUpdate.init(self.allocator, .{
+            .symbol = item.symbol,
             .bids = converted_bids,
             .asks = converted_asks,
-            .timestamp = timestamp_copy,
             .checksum = item.checksum,
-        };
-        return orderbook_update;
+            .timestamp = item.timestamp,
+        });
     }
 
-    fn convertOHLCUpdateData(self: *Self, update: ws_messages.OHLCUpdateMessage) !OHLCUpdate {
-        var ohlc_update = try OHLCUpdate.init(self.allocator);
-        var arena = ohlc_update.arena_state.allocator();
-        var symbol_copy: []const u8 = undefined;
+    fn convertOHLCUpdateData(self: *Self, update: ws_messages.OHLCUpdateMessage) !*OHLCUpdate {
         const item = update.data[0];
-        if (item.symbol.len > 0) {
-            symbol_copy = try arena.dupe(u8, item.symbol);
-        } else {
-            symbol_copy = "";
-        }
-        var timestamp_copy: []const u8 = undefined;
-        timestamp_copy = try arena.dupe(u8, item.timestamp);
-
-        ohlc_update.data.* = ohlcu.UpdateData{
-            .symbol = symbol_copy,
+        return try OHLCUpdate.init(self.allocator, .{
+            .symbol = item.symbol,
             .open = item.open,
             .high = item.high,
             .low = item.low,
@@ -196,8 +171,7 @@ pub const Broker = struct {
             .trades = item.trades,
             .volume = item.volume,
             .interval = item.interval,
-            .timestamp = timestamp_copy,
-        };
-        return ohlc_update;
+            .timestamp = item.timestamp,
+        });
     }
 };

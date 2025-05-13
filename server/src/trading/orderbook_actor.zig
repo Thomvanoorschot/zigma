@@ -21,7 +21,7 @@ const Orderbook = shared_models.OrderBook;
 pub const OrderbookMessage = union(enum) {
     init: OrderbookInitRequest,
     start: OrderbookStartRequest,
-    orderbook_update: OrderbookUpdate,
+    orderbook_update: *OrderbookUpdate,
     subscribe: OrderbookSubscribeRequest,
     unsubscribe: OrderbookSubscribeRequest,
 };
@@ -88,9 +88,8 @@ pub const OrderbookActor = struct {
                 );
             },
             .orderbook_update => |m| {
-                var ob_update: OrderbookUpdate = m;
-                try self.orderbook.?.processUpdates(ob_update.data.bids, ob_update.data.asks);
-                ob_update.deinit();
+                try self.orderbook.?.processUpdates(m.bids, m.asks);
+                m.deinit();
             },
             .subscribe => |_| {
                 std.log.info("subscribing to orderbook: {s}", .{self.ticker});

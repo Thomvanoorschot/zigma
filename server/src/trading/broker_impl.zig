@@ -18,8 +18,8 @@ pub const BrokerPayloadType = enum {
 };
 
 pub const BrokerPayload = union(BrokerPayloadType) {
-    orderbook_update: OrderbookUpdate,
-    ohlc_update: OHLCUpdate,
+    orderbook_update: *OrderbookUpdate,
+    ohlc_update: *OHLCUpdate,
 };
 
 pub const BrokerImpl = union(BrokerType) {

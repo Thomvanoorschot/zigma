@@ -36,7 +36,6 @@ pub const OrderbookSubscribeRequest = struct {};
 pub const OrderbookUnsubscribeRequest = struct {};
 
 pub const OrderbookActor = struct {
-    allocator: Allocator,
     arena_state: std.heap.ArenaAllocator,
     ticker: []const u8 = "",
     ctx: *Context,
@@ -52,7 +51,6 @@ pub const OrderbookActor = struct {
         errdefer arena_state.deinit();
 
         self.* = .{
-            .allocator = allocator,
             .arena_state = arena_state,
             .ctx = ctx,
             .subscriptions = std.ArrayList(*ActorInterface).init(allocator),
@@ -77,7 +75,12 @@ pub const OrderbookActor = struct {
             },
             .start => |m| {
                 self.ticker = m.ticker;
-                self.orderbook = try Orderbook.init(self.allocator, "kraken", self.ticker, 10);
+                self.orderbook = try Orderbook.init(
+                    self.arena_state.allocator(),
+                    "kraken",
+                    self.ticker,
+                    10,
+                );
                 try self.broker_actor.?.send(self.ctx.actor, BrokerMessage{ .orderbook_subscribe = .{ .ticker = m.ticker } });
                 try self.ctx.runContinuously(
                     Self,

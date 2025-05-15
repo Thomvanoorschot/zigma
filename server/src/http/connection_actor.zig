@@ -120,7 +120,7 @@ pub const ConnectionActor = struct {
     }
 
     pub fn write(self: *Self, message_type: MessageTypes, buf: std.ArrayList(u8)) !void {
-        try self.client_conn.write(MessageTypes, message_type, buf.items);
+        try self.client_conn.write(MessageTypes, message_type, buf);
     }
 
     fn close(

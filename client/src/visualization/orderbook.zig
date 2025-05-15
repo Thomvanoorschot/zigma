@@ -86,6 +86,8 @@ pub const OrderbookWindows = struct {
                 // TODO This is still dangling
                 self.tcp_client.?.write(window.close_message);
             }
+        } else {
+            
         }
     }
 

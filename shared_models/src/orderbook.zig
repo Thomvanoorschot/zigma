@@ -25,7 +25,6 @@ pub const OrderBook = struct {
     max_depth: usize,
     exchange: []const u8,
     ticker: []const u8,
-    allocator: Allocator,
 
     const Self = @This();
     pub fn init(allocator: Allocator, exchange: []const u8, ticker: []const u8, depth: usize) !OrderBook {
@@ -35,15 +34,7 @@ pub const OrderBook = struct {
             .max_depth = depth,
             .exchange = try allocator.dupe(u8, exchange),
             .ticker = try allocator.dupe(u8, ticker),
-            .allocator = allocator,
         };
-    }
-
-    pub fn deinit(self: *Self) void {
-        self.allocator.free(self.bids);
-        self.allocator.free(self.asks);
-        self.allocator.free(self.exchange);
-        self.allocator.free(self.ticker);
     }
 
     pub fn stringify(self: *Self, allocator: Allocator) !std.ArrayList(u8) {

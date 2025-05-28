@@ -92,14 +92,14 @@ pub const OrderBook = struct {
         const display_ask_count = @min(self.max_depth, self.asks.items.len);
         for (0..display_ask_count) |j| {
             const level = self.asks.items[j];
-            std.debug.print("€{d:.2} - {d:.8}\n", .{ level.price, level.qty });
+            std.debug.print("€{d:.2} - {d:.8}\n", .{ level[0], level[1] });
         }
 
         std.debug.print("\nBids (Buy Orders):\n", .{});
         const display_bid_count = @min(self.max_depth, self.bids.items.len);
         for (0..display_bid_count) |j| {
             const level = self.bids.items[j];
-            std.debug.print("€{d:.2} - {d:.8}\n", .{ level.price, level.qty });
+            std.debug.print("€{d:.2} - {d:.8}\n", .{ level[0], level[1] });
         }
 
         std.debug.print("\n======================\n", .{});

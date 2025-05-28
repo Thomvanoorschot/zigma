@@ -11,12 +11,12 @@
         //     .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
         //     .hash = "backstage-0.1.0-Lti6bKt0AAAen2XWCzDuNQFWBwB4l2-zL5TJ8Q35St_g",
         // },
-        .jolt = .{
-            .path = "../../jolt",
+        .async_zocket = .{
+            .path = "../../async_zocket",
         },
-        // .jolt = .{
-        //     .url = "https://github.com/Thomvanoorschot/jolt/archive/main.tar.gz",
-        //     .hash = "jolt-0.0.1-jsk1Jsp4AADz3Th0qSuQXKz7RPzFjhI_H9PfeNou3M8a",
+        // .async_zocket = .{
+        //     .url = "https://github.com/Thomvanoorschot/async_zocket/archive/main.tar.gz",
+        //     .hash = "async_zocket-0.0.1-jsk1Jsp4AADz3Th0qSuQXKz7RPzFjhI_H9PfeNou3M8a",
         // },
 
         .shared_models = .{

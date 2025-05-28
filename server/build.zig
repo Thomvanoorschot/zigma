@@ -9,7 +9,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    const jolt_dep = b.dependency("jolt", .{
+    const async_zocket_dep = b.dependency("async_zocket", .{
         .target = target,
         .optimize = optimize,
     });
@@ -36,7 +36,7 @@ pub fn build(b: *std.Build) void {
 
     // Add imports
     server_mod.addImport("backstage", backstage_dep.module("backstage"));
-    server_mod.addImport("jolt", jolt_dep.module("jolt"));
+    server_mod.addImport("async_zocket", async_zocket_dep.module("async_zocket"));
     server_mod.addImport("zbor", zbor_dep.module("zbor"));
     server_mod.addImport("shared_models", shared_models_dep.module("shared_models"));
     server_mod.addImport("wire", wire_dep.module("wire"));
@@ -48,7 +48,7 @@ pub fn build(b: *std.Build) void {
 
     // Add imports to executable
     exe.root_module.addImport("backstage", backstage_dep.module("backstage"));
-    exe.root_module.addImport("jolt", jolt_dep.module("jolt"));
+    exe.root_module.addImport("async_zocket", async_zocket_dep.module("async_zocket"));
     exe.root_module.addImport("zbor", zbor_dep.module("zbor"));
     exe.root_module.addImport("shared_models", shared_models_dep.module("shared_models"));
     exe.root_module.addImport("wire", wire_dep.module("wire"));

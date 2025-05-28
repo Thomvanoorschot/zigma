@@ -1,5 +1,5 @@
 const std = @import("std");
-const ws = @import("jolt");
+const ws = @import("async_zocket");
 const json_utils = @import("../utils/json_utils.zig");
 const ws_messages = @import("./ws_messages.zig");
 const backstage = @import("backstage");

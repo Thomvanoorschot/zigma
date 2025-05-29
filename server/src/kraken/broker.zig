@@ -51,8 +51,8 @@ pub const Broker = struct {
             .read_callback = read_callback,
         };
         std.log.info("Connecting to kraken", .{});
-        try self.ws_client.connect();
-        try self.ws_client.read();
+        self.ws_client.connect();
+        self.ws_client.read();
         broker = self;
         return self;
     }

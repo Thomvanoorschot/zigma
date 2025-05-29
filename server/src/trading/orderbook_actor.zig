@@ -92,7 +92,6 @@ pub const OrderbookActor = struct {
             },
             .orderbook_update => |m| {
                 try self.orderbook.?.processUpdates(m.bids, m.asks);
-                self.orderbook.?.display();
                 m.deinit();
             },
             .subscribe => |_| {

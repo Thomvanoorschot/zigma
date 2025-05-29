@@ -28,11 +28,11 @@
             .hash = "N-V-__8AALVIRAIf5nfpx8-4mEo2RGsynVryPQPcHk95qFM5",
             .lazy = true,
         },
-        .wire = .{
-            .path = "../../wire",
+        .async_zocket = .{
+            .path = "../../async_zocket",
         },
-        // .wire = .{
-        //     .url = "https://github.com/Thomvanoorschot/wire/archive/main.tar.gz",
+        // .async_zocket = .{
+        //     .url = "https://github.com/Thomvanoorschot/async_zocket/archive/main.tar.gz",
         //     .hash = "wire-0.0.1-kK_aNfZYAACoUpVGAcf3QkiBPu935rh2PtvnJntLDdQX",
         // },
     },

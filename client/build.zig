@@ -25,7 +25,7 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
     });
-    const wire_dep = b.dependency("wire", .{
+    const async_zocket_dep = b.dependency("async_zocket", .{
         .target = target,
         .optimize = optimize,
     });
@@ -49,7 +49,7 @@ pub fn build(b: *std.Build) !void {
     client_mod.addImport("zglfw", zglfw_dep.module("root"));
     client_mod.addImport("zgpu", zgpu_dep.module("root"));
     client_mod.addImport("xev", xev_dep.module("xev"));
-    client_mod.addImport("wire", wire_dep.module("wire"));
+    client_mod.addImport("async_zocket", async_zocket_dep.module("async_zocket"));
     client_mod.addImport("shared_models", shared_models_dep.module("shared_models"));
     client_mod.addImport("zul", zul_dep.module("zul"));
 
@@ -63,7 +63,7 @@ pub fn build(b: *std.Build) !void {
     exe.root_module.addImport("zglfw", zglfw_dep.module("root"));
     exe.linkLibrary(zglfw_dep.artifact("glfw"));
     exe.root_module.addImport("xev", xev_dep.module("xev"));
-    exe.root_module.addImport("wire", wire_dep.module("wire"));
+    exe.root_module.addImport("async_zocket", async_zocket_dep.module("async_zocket"));
     exe.root_module.addImport("shared_models", shared_models_dep.module("shared_models"));
     exe.root_module.addImport("zul", zul_dep.module("zul"));
     @import("zgpu").addLibraryPathsTo(exe);

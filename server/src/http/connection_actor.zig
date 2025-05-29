@@ -80,6 +80,7 @@ pub const ConnectionActor = struct {
             },
             .ohlc_update => |m| {
                 const str = try stringifyOHLCList(self.allocator, m);
+                // TODO Need to wrap the messages in a struct that holds a message type so that I can multiplex the messages
                 try self.write(str);
             },
         }
@@ -117,7 +118,7 @@ pub const ConnectionActor = struct {
     }
 
     pub fn write(self: *Self, buf: std.ArrayList(u8)) !void {
-        try self.client_conn.write(buf.items);
+        try self.client_conn.write(.binary, buf.items);
     }
 
     fn closeCallback(

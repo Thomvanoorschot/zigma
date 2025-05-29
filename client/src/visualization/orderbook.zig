@@ -3,12 +3,12 @@ const gui = @import("../gui.zig");
 const plot = @import("../plot.zig");
 const glfw = @import("zglfw");
 const shared_models = @import("shared_models");
-const wire = @import("wire");
+const async_zocket = @import("async_zocket");
 const app = @import("app.zig");
 
 const parseOrderbook = shared_models.parseOrderbook;
 
-const Client = wire.Client;
+const Client = async_zocket.Client;
 const OrderBook = shared_models.OrderBook;
 const PriceLevel = shared_models.PriceLevel;
 const MessageTypes = app.MessageTypes;
@@ -26,7 +26,7 @@ const OrderbookWindow = struct {
 pub const OrderbookWindows = struct {
     allocator: std.mem.Allocator,
     windows: ?std.StringHashMap(*OrderbookWindow) = null,
-    tcp_client: ?*Client(MessageTypes) = null,
+    wss_client: ?*Client = null,
     const Self = @This();
 
     pub fn init(
@@ -64,7 +64,7 @@ pub const OrderbookWindows = struct {
             .popen = true,
         };
         try self.windows.?.put(ticker, window);
-        self.tcp_client.?.write(open_msg);
+        try self.wss_client.?.write(open_msg);
     }
 
     pub fn orderbookCallback(
@@ -84,11 +84,9 @@ pub const OrderbookWindows = struct {
                 self.allocator.destroy(window);
                 _ = self.windows.?.remove(ob.ticker);
                 // TODO This is still dangling
-                self.tcp_client.?.write(window.close_message);
+                try self.wss_client.?.write(window.close_message);
             }
-        } else {
-            
-        }
+        } else {}
     }
 
     pub fn plot(self: *Self) !void {

@@ -7,9 +7,9 @@ const xev = @import("xev");
 const ob = @import("orderbook.zig");
 const ohlc_chart = @import("ohlc_chart.zig");
 const shared_models = @import("shared_models");
-const wire = @import("wire");
+const async_zocket = @import("async_zocket");
 
-const Client = wire.Client;
+const Client = async_zocket.Client;
 const TCP = xev.TCP;
 const wgpu = zgpu.wgpu;
 
@@ -37,7 +37,7 @@ pub const App = struct {
 
     orderbook_plots: *OrderbookPlots,
     ohlc_list: ?[]OHLC = null,
-    tcp_client: Client(MessageTypes),
+    wss_client: Client,
 
     last_fps_update_time: f64 = 0.0,
     frame_count_since_last_update: u32 = 0,
@@ -85,25 +85,15 @@ pub const App = struct {
         const self = try allocator.create(Self);
 
         const orderbook_plots = try OrderbookPlots.init(allocator);
-        const tcp_client = try Client(
-            MessageTypes,
-        ).init(
+        const wss_client = try Client.init(
             allocator,
             loop,
             .{
-                .server_addr = try std.net.Address.parseIp4("127.0.0.1", 8081),
+                .host = "127.0.0.1",
+                .port = 8081,
+                .path = "",
             },
-            .{
-                .orderbook = .{
-                    .context = @ptrCast(orderbook_plots),
-                    .cb = orderbookCallback,
-                },
-                .ohlc = .{
-                    // TODO: This is still incorrect
-                    .context = self,
-                    .cb = ohlcCallback,
-                },
-            },
+            orderbookCallback,
             self,
         );
         self.* = Self{
@@ -111,11 +101,11 @@ pub const App = struct {
             .loop = loop,
             .window = window,
             .gctx = gctx,
-            .tcp_client = tcp_client,
+            .wss_client = wss_client,
             .orderbook_plots = orderbook_plots,
             .last_fps_update_time = glfw.getTime(),
         };
-        orderbook_plots.tcp_client = &self.tcp_client;
+        orderbook_plots.wss_client = &self.wss_client;
 
         return self;
     }
@@ -139,8 +129,8 @@ pub const App = struct {
             }
         }.inner;
         self.loop.timer(&self.render_frame_completion, 16, @ptrCast(self), callback);
-        self.tcp_client.connect();
-        self.tcp_client.startReading();
+        self.wss_client.connect();
+        self.wss_client.read();
     }
 
     pub fn deinit(self: *Self) void {

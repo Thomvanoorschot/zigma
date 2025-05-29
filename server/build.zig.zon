@@ -22,9 +22,9 @@
         .shared_models = .{
             .path = "../shared_models",
         },
-        .wire = .{
-            .path = "../../wire",
-        },
+        // .wire = .{
+        //     .path = "../../wire",
+        // },
         // .wire = .{
         //     .url = "https://github.com/Thomvanoorschot/wire/archive/main.tar.gz",
         //     .hash = "wire-0.0.1-kK_aNfZYAACoUpVGAcf3QkiBPu935rh2PtvnJntLDdQX",

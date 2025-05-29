@@ -1,16 +1,18 @@
 const std = @import("std");
 const backstage = @import("backstage");
-const ConnectionActor = @import("connection_actor.zig").ConnectionActor;
-const ConnectionMessage = @import("connection_actor.zig").ConnectionMessage;
+const cn_actr = @import("connection_actor.zig");
+const async_zocket = @import("async_zocket");
+const type_utils = @import("../utils/type_utils.zig");
+
+const ConnectionMessage = cn_actr.ConnectionMessage;
+const ConnectionActor = cn_actr.ConnectionActor;
 const xev = backstage.xev;
 const Context = backstage.Context;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
-const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
-
-const wire = @import("wire");
-const Server = wire.Server;
-const ClientConnection = wire.ClientConnection;
+const Server = async_zocket.Server;
+const ClientConnection = async_zocket.ClientConnection;
+const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
 pub const ServerMessage = union(enum) {
     init: InitMessage,
@@ -72,14 +74,16 @@ pub const ServerActor = struct {
     ) xev.CallbackAction {
         const self = unsafeAnyOpaqueCast(Self, self_);
         const fd_string = std.fmt.allocPrint(self.allocator, "{}", .{client_conn.socket.fd}) catch |err| {
-            client_conn.close(err);
+            std.log.err("Failed to print fd: {any}", .{err});
+            client_conn.close();
             return .rearm;
         };
 
         const actor_interface = self.ctx.spawnChildActor(ConnectionActor, ConnectionMessage, .{
             .id = fd_string,
         }) catch |err| {
-            client_conn.close(err);
+            std.log.err("Failed to spawn connection actor: {any}", .{err});
+            client_conn.close();
             return .rearm;
         };
         actor_interface.send(self.ctx.actor, ConnectionMessage{ .setup = .{

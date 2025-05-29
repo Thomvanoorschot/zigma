@@ -1,8 +1,9 @@
 const std = @import("std");
 const backstage = @import("backstage");
 const shared_models = @import("shared_models");
-const wire = @import("wire");
+const async_zocket = @import("async_zocket");
 const type_utils = @import("../utils/type_utils.zig");
+
 const xev = backstage.xev;
 const Context = backstage.Context;
 const Envelope = backstage.Envelope;
@@ -15,7 +16,7 @@ const OHLCMessage = @import("../trading/ohlc_actor.zig").OHLCMessage;
 const stringify = @import("zbor").stringify;
 const parse = @import("zbor").parse;
 const DataItem = @import("zbor").DataItem;
-const ClientConnection = wire.ClientConnection;
+const ClientConnection = async_zocket.ClientConnection;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
 pub const MessageTypes = enum {
@@ -69,25 +70,21 @@ pub const ConnectionActor = struct {
         switch (message.payload) {
             .setup => |m| {
                 self.client_conn = m.client_conn;
-                self.client_conn.setCloseCallback(@ptrCast(self), close);
-                self.read();
+                self.client_conn.setCloseCallback(@ptrCast(self), closeCallback);
+                self.client_conn.setReadCallback(@ptrCast(self), readCallback);
+                self.client_conn.read();
             },
             .orderbook_update => |m| {
                 const str = try m.stringify(self.allocator);
-                try self.write(.orderbook, str);
+                try self.write(str);
             },
             .ohlc_update => |m| {
                 const str = try stringifyOHLCList(self.allocator, m);
-                try self.write(.ohlc, str);
+                try self.write(str);
             },
         }
     }
 
-    pub fn read(
-        self: *Self,
-    ) void {
-        self.client_conn.read(@ptrCast(self), readCallback);
-    }
     fn readCallback(
         self_: ?*anyopaque,
         payload: []const u8,
@@ -119,11 +116,11 @@ pub const ConnectionActor = struct {
         }
     }
 
-    pub fn write(self: *Self, message_type: MessageTypes, buf: std.ArrayList(u8)) !void {
-        try self.client_conn.write(MessageTypes, message_type, buf);
+    pub fn write(self: *Self, buf: std.ArrayList(u8)) !void {
+        try self.client_conn.write(buf.items);
     }
 
-    fn close(
+    fn closeCallback(
         self_: ?*anyopaque,
     ) !void {
         const self = unsafeAnyOpaqueCast(Self, self_);

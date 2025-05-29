@@ -22,10 +22,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    const wire_dep = b.dependency("wire", .{
-        .target = target,
-        .optimize = optimize,
-    });
 
     // Server module
     const server_mod = b.addModule("server", .{
@@ -39,7 +35,6 @@ pub fn build(b: *std.Build) void {
     server_mod.addImport("async_zocket", async_zocket_dep.module("async_zocket"));
     server_mod.addImport("zbor", zbor_dep.module("zbor"));
     server_mod.addImport("shared_models", shared_models_dep.module("shared_models"));
-    server_mod.addImport("wire", wire_dep.module("wire"));
     // Add executable
     const exe = b.addExecutable(.{
         .name = "zigma_server",
@@ -51,7 +46,6 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("async_zocket", async_zocket_dep.module("async_zocket"));
     exe.root_module.addImport("zbor", zbor_dep.module("zbor"));
     exe.root_module.addImport("shared_models", shared_models_dep.module("shared_models"));
-    exe.root_module.addImport("wire", wire_dep.module("wire"));
     b.installArtifact(exe);
     // Add a run step
     const run_cmd = b.addRunArtifact(exe);

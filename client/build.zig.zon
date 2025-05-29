@@ -4,37 +4,12 @@
     .version = "0.0.1",
     .minimum_zig_version = "0.15.0-dev.483+837e0f9c3",
     .dependencies = .{
-        .libxev = .{
-            .url = "https://github.com/mitchellh/libxev/archive/main.tar.gz",
-            .hash = "libxev-0.0.0-86vtc87kEgBxgbJ1RI1R6Elynb7zydCgNR8dt3uw01My",
-        },
-        .zglfw = .{
-            .url = "https://github.com/zig-gamedev/zglfw/archive/main.tar.gz",
-            .hash = "zglfw-0.10.0-dev-zgVDNMacIQA-k7kNSfwUc9Lfzx-bb_wklVm25K-p8Tr7",
-        },
         .shared_models = .{
             .path = "../shared_models",
         },
-        .zul = .{
-            .url = "https://github.com/karlseguin/zul/archive/master.tar.gz",
-            .hash = "zul-0.0.0-1oDotyJMBwBli3UBm47WYeNZSMNni_DbkT-jTtDpowDW",
+        .zignite = .{
+            .path = "../../zignite",
         },
-        .zgpu = .{
-            .url = "https://github.com/zig-gamedev/zgpu/archive/main.tar.gz",
-            .hash = "zgpu-0.12.0-dev-nqFT5EKgCADkhwAf97_pfSOmPWEguKmljSECs9ihpFS7",
-        },
-        .dawn_aarch64_macos = .{
-            .url = "https://github.com/michal-z/webgpu_dawn-aarch64-macos/archive/d2360cdfff0cf4a780cb77aa47c57aca03cc6dfe.tar.gz",
-            .hash = "N-V-__8AALVIRAIf5nfpx8-4mEo2RGsynVryPQPcHk95qFM5",
-            .lazy = true,
-        },
-        .async_zocket = .{
-            .path = "../../async_zocket",
-        },
-        // .async_zocket = .{
-        //     .url = "https://github.com/Thomvanoorschot/async_zocket/archive/main.tar.gz",
-        //     .hash = "wire-0.0.1-kK_aNfZYAACoUpVGAcf3QkiBPu935rh2PtvnJntLDdQX",
-        // },
     },
     .paths = .{
         "build.zig",

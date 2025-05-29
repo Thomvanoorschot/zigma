@@ -1,31 +1,20 @@
+const zignite = @import("zignite");
 const std = @import("std");
-const xev = @import("xev");
-const Loop = xev.Loop;
+const imgui = zignite.imgui;
+const engine = zignite.engine;
 const App = @import("visualization/app.zig").App;
-const TCPMessageCallbacks = @import("visualization/app.zig").TCPMessageCallbacks;
 const window_title = "zigma_client";
 
 pub fn main() !void {
-
-    // var thread_pool = xev.ThreadPool.init(.{
-    //     .max_threads = 0,
-    // });
-    // defer thread_pool.deinit();
-    var loop = try Loop.init(.{
-        // .thread_pool = &thread_pool,
+    var e = try engine.Engine.init(.{
+        .width = 3456,
+        .height = 2234,
+        .with_implot = false,
     });
-    defer loop.deinit();
-    var allocator_state = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = allocator_state.allocator();
+    defer e.deinit();
 
-    var app = try App.init(
-        allocator,
-        &loop,
-        window_title,
-        3456,
-        2234,
-    );
-    app.start();
-
-    try loop.run(.until_done);
+    while (e.startRender()) {
+        defer e.endRender();
+        imgui.igShowDemoWindow(null);
+    }
 }

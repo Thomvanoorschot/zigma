@@ -62,7 +62,7 @@ pub const OrderbookWindows = struct {
         // try self.wss_client.?.write(open_msg);
     }
 
-    pub fn updateOrderbook(self: *Self, ticker: []const u8, ob: *OrderBook) !void {
+    pub fn updateOrderbook(self: *Self, ticker: []const u8, ob: *const OrderBook) !void {
         if (self.windows.?.get(ticker)) |window| {
             window.orderbook = ob;
         } else {

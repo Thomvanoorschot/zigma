@@ -53,20 +53,11 @@ fn onOpenCallback(web_worker: *WebSocketWebWorker(SharedData)) !bool {
 // }
 
 fn onMessageCallback(web_worker: *WebSocketWebWorker(SharedData), message: []const u8) !bool {
-    web_worker.std_out.print("Received message ({d} bytes): ", .{message.len}) catch unreachable;
-    for (message[0..@min(message.len, 50)]) |byte| {
-        web_worker.std_out.print("{x:0>2} ", .{byte}) catch unreachable;
-    }
-    web_worker.std_out.print("\n", .{}) catch unreachable;
-    const orderbook = parseOrderbook(std.heap.c_allocator, message) catch {
-        try web_worker.std_out.print("Failed\n", .{});
+    const orderbook = parseOrderbook(std.heap.c_allocator, message) catch |err| {
+        try web_worker.std_out.print("Failed {any}\n", .{err});
         return true;
     };
-    // _ = web_worker;
-    _ = orderbook;
-    // web_worker.std_out.print("Parsed orderbook: {s}\n", .{orderbook.ticker}) catch {
-    //     return true;
-    // };
+    try web_worker.shared_data.orderbook_windows.updateOrderbook(orderbook.ticker, orderbook);
     return true;
 }
 
@@ -111,6 +102,7 @@ pub fn main() !void {
 
     while (e.startRender()) {
         defer e.endRender();
-        imgui.igShowDemoWindow(null);
+        // imgui.igShowDemoWindow(null);
+        shared.orderbook_windows.plot() catch unreachable;
     }
 }

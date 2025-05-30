@@ -1,17 +1,15 @@
 const std = @import("std");
 
 const zignite = @import("zignite");
-const gui = zignite.imgui;
+const shared_models = @import("shared_models");
+const imgui = zignite.imgui;
 const plot = zignite.implot;
 const glfw = zignite.glfw;
-const shared_models = @import("shared_models");
 
 const parseOrderbook = shared_models.parseOrderbook;
 
-const OrderBook = shared_models.OrderBook;
 const PriceLevel = shared_models.PriceLevel;
-
-var popen: bool = true;
+const OrderBook = shared_models.OrderBook;
 
 const OrderbookWindow = struct {
     ticker: []const u8,
@@ -64,26 +62,21 @@ pub const OrderbookWindows = struct {
         // try self.wss_client.?.write(open_msg);
     }
 
-    pub fn orderbookCallback(
-        self_: *anyopaque,
-        payload: []const u8,
-    ) anyerror!void {
-        const self = @as(*Self, @ptrCast(@alignCast(self_)));
-        const ob = parseOrderbook(self.allocator, payload) catch |err| {
-            std.log.err("Failed to parse orderbook data: {s}", .{@errorName(err)});
-            return error.FailedToParseOrderbook;
-        };
-        if (self.windows.?.get(ob.ticker)) |window| {
-            if (window.popen) {
-                window.orderbook = ob;
-            } else {
-                self.allocator.free(window.open_message);
-                self.allocator.destroy(window);
-                _ = self.windows.?.remove(ob.ticker);
-                // TODO This is still dangling
-                // try self.wss_client.?.write(window.close_message);
-            }
-        } else {}
+    pub fn updateOrderbook(self: *Self, ticker: []const u8, ob: *OrderBook) !void {
+        if (self.windows.?.get(ticker)) |window| {
+            window.orderbook = ob;
+        } else {
+            const window = try self.allocator.create(OrderbookWindow);
+            const open_msg = std.fmt.allocPrintZ(self.allocator, "open_orderbook:{s}", .{ticker}) catch unreachable;
+            const close_msg = std.fmt.allocPrintZ(self.allocator, "close_orderbook:{s}", .{ticker}) catch unreachable;
+            window.* = .{
+                .ticker = ticker,
+                .open_message = open_msg,
+                .close_message = close_msg,
+                .popen = true,
+            };
+            try self.windows.?.put(ticker, window);
+        }
     }
 
     pub fn plot(self: *Self) !void {
@@ -104,8 +97,8 @@ pub const OrderbookWindows = struct {
         const orderbook = window.orderbook.?;
         const title = std.fmt.bufPrintZ(&title_buf, "Order Book - {s} ({s})", .{ orderbook.ticker, orderbook.exchange }) catch unreachable;
 
-        if (popen and gui.begin(title, .{ .popen = &window.popen })) {
-            defer gui.end();
+        if (window.popen and imgui.igBegin(title, &window.popen, imgui.ImGuiWindowFlags_None)) {
+            defer imgui.igEnd();
 
             const bids = orderbook.bids;
             const asks = orderbook.asks;
@@ -120,74 +113,70 @@ pub const OrderbookWindows = struct {
                 max_vol = 1.0;
             }
 
-            const table_flags = gui.TableFlags{
-                .borders = .{ .inner_v = true },
-                .sizing = .fixed_fit,
-                .row_bg = true,
-            };
+            const table_flags = imgui.ImGuiTableFlags_RowBg | imgui.ImGuiTableFlags_BordersInnerV | imgui.ImGuiTableFlags_SizingFixedFit;
 
             const text_buf_size = 64;
             var text_buf: [text_buf_size]u8 = undefined;
 
-            if (gui.beginTable("AsksTable", .{ .column = 2, .flags = table_flags })) {
-                defer gui.endTable();
+            if (imgui.igBeginTable("AsksTable", 2, table_flags, .{ .x = 0, .y = 0 }, 0)) {
+                defer imgui.igEndTable();
 
-                gui.tableSetupColumn("Price", .{ .flags = .{ .width_fixed = true }, .init_width_or_height = 80.0 });
-                gui.tableSetupColumn("Volume", .{ .flags = .{ .width_fixed = true }, .init_width_or_height = 80.0 });
+                imgui.igTableSetupColumn("Price", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
+                imgui.igTableSetupColumn("Volume", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
 
-                gui.tableNextRow(.{});
-                _ = gui.tableSetColumnIndex(0);
-                gui.textUnformattedColored(0xFF0000FF, "Asks");
+                imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
+                _ = imgui.igTableSetColumnIndex(0);
+                imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, "Asks");
 
-                gui.tableHeadersRow();
+                imgui.igTableHeadersRow();
 
                 var ask_cum_vol: f64 = 0;
                 for (asks.items, 0..) |_, i| {
                     const ask = asks.items[asks.items.len - 1 - i];
                     ask_cum_vol += ask[1];
 
-                    gui.tableNextRow(.{});
+                    imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
-                    _ = gui.tableSetColumnIndex(0);
+                    _ = imgui.igTableSetColumnIndex(0);
                     const price_fmt = std.fmt.bufPrint(&text_buf, "{d:.2}", .{ask[0]}) catch "ERR";
-                    // Colors are AABBGGRR
-                    gui.textUnformattedColored(0xFF0000FF, price_fmt);
+                    imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, price_fmt.ptr);
 
-                    _ = gui.tableSetColumnIndex(1);
+                    _ = imgui.igTableSetColumnIndex(1);
                     const vol_fmt = std.fmt.bufPrint(&text_buf, "{d:.3}", .{ask[1]}) catch "ERR";
-                    gui.textUnformattedColored(0xFF0000FF, vol_fmt);
+                    imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, vol_fmt.ptr);
                 }
             }
 
-            gui.separator();
+            imgui.igSeparator();
             const spread_val = if (asks.items.len > 0 and bids.items.len > 0) asks.items[0][0] - bids.items[0][0] else 0.0;
             const spread_text = std.fmt.bufPrint(&text_buf, "Spread: {d:.2}", .{spread_val}) catch "ERR SPREAD";
-            gui.textUnformatted(spread_text);
-            gui.separator();
+            imgui.igText(spread_text.ptr);
+            imgui.igSeparator();
 
-            if (gui.beginTable("BidsTable", .{ .column = 2, .flags = table_flags })) {
-                defer gui.endTable();
+            if (imgui.igBeginTable("BidsTable", 2, table_flags, .{ .x = 0, .y = 0 }, 0)) {
+                defer imgui.igEndTable();
 
-                gui.tableSetupColumn("Price", .{ .flags = .{ .width_fixed = true }, .init_width_or_height = 80.0 });
-                gui.tableSetupColumn("Volume", .{ .flags = .{ .width_fixed = true }, .init_width_or_height = 80.0 });
-                gui.tableNextRow(.{});
-                _ = gui.tableSetColumnIndex(0);
-                gui.textUnformattedColored(0xFF00FF00, "Bids");
+                imgui.igTableSetupColumn("Price", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
+                imgui.igTableSetupColumn("Volume", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
 
-                gui.tableHeadersRow();
+                imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
+                _ = imgui.igTableSetColumnIndex(0);
+                imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, "Bids");
+
+                imgui.igTableHeadersRow();
 
                 var bid_cum_vol: f64 = 0;
                 for (bids.items) |bid| {
                     bid_cum_vol += bid[1];
 
-                    gui.tableNextRow(.{});
+                    imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
-                    _ = gui.tableSetColumnIndex(0);
+                    _ = imgui.igTableSetColumnIndex(0);
                     const price_fmt = std.fmt.bufPrint(&text_buf, "{d:.2}", .{bid[0]}) catch "ERR";
-                    gui.textUnformattedColored(0xFF00FF00, price_fmt);
-                    _ = gui.tableSetColumnIndex(1);
+                    imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, price_fmt.ptr);
+                    _ = imgui.igTableSetColumnIndex(1);
                     const vol_fmt = std.fmt.bufPrint(&text_buf, "{d:.3}", .{bid[1]}) catch "ERR";
-                    gui.textUnformattedColored(0xFF00FF00, vol_fmt);
+                    imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, vol_fmt.ptr);
                 }
             }
         }

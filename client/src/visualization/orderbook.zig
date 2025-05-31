@@ -5,6 +5,7 @@ const shared_models = @import("shared_models");
 const imgui = zignite.imgui;
 const plot = zignite.implot;
 const glfw = zignite.glfw;
+const websocket = zignite.websocket;
 
 const parseOrderbook = shared_models.parseOrderbook;
 
@@ -22,15 +23,18 @@ const OrderbookWindow = struct {
 pub const OrderbookWindows = struct {
     allocator: std.mem.Allocator,
     windows: ?std.StringHashMap(*OrderbookWindow) = null,
+    open_socket: websocket.WebSocket,
     const Self = @This();
 
     pub fn init(
         allocator: std.mem.Allocator,
+        open_socket: websocket.WebSocket,
     ) !*OrderbookWindows {
         const self = try allocator.create(Self);
         self.* = .{
             .allocator = allocator,
             .windows = std.StringHashMap(*OrderbookWindow).init(allocator),
+            .open_socket = open_socket,
         };
         return self;
     }
@@ -50,8 +54,8 @@ pub const OrderbookWindows = struct {
         ticker: []const u8,
     ) !void {
         const window = try self.allocator.create(OrderbookWindow);
-        const open_msg = std.fmt.allocPrintZ(self.allocator, "open_orderbook:{s}", .{ticker}) catch unreachable;
-        const close_msg = std.fmt.allocPrintZ(self.allocator, "close_orderbook:{s}", .{ticker}) catch unreachable;
+        const open_msg = try std.fmt.allocPrintZ(self.allocator, "open_orderbook:{s}", .{ticker});
+        const close_msg = try std.fmt.allocPrintZ(self.allocator, "close_orderbook:{s}", .{ticker});
         window.* = .{
             .ticker = ticker,
             .open_message = open_msg,
@@ -59,23 +63,20 @@ pub const OrderbookWindows = struct {
             .popen = true,
         };
         try self.windows.?.put(ticker, window);
-        // try self.wss_client.?.write(open_msg);
+        _ = websocket.sendText(self.open_socket, open_msg);
     }
 
     pub fn updateOrderbook(self: *Self, ticker: []const u8, ob: *const OrderBook) !void {
         if (self.windows.?.get(ticker)) |window| {
-            window.orderbook = ob;
-        } else {
-            const window = try self.allocator.create(OrderbookWindow);
-            const open_msg = std.fmt.allocPrintZ(self.allocator, "open_orderbook:{s}", .{ticker}) catch unreachable;
-            const close_msg = std.fmt.allocPrintZ(self.allocator, "close_orderbook:{s}", .{ticker}) catch unreachable;
-            window.* = .{
-                .ticker = ticker,
-                .open_message = open_msg,
-                .close_message = close_msg,
-                .popen = true,
-            };
-            try self.windows.?.put(ticker, window);
+            if (window.popen) {
+                window.orderbook = ob;
+            } else {
+                defer self.allocator.free(window.open_message);
+                defer self.allocator.destroy(window);
+                defer self.allocator.free(window.close_message);
+                _ = self.windows.?.remove(ob.ticker);
+                _ = websocket.sendText(self.open_socket, window.close_message);
+            }
         }
     }
 
@@ -138,18 +139,18 @@ pub const OrderbookWindows = struct {
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
                     _ = imgui.igTableSetColumnIndex(0);
-                    const price_fmt = std.fmt.bufPrint(&text_buf, "{d:.2}", .{ask[0]}) catch "ERR";
+                    const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{ask[0]}) catch "ERR";
                     imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, price_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(1);
-                    const vol_fmt = std.fmt.bufPrint(&text_buf, "{d:.3}", .{ask[1]}) catch "ERR";
+                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{ask[1]}) catch "ERR";
                     imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, vol_fmt.ptr);
                 }
             }
 
             imgui.igSeparator();
             const spread_val = if (asks.items.len > 0 and bids.items.len > 0) asks.items[0][0] - bids.items[0][0] else 0.0;
-            const spread_text = std.fmt.bufPrint(&text_buf, "Spread: {d:.2}", .{spread_val}) catch "ERR SPREAD";
+            const spread_text = std.fmt.bufPrintZ(&text_buf, "Spread: {d:.2}", .{spread_val}) catch "ERR";
             imgui.igText(spread_text.ptr);
             imgui.igSeparator();
 
@@ -172,10 +173,10 @@ pub const OrderbookWindows = struct {
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
                     _ = imgui.igTableSetColumnIndex(0);
-                    const price_fmt = std.fmt.bufPrint(&text_buf, "{d:.2}", .{bid[0]}) catch "ERR";
+                    const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid[0]}) catch "ERR";
                     imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, price_fmt.ptr);
                     _ = imgui.igTableSetColumnIndex(1);
-                    const vol_fmt = std.fmt.bufPrint(&text_buf, "{d:.3}", .{bid[1]}) catch "ERR";
+                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{bid[1]}) catch "ERR";
                     imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, vol_fmt.ptr);
                 }
             }

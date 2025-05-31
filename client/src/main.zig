@@ -24,7 +24,7 @@ fn workerEntrypoint(web_worker: *WebSocketWebWorker(SharedData)) !void {
 fn onOpenCallback(web_worker: *WebSocketWebWorker(SharedData)) !bool {
     try web_worker.std_out.print("WebSocket opened\n", .{});
     if (web_worker.open_socket) |open_socket| {
-        _ = websocket.sendText(open_socket, "open_orderbook:BTC/USD");
+        web_worker.shared_data.orderbook_windows = try OrderbookWindows.init(web_worker.allocator, open_socket);
     }
     return true;
 }
@@ -75,7 +75,7 @@ fn onCloseCallback(web_worker: *WebSocketWebWorker(SharedData), code: u16, reaso
 pub fn main() !void {
     const allocator = std.heap.c_allocator;
     var shared = SharedData{
-        .orderbook_windows = try OrderbookWindows.init(allocator),
+        .orderbook_windows = undefined,
     };
 
     // Create web worker
@@ -103,6 +103,20 @@ pub fn main() !void {
     while (e.startRender()) {
         defer e.endRender();
         // imgui.igShowDemoWindow(null);
+        const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
+        if (imgui.igBeginMainMenuBar()) {
+            defer imgui.igEndMainMenuBar();
+            if (imgui.igBeginMenu("Orderbook", true)) {
+                for (tickers) |ticker| {
+                    const c_str = try std.fmt.allocPrintZ(allocator, "{s}\r\n", .{ticker});
+                    defer allocator.free(c_str);
+                    if (imgui.igMenuItem_Bool(c_str, null, false, true)) {
+                        try shared.orderbook_windows.openWindow(ticker);
+                    }
+                }
+                imgui.igEndMenu();
+            }
+        }
         shared.orderbook_windows.plot() catch unreachable;
     }
 }

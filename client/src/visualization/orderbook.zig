@@ -16,12 +16,15 @@ const OrderbookWindow = struct {
     close_message: [:0]u8,
     popen: bool = false,
     orderbook: ?*const OrderBook = null,
+    initial_pos: imgui.ImVec2,
+    pos_set: bool = false,
 };
 
 pub const OrderbookWindows = struct {
     allocator: std.mem.Allocator,
     windows: ?std.StringHashMap(*OrderbookWindow) = null,
     open_socket: websocket.WebSocket,
+    next_window_offset: u32 = 0,
     const Self = @This();
 
     pub fn init(
@@ -54,13 +57,22 @@ pub const OrderbookWindows = struct {
         const window = try self.allocator.create(OrderbookWindow);
         const open_msg = try std.fmt.allocPrintZ(self.allocator, "open_orderbook:{s}", .{ticker});
         const close_msg = try std.fmt.allocPrintZ(self.allocator, "close_orderbook:{s}", .{ticker});
+
+        const offset: f32 = @floatFromInt(self.next_window_offset * 30);
+        const initial_x: f32 = 50.0 + offset;
+        const initial_y: f32 = 100.0 + offset;
+
         window.* = .{
             .ticker = ticker,
             .open_message = open_msg,
             .close_message = close_msg,
             .popen = true,
+            .initial_pos = imgui.ImVec2{ .x = initial_x, .y = initial_y },
+            .pos_set = false,
         };
+
         try self.windows.?.put(ticker, window);
+        self.next_window_offset += 1;
         _ = websocket.sendText(self.open_socket, open_msg);
     }
 
@@ -74,6 +86,10 @@ pub const OrderbookWindows = struct {
                 defer self.allocator.free(window.close_message);
                 _ = self.windows.?.remove(ob.ticker);
                 _ = websocket.sendText(self.open_socket, window.close_message);
+
+                if (self.next_window_offset > 0) {
+                    self.next_window_offset -= 1;
+                }
             }
         }
     }
@@ -95,6 +111,11 @@ pub const OrderbookWindows = struct {
         var title_buf: [128]u8 = undefined;
         const orderbook = window.orderbook.?;
         const title = std.fmt.bufPrintZ(&title_buf, "Order Book - {s} ({s})", .{ orderbook.ticker, orderbook.exchange }) catch unreachable;
+
+        if (!window.pos_set) {
+            imgui.igSetNextWindowPos(window.initial_pos, imgui.ImGuiCond_FirstUseEver, imgui.ImVec2{ .x = 0, .y = 0 });
+            window.pos_set = true;
+        }
 
         if (window.popen and imgui.igBegin(title, &window.popen, imgui.ImGuiWindowFlags_None)) {
             defer imgui.igEnd();

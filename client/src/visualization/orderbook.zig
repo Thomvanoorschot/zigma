@@ -7,8 +7,6 @@ const plot = zignite.implot;
 const glfw = zignite.glfw;
 const websocket = zignite.websocket;
 
-const parseOrderbook = shared_models.parseOrderbook;
-
 const PriceLevel = shared_models.PriceLevel;
 const OrderBook = shared_models.OrderBook;
 

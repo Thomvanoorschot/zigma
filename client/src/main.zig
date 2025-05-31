@@ -30,7 +30,6 @@ pub fn main() !void {
         .height = 768,
     });
     defer e.deinit();
-
     const app = try App.init(allocator, &shared_data);
     defer app.deinit();
 

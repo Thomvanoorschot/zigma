@@ -1,6 +1,7 @@
 const std = @import("std");
-const zignite = @import("zignite");
+const zignite_pkg = @import("zignite");
 
+const name = "client";
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -9,6 +10,12 @@ pub fn build(b: *std.Build) !void {
     const zignite_dep = b.dependency("zignite", .{
         .target = target,
         .optimize = optimize,
+        .with_imgui = true,
+        .with_implot = false,
+        .use_glfw = true,
+        .use_webgpu = true,
+        .use_websockets = true,
+        .use_filesystem = true,
     });
     const zignite_lib = zignite_dep.artifact("zignite");
     const shared_models_dep = b.dependency("shared_models", .{
@@ -29,7 +36,7 @@ pub fn build(b: *std.Build) !void {
 
     // Add executable
     const exe = b.addStaticLibrary(.{
-        .name = "client",
+        .name = name,
         .root_module = client_mod,
     });
     exe.linkLibrary(zignite_lib);
@@ -40,16 +47,9 @@ pub fn build(b: *std.Build) !void {
     exe.linkLibC();
     exe.root_module.addImport("zignite", zignite_dep.module("zignite"));
 
-    try zignite.emRunStep(b, .{
-        .target = target,
-        .optimize = optimize,
+    _ = zignite_pkg.emRunStep(b, .{
+        .name = name,
         .zignite_dep = zignite_dep,
-        .name = "client",
         .lib_main = exe,
-        .use_glfw = true,
-        .use_webgpu = true,
-        .extra_args = &.{
-            "-lwebsocket.js",
-        },
     });
 }

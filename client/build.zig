@@ -10,6 +10,7 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
     });
+    const zignite_lib = zignite_dep.artifact("zignite");
     const shared_models_dep = b.dependency("shared_models", .{
         .target = target,
         .optimize = optimize,
@@ -31,35 +32,24 @@ pub fn build(b: *std.Build) !void {
         .name = "client",
         .root_module = client_mod,
     });
-
+    exe.linkLibrary(zignite_lib);
     // Add imports to executable
     exe.root_module.addImport("zignite", zignite_dep.module("zignite"));
     exe.root_module.addImport("shared_models", shared_models_dep.module("shared_models"));
 
-
     exe.linkLibC();
     exe.root_module.addImport("zignite", zignite_dep.module("zignite"));
 
-    const emsdk = zignite_dep.builder.dependency("emsdk", .{});
-    const link_step = try zignite.emLinkStep(b, .{
-        .lib_main = exe,
+    try zignite.emRunStep(b, .{
         .target = target,
         .optimize = optimize,
-        .emsdk = emsdk,
-        .use_webgpu = true,
+        .zignite_dep = zignite_dep,
+        .name = "client",
+        .lib_main = exe,
         .use_glfw = true,
-        .shell_file_path = zignite_dep.path("web/shell.html"),
+        .use_webgpu = true,
         .extra_args = &.{
             "-lwebsocket.js",
         },
     });
-
-    b.getInstallStep().dependOn(&link_step.step);
-
-    // Add run step
-    const run = zignite.emRunStep(b, .{ .name = "client", .emsdk = emsdk });
-    run.step.dependOn(&link_step.step);
-    b.step("run", "Run client").dependOn(&run.step);
-
-    b.installArtifact(exe);
 }

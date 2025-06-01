@@ -2,8 +2,11 @@ const std = @import("std");
 const zignite_pkg = @import("zignite");
 
 const name = "client";
-pub fn build(b: *std.Build) !void {
-    const target = b.standardTargetOptions(.{});
+pub fn build(b: *std.Build) void {
+    const target = b.resolveTargetQuery(.{
+        .cpu_arch = .wasm64,
+        .os_tag = .emscripten,
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     // Dependencies
@@ -45,9 +48,9 @@ pub fn build(b: *std.Build) !void {
     exe.root_module.addImport("shared_models", shared_models_dep.module("shared_models"));
 
     exe.linkLibC();
-    exe.root_module.addImport("zignite", zignite_dep.module("zignite"));
+    b.installArtifact(exe);
 
-    _ = zignite_pkg.emRunStep(b, .{
+    zignite_pkg.emRunStep(b, .{
         .name = name,
         .zignite_dep = zignite_dep,
         .lib_main = exe,

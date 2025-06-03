@@ -1,4 +1,6 @@
-const ob = @import("orderbook.zig");
+const ob = @import("gen/orderbook.proto.zig");
+pub const Orderbook = ob.Orderbook;
+pub const Level = ob.Level;
 
 const ohlc = @import("ohlc_list.zig");
 pub const OHLCList = ohlc.OHLCList;

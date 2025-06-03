@@ -6,9 +6,14 @@ message WsMessage {
     }
 }
 
+message Level {
+    required double price = 1;
+    required double quantity = 2;
+}
+
 message Orderbook {
-    repeated double bids = 1;
-    repeated double asks = 2;
+    repeated Level bids = 1;
+    repeated Level asks = 2;
     required uint32 max_depth = 3;
     required string exchange = 4;
     required string ticker = 5;

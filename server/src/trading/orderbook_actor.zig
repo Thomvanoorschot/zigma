@@ -4,7 +4,7 @@ const brkr_impl = @import("broker_impl.zig");
 const brkr_actr = @import("broker_actor.zig");
 const conn_actr = @import("../http/connection_actor.zig");
 const shared_models = @import("shared_models");
-const obu = @import("orderbook_update.zig");
+const ob = @import("orderbook.zig");
 
 const xev = backstage.xev;
 const ActorInterface = backstage.ActorInterface;
@@ -14,7 +14,7 @@ const BrokerType = brkr_impl.BrokerType;
 const BrokerActor = brkr_actr.BrokerActor;
 const BrokerMessage = brkr_actr.BrokerMessage;
 const Envelope = backstage.Envelope;
-const OrderbookUpdate = obu.OrderbookUpdate;
+const OrderbookUpdate = ob.OrderbookUpdate;
 const ConnectionMessage = conn_actr.ConnectionMessage;
 const Orderbook = shared_models.OrderBook;
 

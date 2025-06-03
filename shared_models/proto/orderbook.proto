@@ -1,0 +1,15 @@
+syntax = "proto2";
+
+message WsMessage {
+    oneof message {
+        Orderbook orderbook = 1;
+    }
+}
+
+message Orderbook {
+    repeated double bids = 1;
+    repeated double asks = 2;
+    required uint32 max_depth = 3;
+    required string exchange = 4;
+    required string ticker = 5;
+}

@@ -4,13 +4,13 @@ const json_utils = @import("../utils/json_utils.zig");
 const ws_messages = @import("./ws_messages.zig");
 const backstage = @import("backstage");
 const brkr_impl = @import("../trading/broker_impl.zig");
-const obu = @import("../trading/orderbook_update.zig");
+const ob = @import("../trading/orderbook.zig");
 const ohlcu = @import("../trading/ohlc_update.zig");
 const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
 const xev = backstage.xev;
 const Loop = xev.Loop;
 const BrokerPayload = brkr_impl.BrokerPayload;
-const OrderbookUpdate = obu.OrderbookUpdate;
+const OrderbookUpdate = ob.OrderbookUpdate;
 const OHLCUpdate = ohlcu.OHLCUpdate;
 const WsSubsribeRequest = ws_messages.WsSubscribeRequest;
 const parseMessage = ws_messages.parseMessage;
@@ -104,8 +104,8 @@ pub const Broker = struct {
         const message = try parseMessage(arena_state.allocator(), payload);
         if (message) |m| {
             switch (m) {
-                .orderbook => |ob| {
-                    switch (ob) {
+                .orderbook => |obm| {
+                    switch (obm) {
                         .snapshot => |im| {
                             try self.read_callback(self.callback_context, BrokerPayload{
                                 .orderbook_update = try self.convertUpdateData(im),

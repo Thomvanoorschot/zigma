@@ -8,6 +8,10 @@
             .url = "https://github.com/r4gus/zbor/archive/master.tar.gz",
             .hash = "zbor-0.17.3-kr-CoJQkAwDLIuC9SILI7Mw5BpLqoO6Xhxkg_Tnb7lCZ",
         },
+        .gremlin = .{
+            .url = "https://github.com/octopus-foundation/gremlin.zig/archive/refs/tags/0.0.0.tar.gz",
+            .hash = "gremlin-0.0.0-AAAAAC51DgClnzl2c3PLQc0jRnm5n5LLwNVa3mTNAdPI",
+        },
     },
     .paths = .{
         "build.zig",

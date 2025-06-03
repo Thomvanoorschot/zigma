@@ -1,11 +1,11 @@
 const std = @import("std");
 const krkn = @import("../kraken/broker.zig");
 const backstage = @import("backstage");
-const obu = @import("orderbook_update.zig");
+const ob = @import("orderbook.zig");
 const ohlcu = @import("ohlc_update.zig");
 const Loop = backstage.xev.Loop;
 const Context = backstage.Context;
-const OrderbookUpdate = obu.OrderbookUpdate;
+const OrderbookUpdate = ob.OrderbookUpdate;
 const OHLCUpdate = ohlcu.OHLCUpdate;
 
 pub const BrokerType = enum {

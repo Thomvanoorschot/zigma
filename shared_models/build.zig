@@ -1,27 +1,18 @@
 const std = @import("std");
-const ProtoGenStep = @import("gremlin").ProtoGenStep;
+const protobuf = @import("protobuf");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    // const target = b.standardTargetOptions(.{});
+    const target = b.resolveTargetQuery(.{
+        .cpu_arch = .aarch64,
+        .os_tag = .macos,
+    });
     const optimize = b.standardOptimizeOption(.{});
 
-    const zbor_dep = b.dependency("zbor", .{
+    const protobuf_dep = b.dependency("protobuf", .{
         .target = target,
         .optimize = optimize,
     });
-
-    const gremlin_dep = b.dependency("gremlin", .{
-        .target = target,
-        .optimize = optimize,
-    }).module("gremlin");
-
-    const protobuf_gen = ProtoGenStep.create(
-        b,
-        .{
-            .proto_sources = b.path("proto"), // Directory containing .proto files
-            .target = b.path("src/gen"), // Output directory for generated Zig code
-        },
-    );
 
     const shared_models = b.addModule("shared_models", .{
         .target = target,
@@ -29,13 +20,19 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/root.zig"),
     });
 
-    shared_models.addImport("gremlin", gremlin_dep);
-    shared_models.addImport("zbor", zbor_dep.module("zbor"));
+    shared_models.addImport("protobuf", protobuf_dep.module("protobuf"));
 
-    var gen_step = b.step("genproto", "Generate protobuf sources");
-    gen_step.dependOn(&protobuf_gen.step);
+    const gen_proto = b.step("gen-proto", "generates zig files from protocol buffer definitions");
 
-    // 4) Make the Install step depend on our “genproto” step
-    //    so that `zig build` (which defaults to “install”) will run codegen.
-    b.getInstallStep().dependOn(gen_step);
+    const protoc_step = protobuf.RunProtocStep.create(b, protobuf_dep.builder, target, .{
+        .destination_directory = b.path("src"),
+        .source_files = &.{
+            "orderbook.proto",
+        },
+        .include_directories = &.{"proto"},
+    });
+
+    gen_proto.dependOn(&protoc_step.step);
+
+    b.getInstallStep().dependOn(gen_proto);
 }

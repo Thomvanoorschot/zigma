@@ -8,9 +8,10 @@ const xev = backstage.xev;
 const Context = backstage.Context;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
-const Orderbook = shared_models.OrderBook;
-const OHLCList = shared_models.OHLCList;
-const stringifyOHLCList = shared_models.stringifyOHLCList;
+const Orderbook = shared_models.Orderbook;
+const encode = shared_models.encode;
+// const OHLCList = shared_models.OHLCList;
+// const stringifyOHLCList = shared_models.stringifyOHLCList;
 const OrderbookMessage = @import("../trading/orderbook_actor.zig").OrderbookMessage;
 const OHLCMessage = @import("../trading/ohlc_actor.zig").OHLCMessage;
 const stringify = @import("zbor").stringify;
@@ -26,7 +27,7 @@ pub const MessageTypes = enum {
 
 pub const ConnectionMessage = union(enum) {
     orderbook_update: *Orderbook,
-    ohlc_update: OHLCList,
+    // ohlc_update: OHLCList,
     setup: SetupMessage,
 };
 
@@ -74,15 +75,15 @@ pub const ConnectionActor = struct {
                 self.client_conn.setReadCallback(@ptrCast(self), readCallback);
                 self.client_conn.read();
             },
-            .orderbook_update => |m| {
-                const str = try m.stringify(self.allocator);
+            .orderbook_update => |ob| {
+                const str = try encode(ob.*, self.allocator);
                 try self.write(str);
             },
-            .ohlc_update => |m| {
-                const str = try stringifyOHLCList(self.allocator, m);
-                // TODO Need to wrap the messages in a struct that holds a message type so that I can multiplex the messages
-                try self.write(str);
-            },
+            // .ohlc_update => |m| {
+            //     const str = try stringifyOHLCList(self.allocator, m);
+            //     // TODO Need to wrap the messages in a struct that holds a message type so that I can multiplex the messages
+            //     try self.write(str);
+            // },
         }
     }
 
@@ -117,8 +118,8 @@ pub const ConnectionActor = struct {
         }
     }
 
-    pub fn write(self: *Self, buf: std.ArrayList(u8)) !void {
-        try self.client_conn.write(.binary, buf.items);
+    pub fn write(self: *Self, buf: []const u8) !void {
+        try self.client_conn.write(.binary, buf);
     }
 
     fn closeCallback(

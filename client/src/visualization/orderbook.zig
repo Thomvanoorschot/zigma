@@ -7,15 +7,15 @@ const plot = zignite.implot;
 const glfw = zignite.glfw;
 const websocket = zignite.websocket;
 
-const PriceLevel = shared_models.PriceLevel;
-const OrderBook = shared_models.OrderBook;
+const PriceLevel = shared_models.Level;
+const OrderBook = shared_models.Orderbook;
 
 const OrderbookWindow = struct {
     ticker: []const u8,
     open_message: [:0]u8,
     close_message: [:0]u8,
     popen: bool = false,
-    orderbook: ?*const OrderBook = null,
+    orderbook: ?OrderBook = null,
     initial_pos: imgui.ImVec2,
     pos_set: bool = false,
 };
@@ -76,21 +76,26 @@ pub const OrderbookWindows = struct {
         _ = websocket.sendText(self.open_socket, open_msg);
     }
 
-    pub fn updateOrderbook(self: *Self, ticker: []const u8, ob: *const OrderBook) !void {
-        if (self.windows.?.get(ticker)) |window| {
+    pub fn updateOrderbook(self: *Self, ob: OrderBook) !void {
+        if (self.windows.?.get(ob.ticker.Owned.str)) |window| {
             if (window.popen) {
                 window.orderbook = ob;
             } else {
-                defer self.allocator.free(window.open_message);
-                defer self.allocator.destroy(window);
-                defer self.allocator.free(window.close_message);
-                _ = self.windows.?.remove(ob.ticker);
                 _ = websocket.sendText(self.open_socket, window.close_message);
+
+                _ = self.windows.?.remove(ob.ticker.Owned.str);
+
+                self.allocator.free(window.open_message);
+                self.allocator.free(window.close_message);
+                self.allocator.destroy(window);
+                ob.deinit();
 
                 if (self.next_window_offset > 0) {
                     self.next_window_offset -= 1;
                 }
             }
+        } else {
+            ob.deinit();
         }
     }
 
@@ -110,7 +115,7 @@ pub const OrderbookWindows = struct {
     fn plotOrderbookWindow(window: *OrderbookWindow) !void {
         var title_buf: [128]u8 = undefined;
         const orderbook = window.orderbook.?;
-        const title = std.fmt.bufPrintZ(&title_buf, "Order Book - {s} ({s})", .{ orderbook.ticker, orderbook.exchange }) catch unreachable;
+        const title = std.fmt.bufPrintZ(&title_buf, "Order Book - {s} ({s})", .{ orderbook.ticker.Owned.str, orderbook.exchange.Owned.str }) catch unreachable;
 
         if (!window.pos_set) {
             imgui.igSetNextWindowPos(window.initial_pos, imgui.ImGuiCond_FirstUseEver, imgui.ImVec2{ .x = 0, .y = 0 });
@@ -124,8 +129,8 @@ pub const OrderbookWindows = struct {
             const asks = orderbook.asks;
 
             var max_vol: f64 = 0.0;
-            for (bids.items) |bid| max_vol = @max(max_vol, bid[1]);
-            for (asks.items) |ask| max_vol = @max(max_vol, ask[1]);
+            for (bids.items) |bid| max_vol = @max(max_vol, bid.quantity);
+            for (asks.items) |ask| max_vol = @max(max_vol, ask.quantity);
 
             if (max_vol > 0) {
                 max_vol *= 1.05;
@@ -153,22 +158,22 @@ pub const OrderbookWindows = struct {
                 var ask_cum_vol: f64 = 0;
                 for (asks.items, 0..) |_, i| {
                     const ask = asks.items[asks.items.len - 1 - i];
-                    ask_cum_vol += ask[1];
+                    ask_cum_vol += ask.quantity;
 
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
                     _ = imgui.igTableSetColumnIndex(0);
-                    const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{ask[0]}) catch "ERR";
+                    const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{ask.price}) catch "ERR";
                     imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, price_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(1);
-                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{ask[1]}) catch "ERR";
+                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{ask.quantity}) catch "ERR";
                     imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, vol_fmt.ptr);
                 }
             }
 
             imgui.igSeparator();
-            const spread_val = if (asks.items.len > 0 and bids.items.len > 0) asks.items[0][0] - bids.items[0][0] else 0.0;
+            const spread_val = if (asks.items.len > 0 and bids.items.len > 0) asks.items[0].price - bids.items[0].price else 0.0;
             const spread_text = std.fmt.bufPrintZ(&text_buf, "Spread: {d:.2}", .{spread_val}) catch "ERR";
             imgui.igText(spread_text.ptr);
             imgui.igSeparator();
@@ -187,15 +192,15 @@ pub const OrderbookWindows = struct {
 
                 var bid_cum_vol: f64 = 0;
                 for (bids.items) |bid| {
-                    bid_cum_vol += bid[1];
+                    bid_cum_vol += bid.quantity;
 
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
                     _ = imgui.igTableSetColumnIndex(0);
-                    const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid[0]}) catch "ERR";
+                    const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid.price}) catch "ERR";
                     imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, price_fmt.ptr);
                     _ = imgui.igTableSetColumnIndex(1);
-                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{bid[1]}) catch "ERR";
+                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{bid.quantity}) catch "ERR";
                     imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, vol_fmt.ptr);
                 }
             }

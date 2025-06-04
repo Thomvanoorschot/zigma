@@ -16,7 +16,8 @@ const BrokerMessage = brkr_actr.BrokerMessage;
 const Envelope = backstage.Envelope;
 const OrderbookUpdate = ob.OrderbookUpdate;
 const ConnectionMessage = conn_actr.ConnectionMessage;
-const Orderbook = shared_models.OrderBook;
+const Orderbook = shared_models.Orderbook;
+const ManagedString = shared_models.ManagedString;
 
 pub const OrderbookMessage = union(enum) {
     init: OrderbookInitRequest,
@@ -59,6 +60,7 @@ pub const OrderbookActor = struct {
     }
 
     pub fn deinit(self: *Self) !void {
+        self.orderbook.?.deinit();
         try self.ctx.deinit();
         self.arena_state.deinit();
     }
@@ -75,12 +77,18 @@ pub const OrderbookActor = struct {
             },
             .start => |m| {
                 self.ticker = m.ticker;
-                self.orderbook = try Orderbook.init(
-                    self.arena_state.allocator(),
-                    "kraken",
-                    self.ticker,
-                    10,
-                );
+                const bids = std.ArrayList(shared_models.Level).init(self.arena_state.allocator());
+                const asks = std.ArrayList(shared_models.Level).init(self.arena_state.allocator());
+                self.orderbook = Orderbook{
+                    .bids = bids,
+                    .asks = asks,
+                    .max_depth = 10,
+                    .exchange = ManagedString.static("kraken"),
+                    .ticker = try ManagedString.copy(m.ticker, self.arena_state.allocator()),
+                };
+                errdefer bids.deinit();
+                errdefer asks.deinit();
+
                 try self.broker_actor.?.send(self.ctx.actor, BrokerMessage{ .orderbook_subscribe = .{ .ticker = m.ticker } });
                 try self.ctx.runContinuously(
                     Self,
@@ -91,7 +99,7 @@ pub const OrderbookActor = struct {
                 );
             },
             .orderbook_update => |m| {
-                try self.orderbook.?.processUpdates(m.bids, m.asks);
+                try ob.processUpdates(&self.orderbook.?, m.bids, m.asks);
                 m.deinit();
             },
             .subscribe => |_| {

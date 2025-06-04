@@ -2,12 +2,6 @@ syntax = "proto2";
 
 package orderbook;
 
-message WsMessage {
-    oneof message {
-        Orderbook orderbook = 1;
-    }
-}
-
 message Level {
     required double price = 1;
     required double quantity = 2;

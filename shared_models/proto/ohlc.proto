@@ -1,0 +1,15 @@
+syntax = "proto2";
+
+package ohlc;
+
+message OHLCList {
+    repeated OHLC ohlc = 1;
+}
+
+message OHLC {
+    required string symbol = 1;
+    required double open = 2;
+    required double high = 3;
+    required double low = 4;
+    required double close = 5;
+}

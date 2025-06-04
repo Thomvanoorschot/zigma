@@ -27,7 +27,7 @@ pub fn build(b: *std.Build) void {
     const protoc_step = protobuf.RunProtocStep.create(b, protobuf_dep.builder, target, .{
         .destination_directory = b.path("src"),
         .source_files = &.{
-            "orderbook.proto",
+            "ws_message.proto",
         },
         .include_directories = &.{"proto"},
     });

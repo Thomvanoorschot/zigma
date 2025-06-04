@@ -9,16 +9,6 @@ const ManagedString = protobuf.ManagedString;
 const fd = protobuf.fd;
 const ManagedStruct = protobuf.ManagedStruct;
 
-pub const WsMessage = struct {
-    orderbook: ?Orderbook = null,
-
-    pub const _desc_table = .{
-        .orderbook = fd(1, .{ .SubMessage = {} }),
-    };
-
-    pub usingnamespace protobuf.MessageMixins(@This());
-};
-
 pub const Level = struct {
     price: f64,
     quantity: f64,

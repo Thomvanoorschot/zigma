@@ -23,11 +23,20 @@ pub fn onOpenCallback(web_worker: *WebSocketWebWorker(SharedData)) !bool {
 }
 
 pub fn onMessageCallback(web_worker: *WebSocketWebWorker(SharedData), message: []const u8) !bool {
-    const orderbook = decode(shared_models.Orderbook, message, web_worker.allocator) catch |err| {
+    const ws_message = decode(shared_models.WsMessage, message, web_worker.allocator) catch |err| {
         try web_worker.std_out.print("Failed {any}\n", .{err});
         return true;
     };
-    try web_worker.shared_data.orderbook_windows.updateOrderbook(orderbook);
+    if (ws_message.message) |msg| {
+        switch (msg) {
+            .orderbook => |orderbook| {
+                try web_worker.shared_data.orderbook_windows.updateOrderbook(orderbook);
+            },
+            else => {
+                return error.UnknownMessageType;
+            },
+        }
+    }
     return true;
 }
 

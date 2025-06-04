@@ -9,14 +9,10 @@ const Context = backstage.Context;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
 const Orderbook = shared_models.Orderbook;
+const WsMessage = shared_models.WsMessage;
 const encode = shared_models.encode;
-// const OHLCList = shared_models.OHLCList;
-// const stringifyOHLCList = shared_models.stringifyOHLCList;
+
 const OrderbookMessage = @import("../trading/orderbook_actor.zig").OrderbookMessage;
-const OHLCMessage = @import("../trading/ohlc_actor.zig").OHLCMessage;
-const stringify = @import("zbor").stringify;
-const parse = @import("zbor").parse;
-const DataItem = @import("zbor").DataItem;
 const ClientConnection = async_zocket.ClientConnection;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
@@ -76,7 +72,9 @@ pub const ConnectionActor = struct {
                 self.client_conn.read();
             },
             .orderbook_update => |ob| {
-                const str = try encode(ob.*, self.allocator);
+                const str = try encode(WsMessage{
+                    .message = .{ .orderbook = ob.* },
+                }, self.allocator);
                 try self.write(str);
             },
             // .ohlc_update => |m| {

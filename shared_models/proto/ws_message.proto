@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package ws_message;
+
+import "orderbook.proto";
+import "ohlc.proto";
+
+message WsMessage {
+    oneof message {
+        orderbook.Orderbook orderbook = 1;
+        ohlc.OHLCList ohlc = 2;
+    }
+}

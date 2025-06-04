@@ -3,6 +3,7 @@ const backstage = @import("backstage");
 const shared_models = @import("shared_models");
 const async_zocket = @import("async_zocket");
 const type_utils = @import("../utils/type_utils.zig");
+const actor_message = @import("../actor_message/actor_message.pb.zig");
 
 const xev = backstage.xev;
 const Context = backstage.Context;
@@ -10,9 +11,8 @@ const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
 const Orderbook = shared_models.Orderbook;
 const WsMessage = shared_models.WsMessage;
-const encode = shared_models.encode;
 
-const OrderbookMessage = @import("../trading/orderbook_actor.zig").OrderbookMessage;
+const OrderbookActorMessage = actor_message.OrderbookActor.message_union;
 const ClientConnection = async_zocket.ClientConnection;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
@@ -57,7 +57,7 @@ pub const ConnectionActor = struct {
         try self.ctx.deinit();
         for (self.subscribed_to_orderbooks.items) |ticker| {
             std.debug.print("unsubscribing from {s}\n", .{ticker});
-            try self.ctx.send(ticker, OrderbookMessage{
+            try self.ctx.send(ticker, OrderbookActorMessage{
                 .unsubscribe = .{},
             });
         }
@@ -72,7 +72,7 @@ pub const ConnectionActor = struct {
                 self.client_conn.read();
             },
             .orderbook_update => |ob| {
-                const str = try encode(WsMessage{
+                const str = try WsMessage.encode(WsMessage{
                     .message = .{ .orderbook = ob.* },
                 }, self.allocator);
                 try self.write(str);
@@ -98,13 +98,13 @@ pub const ConnectionActor = struct {
                 const ticker = std.fmt.allocPrintZ(self.allocator, "{s}_orderbook_actor", .{line[15..]}) catch unreachable;
                 // TODO: Need a better way to free this memory
                 // defer self.allocator.free(ticker);
-                self.ctx.send(ticker, OrderbookMessage{ .subscribe = .{} }) catch unreachable;
+                self.ctx.send(ticker, OrderbookActorMessage{ .subscribe = .{} }) catch unreachable;
                 self.subscribed_to_orderbooks.append(ticker) catch unreachable;
             } else if (std.mem.startsWith(u8, line, "close_orderbook:")) {
                 const ticker = std.fmt.allocPrintZ(self.allocator, "{s}_orderbook_actor", .{line[16..]}) catch unreachable;
                 // TODO: Need a better way to free this memory
                 // defer self.allocator.free(ticker);
-                self.ctx.send(ticker, OrderbookMessage{ .unsubscribe = .{} }) catch unreachable;
+                self.ctx.send(ticker, OrderbookActorMessage{ .unsubscribe = .{} }) catch unreachable;
 
                 for (self.subscribed_to_orderbooks.items, 0..) |t, i| {
                     if (std.mem.eql(u8, t, ticker)) {

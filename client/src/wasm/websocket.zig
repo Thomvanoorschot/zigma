@@ -4,7 +4,6 @@ const shared_models = @import("shared_models");
 
 const shared_data = @import("shared_data.zig");
 const OrderbookWindows = @import("../visualization/orderbook.zig").OrderbookWindows;
-const decode = shared_models.decode;
 
 const websocket_web_worker = zignite.websocket_web_worker;
 pub const SharedData = shared_data.SharedData;
@@ -23,7 +22,7 @@ pub fn onOpenCallback(web_worker: *WebSocketWebWorker(SharedData)) !bool {
 }
 
 pub fn onMessageCallback(web_worker: *WebSocketWebWorker(SharedData), message: []const u8) !bool {
-    const ws_message = decode(shared_models.WsMessage, message, web_worker.allocator) catch |err| {
+    const ws_message = shared_models.WsMessage.decode(message, web_worker.allocator) catch |err| {
         try web_worker.std_out.print("Failed {any}\n", .{err});
         return true;
     };

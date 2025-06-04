@@ -3,8 +3,15 @@ const backstage = @import("backstage");
 const brkr_impl = @import("broker_impl.zig");
 const brkr_actr = @import("broker_actor.zig");
 const conn_actr = @import("../http/connection_actor.zig");
+const actor_message = @import("../actor_message/actor_message.pb.zig");
+const ohlc_proto = @import("../actor_message/ohlc.pb.zig");
 const shared_models = @import("shared_models");
-const ohlcu = @import("ohlc_update.zig");
+
+const OHLCActorMessage = actor_message.OHLCActor.message_union;
+const OHLCList = shared_models.OHLCList;
+const BrokerActorMessage = actor_message.BrokerActor.message_union;
+const OHLCUpdate = ohlc_proto.OHLCUpdate;
+const OHLC = shared_models.OHLC;
 
 const xev = backstage.xev;
 const ActorInterface = backstage.ActorInterface;
@@ -12,34 +19,12 @@ const Allocator = std.mem.Allocator;
 const Context = backstage.Context;
 const BrokerType = brkr_impl.BrokerType;
 const BrokerActor = brkr_actr.BrokerActor;
-const BrokerMessage = brkr_actr.BrokerMessage;
 const Envelope = backstage.Envelope;
 const ConnectionMessage = conn_actr.ConnectionMessage;
-const OHLCUpdate = ohlcu.OHLCUpdate;
-const OHLC = shared_models.OHLC;
-const OHLCList = shared_models.OHLCList;
-pub const OHLCMessage = union(enum) {
-    init: OHLCInitRequest,
-    start: OHLCStartRequest,
-    ohlc_update: *OHLCUpdate,
-    subscribe: OHLCSubscribeRequest,
-};
-
-pub const OHLCInitRequest = struct {
-    broker: BrokerType,
-};
-pub const OHLCStartRequest = struct {
-    ticker: []const u8,
-};
-pub const OHLCSubscribeRequest = struct {};
-pub const OHLCResponse = struct {
-    last_timestamp: []const u8,
-};
 
 pub const OHLCActor = struct {
     allocator: Allocator,
     arena: std.heap.ArenaAllocator,
-    ticker: []const u8 = "",
     ctx: *Context,
     broker_actor: ?*ActorInterface = null,
     ohlc_list: OHLCList,
@@ -67,19 +52,18 @@ pub const OHLCActor = struct {
         self.arena.deinit();
     }
 
-    pub fn receive(self: *Self, message: *const Envelope(OHLCMessage)) !void {
+    pub fn receive(self: *Self, message: *const Envelope(OHLCActorMessage)) !void {
         switch (message.payload) {
             .init => |_| {
-                const broker_actor = try self.ctx.spawnActor(BrokerActor, BrokerMessage, .{
+                const broker_actor = try self.ctx.spawnActor(BrokerActor, BrokerActorMessage, .{
                     .id = "kraken_broker_actor",
                 });
 
-                try broker_actor.send(self.ctx.actor, BrokerMessage{ .init = .{ .broker = .kraken } });
+                try broker_actor.send(self.ctx.actor, BrokerActorMessage{ .init = .{ .broker = .KRAKEN } });
                 self.broker_actor = broker_actor;
             },
             .start => |m| {
-                self.ticker = m.ticker;
-                try self.broker_actor.?.send(self.ctx.actor, BrokerMessage{ .ohlc_subscribe = .{ .ticker = m.ticker } });
+                try self.broker_actor.?.send(self.ctx.actor, BrokerActorMessage{ .ohlc_subscribe = .{ .ticker = m.ticker } });
                 try self.ctx.runContinuously(
                     Self,
                     notify_subscribers,

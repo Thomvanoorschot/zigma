@@ -1,0 +1,44 @@
+syntax = "proto2";
+
+package actor_message;
+
+import "misc.proto";
+import "orderbook.proto";
+import "broker.proto";
+import "ohlc.proto";
+import "server.proto";
+
+message OrderbookActor {
+    oneof message {
+        orderbook.OrderbookInitRequest init = 1;
+        orderbook.OrderbookStartRequest start = 2;
+        orderbook.OrderbookUpdate update = 3;
+        misc.Empty subscribe = 4;
+        misc.Empty unsubscribe = 5;
+    }
+}
+
+message BrokerActor {
+    oneof message {
+        broker.BrokerInitRequest init = 1;
+        broker.BrokerSubscribeRequest orderbook_subscribe = 2;
+        broker.BrokerSubscribeRequest ohlc_subscribe = 3;
+    }
+}
+
+message OHLCActor {
+    oneof message {
+        ohlc.OHLCInitRequest init = 1;
+        ohlc.OHLCStartRequest start = 2;
+        ohlc.OHLCUpdate update = 3;
+        misc.Empty subscribe = 4;
+        misc.Empty unsubscribe = 5;
+    }
+}
+
+message ServerActor {
+    oneof message {
+        server.InitMessage init = 1;
+        misc.Empty accept = 2;
+    }
+}

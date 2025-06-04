@@ -1,16 +1,16 @@
 const std = @import("std");
 const krkn = @import("../kraken/broker.zig");
 const backstage = @import("backstage");
-const ob = @import("orderbook.zig");
-const ohlcu = @import("ohlc_update.zig");
+const actor_message = @import("../actor_message/actor_message.pb.zig");
+const broker_proto = @import("../actor_message/broker.pb.zig");
+const orderbook_proto = @import("../actor_message/orderbook.pb.zig");
+const ohlc_proto = @import("../actor_message/ohlc.pb.zig");
+
 const Loop = backstage.xev.Loop;
 const Context = backstage.Context;
-const OrderbookUpdate = ob.OrderbookUpdate;
-const OHLCUpdate = ohlcu.OHLCUpdate;
-
-pub const BrokerType = enum {
-    kraken,
-};
+const BrokerType = broker_proto.BrokerType;
+const OrderbookUpdate = orderbook_proto.OrderbookUpdate;
+const OHLCUpdate = ohlc_proto.OHLCUpdate;
 
 pub const BrokerPayloadType = enum {
     orderbook_update,
@@ -23,7 +23,7 @@ pub const BrokerPayload = union(BrokerPayloadType) {
 };
 
 pub const BrokerImpl = union(BrokerType) {
-    kraken: *krkn.Broker,
+    KRAKEN: *krkn.Broker,
     // Add more brokers as needed
     const Self = @This();
     pub fn init(
@@ -34,14 +34,15 @@ pub const BrokerImpl = union(BrokerType) {
         comptime read_callback: *const fn (*anyopaque, anyerror!?BrokerPayload) anyerror!void,
     ) !Self {
         switch (broker_type) {
-            .kraken => {
-                return .{ .kraken = try krkn.Broker.init(
+            .KRAKEN => {
+                return .{ .KRAKEN = try krkn.Broker.init(
                     allocator,
                     loop,
                     callback_context,
                     read_callback,
                 ) };
             },
+            else => return error.UnsupportedBroker,
         }
     }
 

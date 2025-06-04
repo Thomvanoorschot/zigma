@@ -1,0 +1,15 @@
+syntax = "proto2";
+
+package broker;
+
+enum BrokerType {
+    KRAKEN = 1;
+}
+
+message BrokerInitRequest {
+    required broker.BrokerType broker = 1;
+};
+
+message BrokerSubscribeRequest {
+    required string ticker = 1;
+}

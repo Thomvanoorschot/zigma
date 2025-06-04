@@ -3,9 +3,11 @@ const backstage = @import("backstage");
 const cn_actr = @import("connection_actor.zig");
 const async_zocket = @import("async_zocket");
 const type_utils = @import("../utils/type_utils.zig");
+const actor_message = @import("../actor_message/actor_message.pb.zig");
 
 const ConnectionMessage = cn_actr.ConnectionMessage;
 const ConnectionActor = cn_actr.ConnectionActor;
+const ServerMessage = actor_message.ServerActor.message_union;
 const xev = backstage.xev;
 const Context = backstage.Context;
 const Envelope = backstage.Envelope;
@@ -13,17 +15,6 @@ const ActorInterface = backstage.ActorInterface;
 const Server = async_zocket.Server;
 const ClientConnection = async_zocket.ClientConnection;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
-
-pub const ServerMessage = union(enum) {
-    init: InitMessage,
-    accept: AcceptMessage,
-};
-
-pub const InitMessage = struct {
-    address: std.net.Address,
-    max_connections: u31,
-};
-pub const AcceptMessage = struct {};
 
 pub const ServerActor = struct {
     allocator: std.mem.Allocator,
@@ -53,8 +44,9 @@ pub const ServerActor = struct {
                     self.allocator,
                     self.ctx.getLoop(),
                     .{
-                        .address = m.address,
-                        .max_connections = m.max_connections,
+                        .host = m.host.Const,
+                        .port = @intCast(m.port),
+                        .max_connections = @intCast(m.max_connections),
                     },
                     self,
                     acceptCallback,

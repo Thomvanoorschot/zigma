@@ -4,17 +4,20 @@ const json_utils = @import("../utils/json_utils.zig");
 const ws_messages = @import("./ws_messages.zig");
 const backstage = @import("backstage");
 const brkr_impl = @import("../trading/broker_impl.zig");
-const ob = @import("../trading/orderbook.zig");
-const ohlcu = @import("../trading/ohlc_update.zig");
+const orderbook_proto = @import("../actor_message/orderbook.pb.zig");
+const ohlc_proto = @import("../actor_message/ohlc.pb.zig");
+const shared_models = @import("shared_models");
 const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
+
 const xev = backstage.xev;
 const Loop = xev.Loop;
 const BrokerPayload = brkr_impl.BrokerPayload;
-const OrderbookUpdate = ob.OrderbookUpdate;
-const OHLCUpdate = ohlcu.OHLCUpdate;
+const OrderbookUpdate = orderbook_proto.OrderbookUpdate;
+const OrderbookLevel = orderbook_proto.OrderbookLevel;
+const OHLCUpdate = ohlc_proto.OHLCUpdate;
 const WsSubsribeRequest = ws_messages.WsSubscribeRequest;
 const parseMessage = ws_messages.parseMessage;
-const BrokerImpl = brkr_impl.BrokerImpl;
+const ManagedString = shared_models.ManagedString;
 
 var broker: ?*Broker = null;
 pub const Broker = struct {
@@ -108,12 +111,12 @@ pub const Broker = struct {
                     switch (obm) {
                         .snapshot => |im| {
                             try self.read_callback(self.callback_context, BrokerPayload{
-                                .orderbook_update = try self.convertUpdateData(im),
+                                .orderbook_update = try self.convertOrderbookUpdateData(im),
                             });
                         },
                         .update => |im| {
                             try self.read_callback(self.callback_context, BrokerPayload{
-                                .orderbook_update = try self.convertUpdateData(im),
+                                .orderbook_update = try self.convertOrderbookUpdateData(im),
                             });
                         },
                     }
@@ -136,34 +139,34 @@ pub const Broker = struct {
         }
     }
 
-    fn convertUpdateData(self: *Self, update: ws_messages.OrderbookUpdateMessage) !*OrderbookUpdate {
+    fn convertOrderbookUpdateData(self: *Self, update: ws_messages.OrderbookUpdateMessage) !*OrderbookUpdate {
         const item = update.data[0];
 
-        const converted_bids = try self.allocator.alloc([2]f64, item.bids.len);
-        defer self.allocator.free(converted_bids);
-        for (item.bids, 0..) |bid, bid_idx| {
-            converted_bids[bid_idx] = .{ bid.price, bid.qty };
+        var converted_bids = std.ArrayList(OrderbookLevel).init(self.allocator);
+        for (item.bids) |bid| {
+            try converted_bids.append(.{ .price = bid.price, .size = bid.qty });
         }
 
-        const converted_asks = try self.allocator.alloc([2]f64, item.asks.len);
-        defer self.allocator.free(converted_asks);
-        for (item.asks, 0..) |ask, ask_idx| {
-            converted_asks[ask_idx] = .{ ask.price, ask.qty };
+        var converted_asks = std.ArrayList(OrderbookLevel).init(self.allocator);
+        for (item.asks) |ask| {
+            try converted_asks.append(.{ .price = ask.price, .size = ask.qty });
         }
-
-        return try OrderbookUpdate.init(self.allocator, .{
-            .symbol = item.symbol,
+        const obu = try self.allocator.create(OrderbookUpdate);
+        obu.* = .{
+            .symbol = try ManagedString.copy(item.symbol, self.allocator),
             .bids = converted_bids,
             .asks = converted_asks,
             .checksum = item.checksum,
-            .timestamp = item.timestamp,
-        });
+            .timestamp = if (item.timestamp != null) try ManagedString.copy(item.timestamp.?, self.allocator) else null,
+        };
+        return obu;
     }
 
     fn convertOHLCUpdateData(self: *Self, update: ws_messages.OHLCUpdateMessage) !*OHLCUpdate {
         const item = update.data[0];
-        return try OHLCUpdate.init(self.allocator, .{
-            .symbol = item.symbol,
+        const ohlc = try self.allocator.create(OHLCUpdate);
+        ohlc.* = .{
+            .symbol = try ManagedString.copy(item.symbol, self.allocator),
             .open = item.open,
             .high = item.high,
             .low = item.low,
@@ -171,7 +174,8 @@ pub const Broker = struct {
             .trades = item.trades,
             .volume = item.volume,
             .interval = item.interval,
-            .timestamp = item.timestamp,
-        });
+            .timestamp = try ManagedString.copy(item.timestamp, self.allocator),
+        };
+        return ohlc;
     }
 };

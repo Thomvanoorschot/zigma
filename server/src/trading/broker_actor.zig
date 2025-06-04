@@ -3,10 +3,10 @@ const krkn = @import("../kraken/broker.zig");
 const backstage = @import("backstage");
 const brkr_impl = @import("broker_impl.zig");
 const orderbook_actor = @import("orderbook_actor.zig");
-const ohlcu = @import("ohlc_update.zig");
-const ob = @import("orderbook.zig");
 const ohlc_actor = @import("ohlc_actor.zig");
+const actor_message = @import("../actor_message/actor_message.pb.zig");
 const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
+
 const xev = backstage.xev;
 const Context = backstage.Context;
 const BrokerImpl = brkr_impl.BrokerImpl;
@@ -14,23 +14,9 @@ const BrokerType = brkr_impl.BrokerType;
 const BrokerPayload = brkr_impl.BrokerPayload;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
-const OrderbookMessage = orderbook_actor.OrderbookMessage;
-const OrderbookUpdate = ob.OrderbookUpdate;
-const OHLCUpdate = ohlcu.OHLCUpdate;
-const OHLCMessage = ohlc_actor.OHLCMessage;
-pub const BrokerMessage = union(enum) {
-    init: BrokerInitRequest,
-    orderbook_subscribe: BrokerSubscribeRequest,
-    ohlc_subscribe: BrokerSubscribeRequest,
-};
-
-pub const BrokerInitRequest = struct {
-    broker: BrokerType,
-};
-
-pub const BrokerSubscribeRequest = struct {
-    ticker: []const u8,
-};
+const BrokerActorMessage = actor_message.BrokerActor.message_union;
+const OrderbookActorMessage = actor_message.OrderbookActor.message_union;
+const OHLCActorMessage = actor_message.OHLCActor.message_union;
 
 pub const BrokerActor = struct {
     allocator: std.mem.Allocator,
@@ -60,7 +46,7 @@ pub const BrokerActor = struct {
         try self.ctx.deinit();
     }
 
-    pub fn receive(self: *Self, message: *const Envelope(BrokerMessage)) !void {
+    pub fn receive(self: *Self, message: *const Envelope(BrokerActorMessage)) !void {
         switch (message.payload) {
             .init => |m| {
                 self.broker = try BrokerImpl.init(
@@ -73,12 +59,12 @@ pub const BrokerActor = struct {
             },
             .orderbook_subscribe => |m| {
                 // TODO Split this up into seperate messages?
-                try self.broker.?.subscribeToOrderbook(m.ticker);
-                try self.orderbook_subscriptions.put(m.ticker, message.sender.?);
+                try self.broker.?.subscribeToOrderbook(m.ticker.Owned.str);
+                try self.orderbook_subscriptions.put(m.ticker.Owned.str, message.sender.?);
             },
             .ohlc_subscribe => |m| {
-                try self.broker.?.subscribeToOHLC(m.ticker);
-                try self.ohlc_subscriptions.put(m.ticker, message.sender.?);
+                try self.broker.?.subscribeToOHLC(m.ticker.Owned.str);
+                try self.ohlc_subscriptions.put(m.ticker.Owned.str, message.sender.?);
             },
         }
     }
@@ -89,16 +75,16 @@ pub const BrokerActor = struct {
         if (try message) |m| {
             switch (m) {
                 .orderbook_update => |update| {
-                    if (self.orderbook_subscriptions.get(update.symbol)) |subscriber| {
-                        try subscriber.send(self.ctx.actor, OrderbookMessage{
-                            .orderbook_update = update,
+                    if (self.orderbook_subscriptions.get(update.symbol.Owned.str)) |subscriber| {
+                        try subscriber.send(self.ctx.actor, OrderbookActorMessage{
+                            .update = update.*,
                         });
                     }
                 },
                 .ohlc_update => |update| {
-                    if (self.ohlc_subscriptions.get(update.symbol)) |subscriber| {
-                        try subscriber.send(self.ctx.actor, OHLCMessage{
-                            .ohlc_update = update,
+                    if (self.ohlc_subscriptions.get(update.symbol.Owned.str)) |subscriber| {
+                        try subscriber.send(self.ctx.actor, OHLCActorMessage{
+                            .update = update.*,
                         });
                     }
                 },

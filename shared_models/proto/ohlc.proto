@@ -12,4 +12,8 @@ message OHLC {
     required double high = 3;
     required double low = 4;
     required double close = 5;
+    required uint64 trades = 6;
+    required double volume = 7;
+    required uint64 interval = 8;
+    required string timestamp = 9;
 }

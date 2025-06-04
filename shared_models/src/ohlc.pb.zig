@@ -25,6 +25,10 @@ pub const OHLC = struct {
     high: f64,
     low: f64,
     close: f64,
+    trades: u64,
+    volume: f64,
+    interval: u64,
+    timestamp: ManagedString,
 
     pub const _desc_table = .{
         .symbol = fd(1, .String),
@@ -32,6 +36,10 @@ pub const OHLC = struct {
         .high = fd(3, .{ .FixedInt = .I64 }),
         .low = fd(4, .{ .FixedInt = .I64 }),
         .close = fd(5, .{ .FixedInt = .I64 }),
+        .trades = fd(6, .{ .Varint = .Simple }),
+        .volume = fd(7, .{ .FixedInt = .I64 }),
+        .interval = fd(8, .{ .Varint = .Simple }),
+        .timestamp = fd(9, .String),
     };
 
     pub usingnamespace protobuf.MessageMixins(@This());

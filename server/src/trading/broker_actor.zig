@@ -4,7 +4,7 @@ const backstage = @import("backstage");
 const brkr_impl = @import("broker_impl.zig");
 const orderbook_actor = @import("orderbook_actor.zig");
 const ohlc_actor = @import("ohlc_actor.zig");
-const actor_message = @import("../actor_message/actor_message.pb.zig");
+const shared_models = @import("shared_models");
 const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
 
 const xev = backstage.xev;
@@ -14,9 +14,9 @@ const BrokerType = brkr_impl.BrokerType;
 const BrokerPayload = brkr_impl.BrokerPayload;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
-const BrokerActorMessage = actor_message.BrokerActor.message_union;
-const OrderbookActorMessage = actor_message.OrderbookActor.message_union;
-const OHLCActorMessage = actor_message.OHLCActor.message_union;
+const BrokerActorMessage = shared_models.BrokerActor.message_union;
+const OrderbookActorMessage = shared_models.OrderbookActor.message_union;
+const OHLCActorMessage = shared_models.OHLCActor.message_union;
 
 pub const BrokerActor = struct {
     allocator: std.mem.Allocator,

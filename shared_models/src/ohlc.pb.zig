@@ -8,6 +8,8 @@ const protobuf = @import("protobuf");
 const ManagedString = protobuf.ManagedString;
 const fd = protobuf.fd;
 const ManagedStruct = protobuf.ManagedStruct;
+/// import package broker
+const broker = @import("broker.pb.zig");
 
 pub const OHLCList = struct {
     ohlc: ArrayList(OHLC),
@@ -20,6 +22,52 @@ pub const OHLCList = struct {
 };
 
 pub const OHLC = struct {
+    symbol: ManagedString,
+    open: f64,
+    high: f64,
+    low: f64,
+    close: f64,
+    trades: u64,
+    volume: f64,
+    interval: u64,
+    timestamp: ManagedString,
+
+    pub const _desc_table = .{
+        .symbol = fd(1, .String),
+        .open = fd(2, .{ .FixedInt = .I64 }),
+        .high = fd(3, .{ .FixedInt = .I64 }),
+        .low = fd(4, .{ .FixedInt = .I64 }),
+        .close = fd(5, .{ .FixedInt = .I64 }),
+        .trades = fd(6, .{ .Varint = .Simple }),
+        .volume = fd(7, .{ .FixedInt = .I64 }),
+        .interval = fd(8, .{ .Varint = .Simple }),
+        .timestamp = fd(9, .String),
+    };
+
+    pub usingnamespace protobuf.MessageMixins(@This());
+};
+
+pub const OHLCInitRequest = struct {
+    broker: broker.BrokerType,
+
+    pub const _desc_table = .{
+        .broker = fd(1, .{ .Varint = .Simple }),
+    };
+
+    pub usingnamespace protobuf.MessageMixins(@This());
+};
+
+pub const OHLCStartRequest = struct {
+    ticker: ManagedString,
+
+    pub const _desc_table = .{
+        .ticker = fd(1, .String),
+    };
+
+    pub usingnamespace protobuf.MessageMixins(@This());
+};
+
+pub const OHLCUpdate = struct {
     symbol: ManagedString,
     open: f64,
     high: f64,

@@ -24,11 +24,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const protobuf_dep = b.dependency("protobuf", .{
-        .target = target,
-        .optimize = optimize,
-    });
-
     // Server module
     const server_mod = b.addModule("server", .{
         .target = target,
@@ -52,23 +47,8 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("async_zocket", async_zocket_dep.module("async_zocket"));
     exe.root_module.addImport("zbor", zbor_dep.module("zbor"));
     exe.root_module.addImport("shared_models", shared_models_dep.module("shared_models"));
-    exe.root_module.addImport("protobuf", shared_models_dep.module("shared_models").import_table.get("protobuf").?);
 
     b.installArtifact(exe);
-
-    // Generate protobuf files
-    const gen_proto = b.step("gen-proto", "generates zig files from protocol buffer definitions");
-
-    const protoc_step = protobuf.RunProtocStep.create(b, protobuf_dep.builder, target, .{
-        .destination_directory = b.path("src/actor_message"),
-        .source_files = &.{
-            "actor_message.proto",
-        },
-        .include_directories = &.{"proto"},
-    });
-
-    gen_proto.dependOn(&protoc_step.step);
-    b.getInstallStep().dependOn(gen_proto);
 
     // Add a run step
     const run_cmd = b.addRunArtifact(exe);

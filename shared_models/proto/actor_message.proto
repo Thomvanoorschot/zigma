@@ -42,3 +42,10 @@ message ServerActor {
         misc.Empty accept = 2;
     }
 }
+
+message ConnectionActor {
+    oneof message {
+        orderbook.Orderbook orderbook_update = 1;
+        misc.Empty placeholder = 2;
+    }
+}

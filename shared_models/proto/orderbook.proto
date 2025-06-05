@@ -2,15 +2,33 @@ syntax = "proto2";
 
 package orderbook;
 
-message Level {
-    required double price = 1;
-    required double quantity = 2;
-}
+import "broker.proto";
 
 message Orderbook {
-    repeated Level bids = 1;
-    repeated Level asks = 2;
+    repeated OrderbookLevel bids = 1;
+    repeated OrderbookLevel asks = 2;
     required uint32 max_depth = 3;
     required string exchange = 4;
     required string ticker = 5;
+}
+
+message OrderbookInitRequest {
+    required broker.BrokerType broker = 1;
+}
+
+message OrderbookStartRequest {
+    required string ticker = 1;
+}
+
+message OrderbookLevel {
+    required double price = 1;
+    required double qty = 2;
+}
+
+message OrderbookUpdate {
+    required string symbol = 1;
+    repeated OrderbookLevel bids = 2;
+    repeated OrderbookLevel asks = 3;
+    required uint64 checksum = 4;
+    optional string timestamp = 5;
 }

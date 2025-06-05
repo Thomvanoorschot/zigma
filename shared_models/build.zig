@@ -2,11 +2,11 @@ const std = @import("std");
 const protobuf = @import("protobuf");
 
 pub fn build(b: *std.Build) void {
-    // const target = b.standardTargetOptions(.{});
-    const target = b.resolveTargetQuery(.{
-        .cpu_arch = .aarch64,
-        .os_tag = .macos,
-    });
+    const target = b.standardTargetOptions(.{});
+    // const target = b.resolveTargetQuery(.{
+    //     .cpu_arch = .aarch64,
+    //     .os_tag = .macos,
+    // });
     const optimize = b.standardOptimizeOption(.{});
 
     const protobuf_dep = b.dependency("protobuf", .{
@@ -28,6 +28,7 @@ pub fn build(b: *std.Build) void {
         .destination_directory = b.path("src"),
         .source_files = &.{
             "ws_message.proto",
+            "actor_message.proto",
         },
         .include_directories = &.{"proto"},
     });

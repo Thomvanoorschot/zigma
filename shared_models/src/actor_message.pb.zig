@@ -131,3 +131,26 @@ pub const ServerActor = struct {
 
     pub usingnamespace protobuf.MessageMixins(@This());
 };
+
+pub const ConnectionActor = struct {
+    message: ?message_union,
+
+    pub const _message_case = enum {
+        orderbook_update,
+        placeholder,
+    };
+    pub const message_union = union(_message_case) {
+        orderbook_update: orderbook.Orderbook,
+        placeholder: misc.Empty,
+        pub const _union_desc = .{
+            .orderbook_update = fd(1, .{ .SubMessage = {} }),
+            .placeholder = fd(2, .{ .SubMessage = {} }),
+        };
+    };
+
+    pub const _desc_table = .{
+        .message = fd(null, .{ .OneOf = message_union }),
+    };
+
+    pub usingnamespace protobuf.MessageMixins(@This());
+};

@@ -8,22 +8,12 @@ const protobuf = @import("protobuf");
 const ManagedString = protobuf.ManagedString;
 const fd = protobuf.fd;
 const ManagedStruct = protobuf.ManagedStruct;
-
-pub const Level = struct {
-    price: f64,
-    quantity: f64,
-
-    pub const _desc_table = .{
-        .price = fd(1, .{ .FixedInt = .I64 }),
-        .quantity = fd(2, .{ .FixedInt = .I64 }),
-    };
-
-    pub usingnamespace protobuf.MessageMixins(@This());
-};
+/// import package broker
+const broker = @import("broker.pb.zig");
 
 pub const Orderbook = struct {
-    bids: ArrayList(Level),
-    asks: ArrayList(Level),
+    bids: ArrayList(OrderbookLevel),
+    asks: ArrayList(OrderbookLevel),
     max_depth: u32,
     exchange: ManagedString,
     ticker: ManagedString,
@@ -34,6 +24,56 @@ pub const Orderbook = struct {
         .max_depth = fd(3, .{ .Varint = .Simple }),
         .exchange = fd(4, .String),
         .ticker = fd(5, .String),
+    };
+
+    pub usingnamespace protobuf.MessageMixins(@This());
+};
+
+pub const OrderbookInitRequest = struct {
+    broker: broker.BrokerType,
+
+    pub const _desc_table = .{
+        .broker = fd(1, .{ .Varint = .Simple }),
+    };
+
+    pub usingnamespace protobuf.MessageMixins(@This());
+};
+
+pub const OrderbookStartRequest = struct {
+    ticker: ManagedString,
+
+    pub const _desc_table = .{
+        .ticker = fd(1, .String),
+    };
+
+    pub usingnamespace protobuf.MessageMixins(@This());
+};
+
+pub const OrderbookLevel = struct {
+    price: f64,
+    qty: f64,
+
+    pub const _desc_table = .{
+        .price = fd(1, .{ .FixedInt = .I64 }),
+        .qty = fd(2, .{ .FixedInt = .I64 }),
+    };
+
+    pub usingnamespace protobuf.MessageMixins(@This());
+};
+
+pub const OrderbookUpdate = struct {
+    symbol: ManagedString,
+    bids: ArrayList(OrderbookLevel),
+    asks: ArrayList(OrderbookLevel),
+    checksum: u64,
+    timestamp: ?ManagedString = null,
+
+    pub const _desc_table = .{
+        .symbol = fd(1, .String),
+        .bids = fd(2, .{ .List = .{ .SubMessage = {} } }),
+        .asks = fd(3, .{ .List = .{ .SubMessage = {} } }),
+        .checksum = fd(4, .{ .Varint = .Simple }),
+        .timestamp = fd(5, .String),
     };
 
     pub usingnamespace protobuf.MessageMixins(@This());

@@ -3,14 +3,12 @@ const backstage = @import("backstage");
 const brkr_impl = @import("broker_impl.zig");
 const brkr_actr = @import("broker_actor.zig");
 const conn_actr = @import("../http/connection_actor.zig");
-const actor_message = @import("../actor_message/actor_message.pb.zig");
-const ohlc_proto = @import("../actor_message/ohlc.pb.zig");
 const shared_models = @import("shared_models");
 
-const OHLCActorMessage = actor_message.OHLCActor.message_union;
+const OHLCActorMessage = shared_models.OHLCActor.message_union;
 const OHLCList = shared_models.OHLCList;
-const BrokerActorMessage = actor_message.BrokerActor.message_union;
-const OHLCUpdate = ohlc_proto.OHLCUpdate;
+const BrokerActorMessage = shared_models.BrokerActor.message_union;
+const OHLCUpdate = shared_models.OHLCUpdate;
 const OHLC = shared_models.OHLC;
 
 const xev = backstage.xev;

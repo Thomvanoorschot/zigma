@@ -33,10 +33,6 @@
             .url = "https://github.com/r4gus/zbor/archive/master.tar.gz",
             .hash = "zbor-0.17.3-kr-CoJQkAwDLIuC9SILI7Mw5BpLqoO6Xhxkg_Tnb7lCZ",
         },
-        .protobuf = .{
-            .url = "https://github.com/Arwalk/zig-protobuf/archive/master.tar.gz",
-            .hash = "protobuf-2.0.0-0e82akObGwBZQtrB7Qb6CTWSrwYKRPJ0M4L0CuTJmJ9G",
-        },
     },
     .paths = .{
         "src",

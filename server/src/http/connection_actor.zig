@@ -3,7 +3,6 @@ const backstage = @import("backstage");
 const shared_models = @import("shared_models");
 const async_zocket = @import("async_zocket");
 const type_utils = @import("../utils/type_utils.zig");
-const actor_message = @import("../actor_message/actor_message.pb.zig");
 
 const xev = backstage.xev;
 const Context = backstage.Context;
@@ -11,46 +10,37 @@ const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
 const Orderbook = shared_models.Orderbook;
 const WsMessage = shared_models.WsMessage;
+const ConnectionActorMessage = shared_models.ConnectionActor.message_union;
 
-const OrderbookActorMessage = actor_message.OrderbookActor.message_union;
+const OrderbookActorMessage = shared_models.OrderbookActor.message_union;
 const ClientConnection = async_zocket.ClientConnection;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
-pub const MessageTypes = enum {
-    orderbook,
-    ohlc,
-};
-
-pub const ConnectionMessage = union(enum) {
-    orderbook_update: *Orderbook,
-    // ohlc_update: OHLCList,
-    setup: SetupMessage,
-};
-
-pub const SetupMessage = struct {
-    client_conn: *ClientConnection,
-};
-
-pub const InitMessage = struct {};
-
 pub const ConnectionActor = struct {
     allocator: std.mem.Allocator,
-    ctx: *Context,
+    ctx: *Context = undefined,
     client_conn: *ClientConnection = undefined,
     subscribed_to_orderbooks: std.ArrayList([]const u8),
 
     const Self = @This();
 
-    pub fn init(ctx: *Context, allocator: std.mem.Allocator) !*Self {
+    pub fn init(allocator: std.mem.Allocator, client_conn: *ClientConnection) !*Self {
         const self = try allocator.create(Self);
         errdefer allocator.destroy(self);
 
         self.* = .{
-            .ctx = ctx,
+            .client_conn = client_conn,
             .allocator = allocator,
             .subscribed_to_orderbooks = std.ArrayList([]const u8).init(allocator),
         };
         return self;
+    }
+
+    pub fn setup(self: *Self, ctx: *Context) void {
+        self.ctx = ctx;
+        self.client_conn.setCloseCallback(@ptrCast(self), closeCallback);
+        self.client_conn.setReadCallback(@ptrCast(self), readCallback);
+        self.client_conn.read();
     }
 
     pub fn deinit(self: *Self) !void {
@@ -63,17 +53,11 @@ pub const ConnectionActor = struct {
         }
     }
 
-    pub fn receive(self: *Self, message: *const Envelope(ConnectionMessage)) !void {
+    pub fn receive(self: *Self, message: *const Envelope(ConnectionActorMessage)) !void {
         switch (message.payload) {
-            .setup => |m| {
-                self.client_conn = m.client_conn;
-                self.client_conn.setCloseCallback(@ptrCast(self), closeCallback);
-                self.client_conn.setReadCallback(@ptrCast(self), readCallback);
-                self.client_conn.read();
-            },
             .orderbook_update => |ob| {
                 const str = try WsMessage.encode(WsMessage{
-                    .message = .{ .orderbook = ob.* },
+                    .message = .{ .orderbook = ob },
                 }, self.allocator);
                 try self.write(str);
             },
@@ -82,6 +66,7 @@ pub const ConnectionActor = struct {
             //     // TODO Need to wrap the messages in a struct that holds a message type so that I can multiplex the messages
             //     try self.write(str);
             // },
+            else => unreachable,
         }
     }
 

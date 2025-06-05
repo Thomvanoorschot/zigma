@@ -4,8 +4,6 @@ const brkr_impl = @import("broker_impl.zig");
 const brkr_actr = @import("broker_actor.zig");
 const conn_actr = @import("../http/connection_actor.zig");
 const shared_models = @import("shared_models");
-const actor_message = @import("../actor_message/actor_message.pb.zig");
-const orderbook_proto = @import("../actor_message/orderbook.pb.zig");
 
 const xev = backstage.xev;
 const ActorInterface = backstage.ActorInterface;
@@ -13,14 +11,14 @@ const Allocator = std.mem.Allocator;
 const Context = backstage.Context;
 const BrokerType = brkr_impl.BrokerType;
 const BrokerActor = brkr_actr.BrokerActor;
-const BrokerActorMessage = actor_message.BrokerActor.message_union;
+const BrokerActorMessage = shared_models.BrokerActor.message_union;
 const Envelope = backstage.Envelope;
-const OrderbookUpdate = orderbook_proto.OrderbookUpdate;
-const OrderbookLevel = orderbook_proto.OrderbookLevel;
-const ConnectionMessage = conn_actr.ConnectionMessage;
+const OrderbookUpdate = shared_models.OrderbookUpdate;
+const OrderbookLevel = shared_models.OrderbookLevel;
+const ConnectionActorMessage = shared_models.ConnectionActor.message_union;
 const Orderbook = shared_models.Orderbook;
 const ManagedString = shared_models.ManagedString;
-const OrderbookActorMessage = actor_message.OrderbookActor.message_union;
+const OrderbookActorMessage = shared_models.OrderbookActor.message_union;
 
 pub const OrderbookActor = struct {
     arena_state: std.heap.ArenaAllocator,
@@ -61,8 +59,8 @@ pub const OrderbookActor = struct {
                 self.broker_actor = broker_actor;
             },
             .start => |m| {
-                const bids = std.ArrayList(shared_models.Level).init(self.arena_state.allocator());
-                const asks = std.ArrayList(shared_models.Level).init(self.arena_state.allocator());
+                const bids = std.ArrayList(shared_models.OrderbookLevel).init(self.arena_state.allocator());
+                const asks = std.ArrayList(shared_models.OrderbookLevel).init(self.arena_state.allocator());
                 self.orderbook = Orderbook{
                     .bids = bids,
                     .asks = asks,
@@ -105,7 +103,7 @@ pub const OrderbookActor = struct {
         for (self.subscriptions.items) |actor| {
             try actor.send(
                 self.ctx.actor,
-                ConnectionMessage{ .orderbook_update = &self.orderbook.? },
+                ConnectionActorMessage{ .orderbook_update = self.orderbook.? },
             );
         }
     }
@@ -113,11 +111,11 @@ pub const OrderbookActor = struct {
 
 fn processLevelUpdates(orderbook: *Orderbook, bids: std.ArrayList(OrderbookLevel), asks: std.ArrayList(OrderbookLevel)) !void {
     for (bids.items) |bid| {
-        try updateOrderbook(orderbook, bid.price, bid.size, true);
+        try updateOrderbook(orderbook, bid.price, bid.qty, true);
     }
 
     for (asks.items) |ask| {
-        try updateOrderbook(orderbook, ask.price, ask.size, false);
+        try updateOrderbook(orderbook, ask.price, ask.qty, false);
     }
 }
 fn updateOrderbook(orderbook: *Orderbook, price: f64, qty: f64, is_bid: bool) !void {
@@ -128,28 +126,28 @@ fn updateOrderbook(orderbook: *Orderbook, price: f64, qty: f64, is_bid: bool) !v
             if (qty == 0) {
                 _ = levels.swapRemove(i);
             } else {
-                levels.items[i] = .{ .price = price, .quantity = qty };
+                levels.items[i] = .{ .price = price, .qty = qty };
             }
             is_update = true;
         }
     }
     if (!is_update) {
-        try levels.append(.{ .price = price, .quantity = qty });
+        try levels.append(.{ .price = price, .qty = qty });
     }
     if (is_bid) {
-        std.mem.sort(shared_models.Level, levels.items, {}, comptime priceDescending);
+        std.mem.sort(shared_models.OrderbookLevel, levels.items, {}, comptime priceDescending);
     } else {
-        std.mem.sort(shared_models.Level, levels.items, {}, comptime priceAscending);
+        std.mem.sort(shared_models.OrderbookLevel, levels.items, {}, comptime priceAscending);
     }
 
     if (levels.items.len > orderbook.max_depth) {
         try levels.resize(orderbook.max_depth);
     }
 }
-fn priceDescending(_: void, a: shared_models.Level, b: shared_models.Level) bool {
+fn priceDescending(_: void, a: shared_models.OrderbookLevel, b: shared_models.OrderbookLevel) bool {
     return a.price > b.price;
 }
 
-fn priceAscending(_: void, a: shared_models.Level, b: shared_models.Level) bool {
+fn priceAscending(_: void, a: shared_models.OrderbookLevel, b: shared_models.OrderbookLevel) bool {
     return a.price < b.price;
 }

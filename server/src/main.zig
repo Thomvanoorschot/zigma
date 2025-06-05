@@ -5,7 +5,6 @@ const brkr_impl = @import("trading/broker_impl.zig");
 const ob_actr = @import("trading/orderbook_actor.zig");
 const ohlc_actr = @import("trading/ohlc_actor.zig");
 const server_actr = @import("http/server_actor.zig");
-const actor_message = @import("actor_message/actor_message.pb.zig");
 const shared_models = @import("shared_models");
 const unsafeAnyOpaqueCast = @import("utils/type_utils.zig").unsafeAnyOpaqueCast;
 
@@ -16,9 +15,9 @@ const BrokerActor = brkr_actr.BrokerActor;
 const BrokerType = brkr_impl.BrokerType;
 const Engine = backstage.Engine;
 const OrderbookActor = ob_actr.OrderbookActor;
-const OrderbookActorMessage = actor_message.OrderbookActor.message_union;
+const OrderbookActorMessage = shared_models.OrderbookActor.message_union;
 const ServerActor = server_actr.ServerActor;
-const ServerActorMessage = actor_message.ServerActor.message_union;
+const ServerActorMessage = shared_models.ServerActor.message_union;
 const OHLCActor = ohlc_actr.OHLCActor;
 const OHLCActorMessage = ohlc_actr.OHLCActor.message_union;
 pub fn main() !void {

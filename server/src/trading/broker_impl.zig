@@ -1,16 +1,13 @@
 const std = @import("std");
 const krkn = @import("../kraken/broker.zig");
 const backstage = @import("backstage");
-const actor_message = @import("../actor_message/actor_message.pb.zig");
-const broker_proto = @import("../actor_message/broker.pb.zig");
-const orderbook_proto = @import("../actor_message/orderbook.pb.zig");
-const ohlc_proto = @import("../actor_message/ohlc.pb.zig");
+const shared_models = @import("shared_models");
 
 const Loop = backstage.xev.Loop;
 const Context = backstage.Context;
-const BrokerType = broker_proto.BrokerType;
-const OrderbookUpdate = orderbook_proto.OrderbookUpdate;
-const OHLCUpdate = ohlc_proto.OHLCUpdate;
+const BrokerType = shared_models.BrokerType;
+const OrderbookUpdate = shared_models.OrderbookUpdate;
+const OHLCUpdate = shared_models.OHLCUpdate;
 
 pub const BrokerPayloadType = enum {
     orderbook_update,

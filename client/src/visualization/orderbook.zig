@@ -129,8 +129,8 @@ pub const OrderbookWindows = struct {
             const asks = orderbook.asks;
 
             var max_vol: f64 = 0.0;
-            for (bids.items) |bid| max_vol = @max(max_vol, bid.quantity);
-            for (asks.items) |ask| max_vol = @max(max_vol, ask.quantity);
+            for (bids.items) |bid| max_vol = @max(max_vol, bid.qty);
+            for (asks.items) |ask| max_vol = @max(max_vol, ask.qty);
 
             if (max_vol > 0) {
                 max_vol *= 1.05;
@@ -158,7 +158,7 @@ pub const OrderbookWindows = struct {
                 var ask_cum_vol: f64 = 0;
                 for (asks.items, 0..) |_, i| {
                     const ask = asks.items[asks.items.len - 1 - i];
-                    ask_cum_vol += ask.quantity;
+                    ask_cum_vol += ask.qty;
 
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
@@ -167,7 +167,7 @@ pub const OrderbookWindows = struct {
                     imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, price_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(1);
-                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{ask.quantity}) catch "ERR";
+                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{ask.qty}) catch "ERR";
                     imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, vol_fmt.ptr);
                 }
             }
@@ -192,7 +192,7 @@ pub const OrderbookWindows = struct {
 
                 var bid_cum_vol: f64 = 0;
                 for (bids.items) |bid| {
-                    bid_cum_vol += bid.quantity;
+                    bid_cum_vol += bid.qty;
 
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
@@ -200,7 +200,7 @@ pub const OrderbookWindows = struct {
                     const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid.price}) catch "ERR";
                     imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, price_fmt.ptr);
                     _ = imgui.igTableSetColumnIndex(1);
-                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{bid.quantity}) catch "ERR";
+                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{bid.qty}) catch "ERR";
                     imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, vol_fmt.ptr);
                 }
             }

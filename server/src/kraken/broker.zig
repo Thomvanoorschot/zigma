@@ -4,17 +4,15 @@ const json_utils = @import("../utils/json_utils.zig");
 const ws_messages = @import("./ws_messages.zig");
 const backstage = @import("backstage");
 const brkr_impl = @import("../trading/broker_impl.zig");
-const orderbook_proto = @import("../actor_message/orderbook.pb.zig");
-const ohlc_proto = @import("../actor_message/ohlc.pb.zig");
 const shared_models = @import("shared_models");
 const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
 
 const xev = backstage.xev;
 const Loop = xev.Loop;
 const BrokerPayload = brkr_impl.BrokerPayload;
-const OrderbookUpdate = orderbook_proto.OrderbookUpdate;
-const OrderbookLevel = orderbook_proto.OrderbookLevel;
-const OHLCUpdate = ohlc_proto.OHLCUpdate;
+const OrderbookUpdate = shared_models.OrderbookUpdate;
+const OrderbookLevel = shared_models.OrderbookLevel;
+const OHLCUpdate = shared_models.OHLCUpdate;
 const WsSubsribeRequest = ws_messages.WsSubscribeRequest;
 const parseMessage = ws_messages.parseMessage;
 const ManagedString = shared_models.ManagedString;
@@ -144,12 +142,12 @@ pub const Broker = struct {
 
         var converted_bids = std.ArrayList(OrderbookLevel).init(self.allocator);
         for (item.bids) |bid| {
-            try converted_bids.append(.{ .price = bid.price, .size = bid.qty });
+            try converted_bids.append(.{ .price = bid.price, .qty = bid.qty });
         }
 
         var converted_asks = std.ArrayList(OrderbookLevel).init(self.allocator);
         for (item.asks) |ask| {
-            try converted_asks.append(.{ .price = ask.price, .size = ask.qty });
+            try converted_asks.append(.{ .price = ask.price, .qty = ask.qty });
         }
         const obu = try self.allocator.create(OrderbookUpdate);
         obu.* = .{

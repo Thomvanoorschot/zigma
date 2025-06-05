@@ -3,17 +3,18 @@ const backstage = @import("backstage");
 const cn_actr = @import("connection_actor.zig");
 const async_zocket = @import("async_zocket");
 const type_utils = @import("../utils/type_utils.zig");
-const actor_message = @import("../actor_message/actor_message.pb.zig");
+const shared_models = @import("shared_models");
 
 const ConnectionMessage = cn_actr.ConnectionMessage;
 const ConnectionActor = cn_actr.ConnectionActor;
-const ServerMessage = actor_message.ServerActor.message_union;
+const ServerMessage = shared_models.ServerActor.message_union;
 const xev = backstage.xev;
 const Context = backstage.Context;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
 const Server = async_zocket.Server;
 const ClientConnection = async_zocket.ClientConnection;
+const ConnectionActorMessage = shared_models.ConnectionActor.message_union;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
 pub const ServerActor = struct {
@@ -71,16 +72,24 @@ pub const ServerActor = struct {
             return .rearm;
         };
 
-        const actor_interface = self.ctx.spawnChildActor(ConnectionActor, ConnectionMessage, .{
-            .id = fd_string,
-        }) catch |err| {
-            std.log.err("Failed to spawn connection actor: {any}", .{err});
+        const connection_actor = ConnectionActor.init(self.allocator, client_conn) catch |err| {
+            std.log.err("Failed to init connection actor: {any}", .{err});
             client_conn.close();
             return .rearm;
         };
-        actor_interface.send(self.ctx.actor, ConnectionMessage{ .setup = .{
-            .client_conn = client_conn,
-        } }) catch unreachable;
+        _ = self.ctx.attachChildActorImpl(
+            ConnectionActor,
+            ConnectionActorMessage,
+            .{
+                .id = fd_string,
+            },
+            connection_actor,
+        ) catch |err| {
+            std.log.err("Failed to attach connection actor: {any}", .{err});
+            client_conn.close();
+            return .rearm;
+        };
+        connection_actor.setup(self.ctx);
 
         return .rearm;
     }

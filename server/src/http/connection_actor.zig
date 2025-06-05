@@ -10,9 +10,9 @@ const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
 const Orderbook = shared_models.Orderbook;
 const WsMessage = shared_models.WsMessage;
-const ConnectionActorMessage = shared_models.ConnectionActor.message_union;
+const ConnectionActorMessage = shared_models.ConnectionActor;
 
-const OrderbookActorMessage = shared_models.OrderbookActor.message_union;
+const OrderbookActorMessage = shared_models.OrderbookActor;
 const ClientConnection = async_zocket.ClientConnection;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
@@ -23,21 +23,20 @@ pub const ConnectionActor = struct {
     subscribed_to_orderbooks: std.ArrayList([]const u8),
 
     const Self = @This();
-
-    pub fn init(allocator: std.mem.Allocator, client_conn: *ClientConnection) !*Self {
+    pub fn init(ctx: *Context, allocator: std.mem.Allocator) !*Self {
         const self = try allocator.create(Self);
         errdefer allocator.destroy(self);
 
         self.* = .{
-            .client_conn = client_conn,
+            .ctx = ctx,
             .allocator = allocator,
             .subscribed_to_orderbooks = std.ArrayList([]const u8).init(allocator),
         };
         return self;
     }
 
-    pub fn setup(self: *Self, ctx: *Context) void {
-        self.ctx = ctx;
+    pub fn setup(self: *Self, client_conn: *ClientConnection) void {
+        self.client_conn = client_conn;
         self.client_conn.setCloseCallback(@ptrCast(self), closeCallback);
         self.client_conn.setReadCallback(@ptrCast(self), readCallback);
         self.client_conn.read();
@@ -47,14 +46,19 @@ pub const ConnectionActor = struct {
         try self.ctx.deinit();
         for (self.subscribed_to_orderbooks.items) |ticker| {
             std.debug.print("unsubscribing from {s}\n", .{ticker});
-            try self.ctx.send(ticker, OrderbookActorMessage{
-                .unsubscribe = .{},
-            });
+            const msg = OrderbookActorMessage{ .message = .{ .unsubscribe = .{} } };
+            const msg_bytes = try msg.encode(self.allocator);
+            try self.ctx.send(ticker, msg_bytes);
+            self.allocator.free(msg_bytes);
         }
     }
 
-    pub fn receive(self: *Self, message: *const Envelope(ConnectionActorMessage)) !void {
-        switch (message.payload) {
+    pub fn receive(self: *Self, message: []const u8) !void {
+        const connection_msg: ConnectionActorMessage = try ConnectionActorMessage.decode(message, self.allocator);
+        if (connection_msg.message == null) {
+            return error.InvalidMessage;
+        }
+        switch (connection_msg.message.?) {
             .orderbook_update => |ob| {
                 const str = try WsMessage.encode(WsMessage{
                     .message = .{ .orderbook = ob },
@@ -73,7 +77,7 @@ pub const ConnectionActor = struct {
     fn readCallback(
         self_: ?*anyopaque,
         payload: []const u8,
-    ) void {
+    ) !void {
         const self = unsafeAnyOpaqueCast(Self, self_);
 
         var it = std.mem.tokenizeAny(u8, payload, "\r\n");
@@ -83,13 +87,19 @@ pub const ConnectionActor = struct {
                 const ticker = std.fmt.allocPrintZ(self.allocator, "{s}_orderbook_actor", .{line[15..]}) catch unreachable;
                 // TODO: Need a better way to free this memory
                 // defer self.allocator.free(ticker);
-                self.ctx.send(ticker, OrderbookActorMessage{ .subscribe = .{} }) catch unreachable;
+                const msg = OrderbookActorMessage{ .message = .{ .subscribe = .{} } };
+                const msg_bytes = try msg.encode(self.allocator);
+                self.ctx.send(ticker, msg_bytes) catch unreachable;
+                self.allocator.free(msg_bytes);
                 self.subscribed_to_orderbooks.append(ticker) catch unreachable;
             } else if (std.mem.startsWith(u8, line, "close_orderbook:")) {
                 const ticker = std.fmt.allocPrintZ(self.allocator, "{s}_orderbook_actor", .{line[16..]}) catch unreachable;
                 // TODO: Need a better way to free this memory
                 // defer self.allocator.free(ticker);
-                self.ctx.send(ticker, OrderbookActorMessage{ .unsubscribe = .{} }) catch unreachable;
+                const msg = OrderbookActorMessage{ .message = .{ .unsubscribe = .{} } };
+                const msg_bytes = try msg.encode(self.allocator);
+                self.ctx.send(ticker, msg_bytes) catch unreachable;
+                self.allocator.free(msg_bytes);
 
                 for (self.subscribed_to_orderbooks.items, 0..) |t, i| {
                     if (std.mem.eql(u8, t, ticker)) {

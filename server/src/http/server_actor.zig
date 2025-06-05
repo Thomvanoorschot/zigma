@@ -5,9 +5,8 @@ const async_zocket = @import("async_zocket");
 const type_utils = @import("../utils/type_utils.zig");
 const shared_models = @import("shared_models");
 
-const ConnectionMessage = cn_actr.ConnectionMessage;
 const ConnectionActor = cn_actr.ConnectionActor;
-const ServerMessage = shared_models.ServerActor.message_union;
+const ServerActorMessage = shared_models.ServerActor;
 const xev = backstage.xev;
 const Context = backstage.Context;
 const Envelope = backstage.Envelope;
@@ -38,14 +37,18 @@ pub const ServerActor = struct {
         try self.ctx.deinit();
     }
 
-    pub fn receive(self: *Self, message: *const Envelope(ServerMessage)) !void {
-        switch (message.payload) {
+    pub fn receive(self: *Self, message: []const u8) !void {
+        const server_msg: ServerActorMessage = try ServerActorMessage.decode(message, self.allocator);
+        if (server_msg.message == null) {
+            return error.InvalidMessage;
+        }
+        switch (server_msg.message.?) {
             .init => |m| {
                 self.server = try Server.init(
                     self.allocator,
                     self.ctx.getLoop(),
                     .{
-                        .host = m.host.Const,
+                        .host = m.host.Owned.str,
                         .port = @intCast(m.port),
                         .max_connections = @intCast(m.max_connections),
                     },
@@ -72,24 +75,16 @@ pub const ServerActor = struct {
             return .rearm;
         };
 
-        const connection_actor = ConnectionActor.init(self.allocator, client_conn) catch |err| {
-            std.log.err("Failed to init connection actor: {any}", .{err});
+        const actor_interface = self.ctx.spawnChildActor(ConnectionActor, .{
+            .id = fd_string,
+        }) catch |err| {
+            std.log.err("Failed to spawn connection actor: {any}", .{err});
             client_conn.close();
             return .rearm;
         };
-        _ = self.ctx.attachChildActorImpl(
-            ConnectionActor,
-            ConnectionActorMessage,
-            .{
-                .id = fd_string,
-            },
-            connection_actor,
-        ) catch |err| {
-            std.log.err("Failed to attach connection actor: {any}", .{err});
-            client_conn.close();
-            return .rearm;
-        };
-        connection_actor.setup(self.ctx);
+
+        var connection_actor = @as(*ConnectionActor, @ptrCast(@alignCast(actor_interface.ctx.actor.impl)));
+        connection_actor.setup(client_conn);
 
         return .rearm;
     }

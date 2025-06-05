@@ -17,7 +17,7 @@ const Engine = backstage.Engine;
 const OrderbookActor = ob_actr.OrderbookActor;
 const OrderbookActorMessage = shared_models.OrderbookActor.message_union;
 const ServerActor = server_actr.ServerActor;
-const ServerActorMessage = shared_models.ServerActor.message_union;
+const ServerActorMessage = shared_models.ServerActor;
 const OHLCActor = ohlc_actr.OHLCActor;
 const OHLCActorMessage = ohlc_actr.OHLCActor.message_union;
 pub fn main() !void {
@@ -33,24 +33,33 @@ pub fn main() !void {
     var engine = try Engine.init(allocator);
     defer engine.deinit();
 
-    const server_actor = try engine.spawnActor(ServerActor, ServerActorMessage, .{
+    const server_actor = try engine.spawnActor(ServerActor, .{
         .id = "server_actor",
     });
-    try server_actor.send(null, ServerActorMessage{ .init = .{
-        .host = ManagedString.static("127.0.0.1"),
-        .port = 8081,
-        .max_connections = 1024,
-    } });
-    try server_actor.send(null, ServerActorMessage{ .accept = .{} });
+    const init_server_msg = ServerActorMessage{
+        .message = .{ .init = .{
+            .host = ManagedString.static("127.0.0.1"),
+            .port = 8081,
+            .max_connections = 1024,
+        } },
+    };
+    const init_server_msg_bytes = try init_server_msg.encode(allocator);
+    try server_actor.send(null, init_server_msg_bytes);
 
-    const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
-    for (tickers) |ticker| {
-        const orderbook_actor = try engine.spawnActor(OrderbookActor, OrderbookActorMessage, .{
-            .id = try std.fmt.allocPrintZ(allocator, "{s}_orderbook_actor", .{ticker}),
-        });
-        try orderbook_actor.send(null, OrderbookActorMessage{ .init = .{ .broker = .KRAKEN } });
-        try orderbook_actor.send(null, OrderbookActorMessage{ .start = .{ .ticker = try ManagedString.copy(ticker, allocator) } });
-    }
+    const accept_server_msg = ServerActorMessage{
+        .message = .{ .accept = .{} },
+    };
+    const accept_server_msg_bytes = try accept_server_msg.encode(allocator);
+    try server_actor.send(null, accept_server_msg_bytes);
+
+    // const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
+    // for (tickers) |ticker| {
+    //     const orderbook_actor = try engine.spawnActor(OrderbookActor, .{
+    //         .id = try std.fmt.allocPrintZ(allocator, "{s}_orderbook_actor", .{ticker}),
+    //     });
+    //     try orderbook_actor.send(null, OrderbookActorMessage{ .init = .{ .broker = .KRAKEN } });
+    //     try orderbook_actor.send(null, OrderbookActorMessage{ .start = .{ .ticker = try ManagedString.copy(ticker, allocator) } });
+    // }
 
     // const ohlc_actor = try engine.spawnActor(OHLCActor, OHLCMessage, .{
     //     .id = "ohlc_actor",

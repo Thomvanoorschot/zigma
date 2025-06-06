@@ -11,21 +11,21 @@ const Allocator = std.mem.Allocator;
 const Context = backstage.Context;
 const BrokerType = brkr_impl.BrokerType;
 const BrokerActor = brkr_actr.BrokerActor;
-const BrokerActorMessage = shared_models.BrokerActor.message_union;
+const BrokerActorMessage = shared_models.BrokerActor;
 const Envelope = backstage.Envelope;
 const OrderbookUpdate = shared_models.OrderbookUpdate;
 const OrderbookLevel = shared_models.OrderbookLevel;
-const ConnectionActorMessage = shared_models.ConnectionActor.message_union;
+const ConnectionActorMessage = shared_models.ConnectionActor;
 const Orderbook = shared_models.Orderbook;
 const ManagedString = shared_models.ManagedString;
-const OrderbookActorMessage = shared_models.OrderbookActor.message_union;
+const OrderbookActorMessage = shared_models.OrderbookActor;
 
 pub const OrderbookActor = struct {
     arena_state: std.heap.ArenaAllocator,
     ctx: *Context,
     broker_actor: ?*ActorInterface = null,
     orderbook: ?Orderbook = null,
-    subscriptions: std.ArrayList(*ActorInterface),
+    subscriptions: std.ArrayList([]const u8),
     notify_subscribers_completion: xev.Completion = undefined,
     const Self = @This();
     pub fn init(ctx: *Context, allocator: Allocator) !*Self {
@@ -37,7 +37,7 @@ pub const OrderbookActor = struct {
         self.* = .{
             .arena_state = arena_state,
             .ctx = ctx,
-            .subscriptions = std.ArrayList(*ActorInterface).init(allocator),
+            .subscriptions = std.ArrayList([]const u8).init(allocator),
         };
         return self;
     }
@@ -48,14 +48,19 @@ pub const OrderbookActor = struct {
         self.arena_state.deinit();
     }
 
-    pub fn receive(self: *Self, message: *const Envelope(OrderbookActorMessage)) !void {
-        switch (message.payload) {
+    pub fn receive(self: *Self, message: Envelope) !void {
+        const orderbook_msg: OrderbookActorMessage = try OrderbookActorMessage.decode(message.payload, self.arena_state.allocator());
+        if (orderbook_msg.message == null) {
+            return error.InvalidMessage;
+        }
+        switch (orderbook_msg.message.?) {
             .init => |_| {
-                const broker_actor = try self.ctx.spawnActor(BrokerActor, BrokerActorMessage, .{
+                const broker_actor = try self.ctx.spawnActor(BrokerActor, .{
                     .id = "kraken_broker_actor",
                 });
-
-                try broker_actor.send(self.ctx.actor, BrokerActorMessage{ .init = .{ .broker = .KRAKEN } });
+                const init_msg = BrokerActorMessage{ .message = .{ .init = .{ .broker = .KRAKEN } } };
+                const init_msg_bytes = try init_msg.encode(self.arena_state.allocator());
+                try broker_actor.send(self.ctx.actor, init_msg_bytes);
                 self.broker_actor = broker_actor;
             },
             .start => |m| {
@@ -71,7 +76,9 @@ pub const OrderbookActor = struct {
                 errdefer bids.deinit();
                 errdefer asks.deinit();
 
-                try self.broker_actor.?.send(self.ctx.actor, BrokerActorMessage{ .orderbook_subscribe = .{ .ticker = m.ticker } });
+                const orderbook_subscribe_msg = BrokerActorMessage{ .message = .{ .orderbook_subscribe = .{ .ticker = m.ticker } } };
+                const orderbook_subscribe_msg_bytes = try orderbook_subscribe_msg.encode(self.arena_state.allocator());
+                try self.broker_actor.?.send(self.ctx.actor, orderbook_subscribe_msg_bytes);
                 try self.ctx.runContinuously(
                     Self,
                     notify_subscribers,
@@ -86,12 +93,12 @@ pub const OrderbookActor = struct {
             },
             .subscribe => |_| {
                 std.log.info("subscribing to orderbook: {s}", .{self.orderbook.?.ticker.Owned.str});
-                try self.subscriptions.append(message.sender.?);
+                try self.subscriptions.append(message.senderID.?);
             },
             .unsubscribe => |_| {
                 std.log.info("unsubscribing from orderbook: {s}", .{self.orderbook.?.ticker.Owned.str});
-                for (self.subscriptions.items, 0..) |actor, i| {
-                    if (actor == message.sender.?) {
+                for (self.subscriptions.items, 0..) |actorID, i| {
+                    if (actorID == message.senderID.?) {
                         _ = self.subscriptions.orderedRemove(i);
                         break;
                     }
@@ -101,10 +108,9 @@ pub const OrderbookActor = struct {
     }
     fn notify_subscribers(self: *Self) !void {
         for (self.subscriptions.items) |actor| {
-            try actor.send(
-                self.ctx.actor,
-                ConnectionActorMessage{ .orderbook_update = self.orderbook.? },
-            );
+            const orderbook_update_msg = ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } };
+            const orderbook_update_msg_bytes = try orderbook_update_msg.encode(self.arena_state.allocator());
+            try actor.send(self.ctx.actor, orderbook_update_msg_bytes);
         }
     }
 };

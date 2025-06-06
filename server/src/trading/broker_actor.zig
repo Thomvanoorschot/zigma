@@ -46,8 +46,12 @@ pub const BrokerActor = struct {
         try self.ctx.deinit();
     }
 
-    pub fn receive(self: *Self, message: *const Envelope(BrokerActorMessage)) !void {
-        switch (message.payload) {
+    pub fn receive(self: *Self, message: Envelope) !void {
+        const broker_msg: BrokerActorMessage = try BrokerActorMessage.decode(message.payload, self.allocator);
+        if (broker_msg.message == null) {
+            return error.InvalidMessage;
+        }
+        switch (broker_msg.message.?) {
             .init => |m| {
                 self.broker = try BrokerImpl.init(
                     self.allocator,

@@ -53,8 +53,8 @@ pub const ConnectionActor = struct {
         }
     }
 
-    pub fn receive(self: *Self, message: []const u8) !void {
-        const connection_msg: ConnectionActorMessage = try ConnectionActorMessage.decode(message, self.allocator);
+    pub fn receive(self: *Self, message: Envelope) !void {
+        const connection_msg: ConnectionActorMessage = try ConnectionActorMessage.decode(message.payload, self.allocator);
         if (connection_msg.message == null) {
             return error.InvalidMessage;
         }

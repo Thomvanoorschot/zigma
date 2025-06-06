@@ -15,7 +15,7 @@ const BrokerActor = brkr_actr.BrokerActor;
 const BrokerType = brkr_impl.BrokerType;
 const Engine = backstage.Engine;
 const OrderbookActor = ob_actr.OrderbookActor;
-const OrderbookActorMessage = shared_models.OrderbookActor.message_union;
+const OrderbookActorMessage = shared_models.OrderbookActor;
 const ServerActor = server_actr.ServerActor;
 const ServerActorMessage = shared_models.ServerActor;
 const OHLCActor = ohlc_actr.OHLCActor;
@@ -52,14 +52,25 @@ pub fn main() !void {
     const accept_server_msg_bytes = try accept_server_msg.encode(allocator);
     try server_actor.send(null, accept_server_msg_bytes);
 
-    // const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
-    // for (tickers) |ticker| {
-    //     const orderbook_actor = try engine.spawnActor(OrderbookActor, .{
-    //         .id = try std.fmt.allocPrintZ(allocator, "{s}_orderbook_actor", .{ticker}),
-    //     });
-    //     try orderbook_actor.send(null, OrderbookActorMessage{ .init = .{ .broker = .KRAKEN } });
-    //     try orderbook_actor.send(null, OrderbookActorMessage{ .start = .{ .ticker = try ManagedString.copy(ticker, allocator) } });
-    // }
+    const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
+    for (tickers) |ticker| {
+        const orderbook_actor = try engine.spawnActor(OrderbookActor, .{
+            .id = try std.fmt.allocPrintZ(allocator, "{s}_orderbook_actor", .{ticker}),
+        });
+        const init_msg = OrderbookActorMessage{
+            .message = .{ .init = .{ .broker = .KRAKEN } },
+        };
+        const init_msg_bytes = try init_msg.encode(allocator);
+        try orderbook_actor.send(null, init_msg_bytes);
+
+        const start_msg = OrderbookActorMessage{
+            .message = .{ .start = .{
+                .ticker = try ManagedString.copy(ticker, allocator),
+            } },
+        };
+        const start_msg_bytes = try start_msg.encode(allocator);
+        try orderbook_actor.send(null, start_msg_bytes);
+    }
 
     // const ohlc_actor = try engine.spawnActor(OHLCActor, OHLCMessage, .{
     //     .id = "ohlc_actor",

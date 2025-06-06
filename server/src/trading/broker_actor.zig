@@ -14,17 +14,17 @@ const BrokerType = brkr_impl.BrokerType;
 const BrokerPayload = brkr_impl.BrokerPayload;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
-const BrokerActorMessage = shared_models.BrokerActor.message_union;
-const OrderbookActorMessage = shared_models.OrderbookActor.message_union;
-const OHLCActorMessage = shared_models.OHLCActor.message_union;
+const BrokerActorMessage = shared_models.BrokerActor;
+const OrderbookActorMessage = shared_models.OrderbookActor;
+const OHLCActorMessage = shared_models.OHLCActor;
 
 pub const BrokerActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context,
     broker: ?BrokerImpl = null,
     // TODO: This currently limits to a single subscriber per ticker, need to change this
-    orderbook_subscriptions: std.StringHashMap(*ActorInterface),
-    ohlc_subscriptions: std.StringHashMap(*ActorInterface),
+    orderbook_subscriptions: std.StringHashMap([]const u8),
+    ohlc_subscriptions: std.StringHashMap([]const u8),
     completion: xev.Completion = undefined,
 
     const Self = @This();
@@ -35,8 +35,8 @@ pub const BrokerActor = struct {
         self.* = .{
             .ctx = ctx,
             .allocator = allocator,
-            .orderbook_subscriptions = std.StringHashMap(*ActorInterface).init(allocator),
-            .ohlc_subscriptions = std.StringHashMap(*ActorInterface).init(allocator),
+            .orderbook_subscriptions = std.StringHashMap([]const u8).init(allocator),
+            .ohlc_subscriptions = std.StringHashMap([]const u8).init(allocator),
         };
 
         return self;
@@ -64,11 +64,11 @@ pub const BrokerActor = struct {
             .orderbook_subscribe => |m| {
                 // TODO Split this up into seperate messages?
                 try self.broker.?.subscribeToOrderbook(m.ticker.Owned.str);
-                try self.orderbook_subscriptions.put(m.ticker.Owned.str, message.sender.?);
+                try self.orderbook_subscriptions.put(m.ticker.Owned.str, message.senderID.?);
             },
             .ohlc_subscribe => |m| {
                 try self.broker.?.subscribeToOHLC(m.ticker.Owned.str);
-                try self.ohlc_subscriptions.put(m.ticker.Owned.str, message.sender.?);
+                try self.ohlc_subscriptions.put(m.ticker.Owned.str, message.senderID.?);
             },
         }
     }
@@ -79,17 +79,21 @@ pub const BrokerActor = struct {
         if (try message) |m| {
             switch (m) {
                 .orderbook_update => |update| {
-                    if (self.orderbook_subscriptions.get(update.symbol.Owned.str)) |subscriber| {
-                        try subscriber.send(self.ctx.actor, OrderbookActorMessage{
-                            .update = update.*,
-                        });
+                    if (self.orderbook_subscriptions.get(update.symbol.Owned.str)) |actorID| {
+                        const update_msg = OrderbookActorMessage{
+                            .message = .{ .update = update.* },
+                        };
+                        const update_msg_bytes = try update_msg.encode(self.allocator);
+                        try self.ctx.send(actorID, update_msg_bytes);
                     }
                 },
                 .ohlc_update => |update| {
-                    if (self.ohlc_subscriptions.get(update.symbol.Owned.str)) |subscriber| {
-                        try subscriber.send(self.ctx.actor, OHLCActorMessage{
-                            .update = update.*,
-                        });
+                    if (self.ohlc_subscriptions.get(update.symbol.Owned.str)) |actorID| {
+                        const update_msg = OHLCActorMessage{
+                            .message = .{ .update = update.* },
+                        };
+                        const update_msg_bytes = try update_msg.encode(self.allocator);
+                        try self.ctx.send(actorID, update_msg_bytes);
                     }
                 },
             }

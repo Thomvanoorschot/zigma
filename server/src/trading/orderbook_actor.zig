@@ -98,7 +98,7 @@ pub const OrderbookActor = struct {
             .unsubscribe => |_| {
                 std.log.info("unsubscribing from orderbook: {s}", .{self.orderbook.?.ticker.Owned.str});
                 for (self.subscriptions.items, 0..) |actorID, i| {
-                    if (actorID == message.senderID.?) {
+                    if (std.mem.eql(u8, actorID, message.senderID.?)) {
                         _ = self.subscriptions.orderedRemove(i);
                         break;
                     }
@@ -107,10 +107,10 @@ pub const OrderbookActor = struct {
         }
     }
     fn notify_subscribers(self: *Self) !void {
-        for (self.subscriptions.items) |actor| {
+        for (self.subscriptions.items) |actorID| {
             const orderbook_update_msg = ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } };
             const orderbook_update_msg_bytes = try orderbook_update_msg.encode(self.arena_state.allocator());
-            try actor.send(self.ctx.actor, orderbook_update_msg_bytes);
+            try self.ctx.send(actorID, orderbook_update_msg_bytes);
         }
     }
 };

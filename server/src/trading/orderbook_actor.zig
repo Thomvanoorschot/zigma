@@ -21,6 +21,7 @@ const ManagedString = shared_models.ManagedString;
 const OrderbookActorMessage = shared_models.OrderbookActor;
 
 pub const OrderbookActor = struct {
+    allocator: Allocator,
     arena_state: std.heap.ArenaAllocator,
     ctx: *Context,
     broker_actor: ?*ActorInterface = null,
@@ -35,6 +36,7 @@ pub const OrderbookActor = struct {
         errdefer arena_state.deinit();
 
         self.* = .{
+            .allocator = allocator,
             .arena_state = arena_state,
             .ctx = ctx,
             .subscriptions = std.ArrayList([]const u8).init(allocator),
@@ -49,7 +51,8 @@ pub const OrderbookActor = struct {
     }
 
     pub fn receive(self: *Self, message: Envelope) !void {
-        const orderbook_msg: OrderbookActorMessage = try OrderbookActorMessage.decode(message.payload, self.arena_state.allocator());
+        const orderbook_msg: OrderbookActorMessage = try OrderbookActorMessage.decode(message.payload, self.allocator);
+
         if (orderbook_msg.message == null) {
             return error.InvalidMessage;
         }
@@ -59,7 +62,8 @@ pub const OrderbookActor = struct {
                     .id = "kraken_broker_actor",
                 });
                 const init_msg = BrokerActorMessage{ .message = .{ .init = .{ .broker = .KRAKEN } } };
-                const init_msg_bytes = try init_msg.encode(self.arena_state.allocator());
+                const init_msg_bytes = try init_msg.encode(self.allocator);
+                defer self.allocator.free(init_msg_bytes);
                 try broker_actor.send(self.ctx.actor, init_msg_bytes);
                 self.broker_actor = broker_actor;
             },
@@ -77,7 +81,8 @@ pub const OrderbookActor = struct {
                 errdefer asks.deinit();
 
                 const orderbook_subscribe_msg = BrokerActorMessage{ .message = .{ .orderbook_subscribe = .{ .ticker = m.ticker } } };
-                const orderbook_subscribe_msg_bytes = try orderbook_subscribe_msg.encode(self.arena_state.allocator());
+                const orderbook_subscribe_msg_bytes = try orderbook_subscribe_msg.encode(self.allocator);
+                defer self.allocator.free(orderbook_subscribe_msg_bytes);
                 try self.broker_actor.?.send(self.ctx.actor, orderbook_subscribe_msg_bytes);
                 try self.ctx.runContinuously(
                     Self,
@@ -109,7 +114,8 @@ pub const OrderbookActor = struct {
     fn notify_subscribers(self: *Self) !void {
         for (self.subscriptions.items) |actorID| {
             const orderbook_update_msg = ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } };
-            const orderbook_update_msg_bytes = try orderbook_update_msg.encode(self.arena_state.allocator());
+            const orderbook_update_msg_bytes = try orderbook_update_msg.encode(self.allocator);
+            defer self.allocator.free(orderbook_update_msg_bytes);
             try self.ctx.send(actorID, orderbook_update_msg_bytes);
         }
     }
@@ -156,4 +162,19 @@ fn priceDescending(_: void, a: shared_models.OrderbookLevel, b: shared_models.Or
 
 fn priceAscending(_: void, a: shared_models.OrderbookLevel, b: shared_models.OrderbookLevel) bool {
     return a.price < b.price;
+}
+
+test "can receive orderbook updates" {
+    std.testing.log_level = .info;
+    var loop = try xev.Loop.init(.{});
+    defer loop.deinit();
+
+    // Accept
+    try loop.run(.once);
+    // Read
+    try loop.run(.once);
+    // Write
+    try loop.run(.once);
+    // Read
+    try loop.run(.once);
 }

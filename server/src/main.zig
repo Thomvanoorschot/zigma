@@ -44,12 +44,14 @@ pub fn main() !void {
         } },
     };
     const init_server_msg_bytes = try init_server_msg.encode(allocator);
+    defer allocator.free(init_server_msg_bytes);
     try server_actor.send(null, init_server_msg_bytes);
 
     const accept_server_msg = ServerActorMessage{
         .message = .{ .accept = .{} },
     };
     const accept_server_msg_bytes = try accept_server_msg.encode(allocator);
+    defer allocator.free(accept_server_msg_bytes);
     try server_actor.send(null, accept_server_msg_bytes);
 
     const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
@@ -61,6 +63,7 @@ pub fn main() !void {
             .message = .{ .init = .{ .broker = .KRAKEN } },
         };
         const init_msg_bytes = try init_msg.encode(allocator);
+        defer allocator.free(init_msg_bytes);
         try orderbook_actor.send(null, init_msg_bytes);
 
         const start_msg = OrderbookActorMessage{
@@ -69,6 +72,7 @@ pub fn main() !void {
             } },
         };
         const start_msg_bytes = try start_msg.encode(allocator);
+        defer allocator.free(start_msg_bytes);
         try orderbook_actor.send(null, start_msg_bytes);
     }
 

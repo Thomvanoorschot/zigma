@@ -48,8 +48,8 @@ pub const ConnectionActor = struct {
             std.debug.print("unsubscribing from {s}\n", .{ticker});
             const msg = OrderbookActorMessage{ .message = .{ .unsubscribe = .{} } };
             const msg_bytes = try msg.encode(self.allocator);
+            defer self.allocator.free(msg_bytes);
             try self.ctx.send(ticker, msg_bytes);
-            self.allocator.free(msg_bytes);
         }
     }
 
@@ -89,8 +89,8 @@ pub const ConnectionActor = struct {
                 // defer self.allocator.free(ticker);
                 const msg = OrderbookActorMessage{ .message = .{ .subscribe = .{} } };
                 const msg_bytes = try msg.encode(self.allocator);
+                defer self.allocator.free(msg_bytes);
                 self.ctx.send(ticker, msg_bytes) catch unreachable;
-                self.allocator.free(msg_bytes);
                 self.subscribed_to_orderbooks.append(ticker) catch unreachable;
             } else if (std.mem.startsWith(u8, line, "close_orderbook:")) {
                 const ticker = std.fmt.allocPrintZ(self.allocator, "{s}_orderbook_actor", .{line[16..]}) catch unreachable;
@@ -98,8 +98,8 @@ pub const ConnectionActor = struct {
                 // defer self.allocator.free(ticker);
                 const msg = OrderbookActorMessage{ .message = .{ .unsubscribe = .{} } };
                 const msg_bytes = try msg.encode(self.allocator);
+                defer self.allocator.free(msg_bytes);
                 self.ctx.send(ticker, msg_bytes) catch unreachable;
-                self.allocator.free(msg_bytes);
 
                 for (self.subscribed_to_orderbooks.items, 0..) |t, i| {
                     if (std.mem.eql(u8, t, ticker)) {

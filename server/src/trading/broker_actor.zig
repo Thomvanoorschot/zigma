@@ -84,6 +84,7 @@ pub const BrokerActor = struct {
                             .message = .{ .update = update.* },
                         };
                         const update_msg_bytes = try update_msg.encode(self.allocator);
+                        defer self.allocator.free(update_msg_bytes);
                         try self.ctx.send(actorID, update_msg_bytes);
                     }
                 },
@@ -93,6 +94,7 @@ pub const BrokerActor = struct {
                             .message = .{ .update = update.* },
                         };
                         const update_msg_bytes = try update_msg.encode(self.allocator);
+                        defer self.allocator.free(update_msg_bytes);
                         try self.ctx.send(actorID, update_msg_bytes);
                     }
                 },

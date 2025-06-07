@@ -55,4 +55,20 @@ pub fn build(b: *std.Build) void {
     run_cmd.step.dependOn(b.getInstallStep());
 
     b.step("run", "Run Zigma server").dependOn(&run_cmd.step);
+
+    // Add test step
+    const tests = b.addTest(.{
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    tests.root_module.addImport("backstage", backstage_dep.module("backstage"));
+    tests.root_module.addImport("async_zocket", async_zocket_dep.module("async_zocket"));
+    tests.root_module.addImport("zbor", zbor_dep.module("zbor"));
+    tests.root_module.addImport("shared_models", shared_models_dep.module("shared_models"));
+
+    const run_tests = b.addRunArtifact(tests);
+    const test_step = b.step("test", "Run unit tests");
+    test_step.dependOn(&run_tests.step);
 }

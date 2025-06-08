@@ -118,6 +118,6 @@ pub const ConnectionActor = struct {
         self_: ?*anyopaque,
     ) !void {
         const self = unsafeAnyOpaqueCast(Self, self_);
-        try self.ctx.deinit();
+        try self.ctx.shutdown();
     }
 };

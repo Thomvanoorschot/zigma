@@ -34,7 +34,7 @@ pub const ServerActor = struct {
     }
 
     pub fn deinit(self: *Self) !void {
-        try self.ctx.deinit();
+        try self.ctx.shutdown();
     }
 
     pub fn receive(self: *Self, message: Envelope) !void {

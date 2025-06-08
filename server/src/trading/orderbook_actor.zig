@@ -50,7 +50,7 @@ pub const OrderbookActor = struct {
 
         self.subscriptions.deinit();
         self.arena_state.deinit();
-        try self.ctx.deinit();
+        try self.ctx.shutdown();
     }
 
     pub fn receive(self: *Self, message: Envelope) !void {

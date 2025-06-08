@@ -59,7 +59,10 @@ pub const BrokerActor = struct {
         }
         self.ohlc_subscriptions.deinit();
 
-        try self.ctx.deinit();
+        try self.ctx.shutdown();
+
+        // 3. Clean up self
+        self.allocator.destroy(self);
     }
 
     pub fn receive(self: *Self, message: Envelope) !void {

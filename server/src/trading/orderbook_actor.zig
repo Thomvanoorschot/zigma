@@ -158,31 +158,22 @@ fn priceAscending(_: void, a: shared_models.OrderbookLevel, b: shared_models.Ord
     return a.price < b.price;
 }
 
-// test "can receive orderbook updates" {
-//     std.testing.log_level = .info;
-//     var engine = try backstage.Engine.init(std.testing.allocator);
+test "can receive orderbook updates" {
+    std.testing.log_level = .info;
+    var engine = try backstage.Engine.init(std.testing.allocator);
 
-//     _ = try engine.spawnActor(OrderbookActor, .{
-//         .id = "orderbook_actor",
-//     });
+    _ = try engine.spawnActor(OrderbookActor, .{
+        .id = "orderbook_actor",
+    });
 
-//     const init_msg = OrderbookActorMessage{ .message = .{ .init = .{ .broker = .KRAKEN } } };
-//     const init_msg_bytes = try init_msg.encode(std.testing.allocator);
+    const start_time = std.time.milliTimestamp();
+    const duration_ms = 2000;
 
-//     try engine.send(null, "orderbook_actor", init_msg_bytes);
-
-//     std.testing.allocator.free(init_msg_bytes);
-
-//     const start_time = std.time.milliTimestamp();
-//     const duration_ms = 2000;
-
-//     while (std.time.milliTimestamp() - start_time < duration_ms) {
-//         try engine.loop.run(.once);
-//     }
-//     engine.deinit();
-
-//     std.log.info("test completed", .{});
-// }
+    while (std.time.milliTimestamp() - start_time < duration_ms) {
+        try engine.loop.run(.no_wait);
+    }
+    engine.deinit();
+}
 
 test "updateOrderbook functionality" {
     const bids = std.ArrayList(OrderbookLevel).init(std.testing.allocator);

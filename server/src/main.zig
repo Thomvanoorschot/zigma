@@ -46,6 +46,7 @@ pub fn main() !void {
     const server_actor = try engine.spawnActor(ServerActor, .{
         .id = "server_actor",
     });
+
     const init_server_msg = ServerActorMessage{
         .message = .{ .init = .{
             .host = ManagedString.static("127.0.0.1"),

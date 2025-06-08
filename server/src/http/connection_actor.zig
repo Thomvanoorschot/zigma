@@ -43,7 +43,6 @@ pub const ConnectionActor = struct {
     }
 
     pub fn deinit(self: *Self) !void {
-        try self.ctx.deinit();
         for (self.subscribed_to_orderbooks.items) |ticker| {
             std.debug.print("unsubscribing from {s}\n", .{ticker});
             const msg = OrderbookActorMessage{ .message = .{ .unsubscribe = .{} } };
@@ -119,6 +118,6 @@ pub const ConnectionActor = struct {
         self_: ?*anyopaque,
     ) !void {
         const self = unsafeAnyOpaqueCast(Self, self_);
-        try self.deinit();
+        try self.ctx.deinit();
     }
 };

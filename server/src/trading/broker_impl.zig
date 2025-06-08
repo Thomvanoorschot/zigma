@@ -45,7 +45,7 @@ pub const BrokerImpl = union(BrokerType) {
 
     pub fn deinit(self: *Self) void {
         switch (self.*) {
-            inline else => |*broker| broker.deinit(),
+            inline else => |broker| broker.deinit(),
         }
     }
 

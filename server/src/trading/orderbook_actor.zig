@@ -45,8 +45,11 @@ pub const OrderbookActor = struct {
     }
 
     pub fn deinit(self: *Self) !void {
-        self.orderbook.?.deinit();
-        try self.ctx.deinit();
+        for (self.subscriptions.items) |actor_id| {
+            self.allocator.free(actor_id);
+        }
+
+        self.subscriptions.deinit();
         self.arena_state.deinit();
     }
 
@@ -98,13 +101,14 @@ pub const OrderbookActor = struct {
             },
             .subscribe => |_| {
                 std.log.info("subscribing to orderbook: {s}", .{self.orderbook.?.ticker.Owned.str});
-                try self.subscriptions.append(message.senderID.?);
+                try self.subscriptions.append(try self.allocator.dupe(u8, message.senderID.?));
             },
             .unsubscribe => |_| {
                 std.log.info("unsubscribing from orderbook: {s}", .{self.orderbook.?.ticker.Owned.str});
-                for (self.subscriptions.items, 0..) |actorID, i| {
-                    if (std.mem.eql(u8, actorID, message.senderID.?)) {
+                for (self.subscriptions.items, 0..) |actor_id, i| {
+                    if (std.mem.eql(u8, actor_id, message.senderID.?)) {
                         _ = self.subscriptions.orderedRemove(i);
+                        self.allocator.free(actor_id);
                         break;
                     }
                 }
@@ -164,17 +168,74 @@ fn priceAscending(_: void, a: shared_models.OrderbookLevel, b: shared_models.Ord
     return a.price < b.price;
 }
 
-test "can receive orderbook updates" {
-    std.testing.log_level = .info;
-    var loop = try xev.Loop.init(.{});
-    defer loop.deinit();
+// test "can receive orderbook updates" {
+//     std.testing.log_level = .info;
+//     var engine = try backstage.Engine.init(std.testing.allocator);
 
-    // Accept
-    try loop.run(.once);
-    // Read
-    try loop.run(.once);
-    // Write
-    try loop.run(.once);
-    // Read
-    try loop.run(.once);
+//     _ = try engine.spawnActor(OrderbookActor, .{
+//         .id = "orderbook_actor",
+//     });
+
+//     const init_msg = OrderbookActorMessage{ .message = .{ .init = .{ .broker = .KRAKEN } } };
+//     const init_msg_bytes = try init_msg.encode(std.testing.allocator);
+
+//     try engine.send(null, "orderbook_actor", init_msg_bytes);
+
+//     std.testing.allocator.free(init_msg_bytes);
+
+//     const start_time = std.time.milliTimestamp();
+//     const duration_ms = 2000;
+
+//     while (std.time.milliTimestamp() - start_time < duration_ms) {
+//         try engine.loop.run(.once);
+//     }
+//     engine.deinit();
+
+//     std.log.info("test completed", .{});
+// }
+
+test "updateOrderbook functionality" {
+    const bids = std.ArrayList(OrderbookLevel).init(std.testing.allocator);
+    const asks = std.ArrayList(OrderbookLevel).init(std.testing.allocator);
+
+    var orderbook = Orderbook{
+        .bids = bids,
+        .asks = asks,
+        .max_depth = 10,
+        .exchange = ManagedString.static("test"),
+        .ticker = ManagedString.static("BTC-USD"),
+    };
+    defer orderbook.deinit();
+
+    var i: f64 = 0;
+    while (i < 40) : (i += 1) {
+        const price = 50000.0 - (i * 10.0);
+        const qty = 1.0 + (i * 0.1);
+        try updateOrderbook(&orderbook, price, qty, true);
+    }
+
+    i = 0;
+    while (i < 40) : (i += 1) {
+        const price = 50100.0 + (i * 10.0);
+        const qty = 0.5 + (i * 0.05);
+        try updateOrderbook(&orderbook, price, qty, false);
+    }
+
+    try std.testing.expect(orderbook.bids.items.len == 10);
+    try std.testing.expect(orderbook.asks.items.len == 10);
+
+    try std.testing.expectApproxEqAbs(orderbook.bids.items[0].price, 50000.0, 1e-9);
+    try std.testing.expectApproxEqAbs(orderbook.bids.items[1].price, 49990.0, 1e-9);
+    try std.testing.expectApproxEqAbs(orderbook.bids.items[2].price, 49980.0, 1e-9);
+    try std.testing.expectApproxEqAbs(orderbook.bids.items[9].price, 49910.0, 1e-9);
+
+    try std.testing.expectApproxEqAbs(orderbook.asks.items[0].price, 50100.0, 1e-9);
+    try std.testing.expectApproxEqAbs(orderbook.asks.items[1].price, 50110.0, 1e-9);
+    try std.testing.expectApproxEqAbs(orderbook.asks.items[2].price, 50120.0, 1e-9);
+    try std.testing.expectApproxEqAbs(orderbook.asks.items[9].price, 50190.0, 1e-9);
+
+    try updateOrderbook(&orderbook, 50000.0, 0.0, true);
+    try std.testing.expect(orderbook.bids.items.len == 9);
+
+    try std.testing.expectApproxEqAbs(orderbook.bids.items[0].price, 49990.0, 1e-9);
 }

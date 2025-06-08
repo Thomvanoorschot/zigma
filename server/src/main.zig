@@ -94,22 +94,9 @@ pub fn main() !void {
     // try test_third_actor.send(null, OrderbookMessage{ .init = .{ .broker = .kraken } });
     // try test_third_actor.send(null, OrderbookMessage{ .start = .{ .ticker = "OMNI/USD" } });
 
-    // Stopping doesn't quite work yet
-    // var cc = xev.Completion{};
-    // engine.loop.timer(&cc, 2000, @ptrCast(&engine), listenForMessagesFn);
     try engine.run();
 }
-const listenForMessagesFn = struct {
-    fn inner(
-        ud: ?*anyopaque,
-        _: *xev.Loop,
-        _: *xev.Completion,
-        _: xev.Result,
-    ) xev.CallbackAction {
-        const s = unsafeAnyOpaqueCast(Engine, ud.?);
-        std.debug.print("Timer fired: Signaling engine loop to stop.\n", .{});
-        s.deinit();
 
-        return .disarm;
-    }
-}.inner;
+test {
+    _ = @import("trading/orderbook_actor.zig");
+}

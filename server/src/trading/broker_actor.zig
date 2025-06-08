@@ -43,6 +43,22 @@ pub const BrokerActor = struct {
     }
 
     pub fn deinit(self: *Self) !void {
+        if (self.broker) |*broker| {
+            broker.deinit();
+        }
+
+        var orderbook_it = self.orderbook_subscriptions.iterator();
+        while (orderbook_it.next()) |actor_id| {
+            self.allocator.free(actor_id.key_ptr.*);
+        }
+        self.orderbook_subscriptions.deinit();
+
+        var ohlc_it = self.ohlc_subscriptions.iterator();
+        while (ohlc_it.next()) |actor_id| {
+            self.allocator.free(actor_id.key_ptr.*);
+        }
+        self.ohlc_subscriptions.deinit();
+
         try self.ctx.deinit();
     }
 
@@ -64,7 +80,7 @@ pub const BrokerActor = struct {
             .orderbook_subscribe => |m| {
                 // TODO Split this up into seperate messages?
                 try self.broker.?.subscribeToOrderbook(m.ticker.Owned.str);
-                try self.orderbook_subscriptions.put(m.ticker.Owned.str, message.senderID.?);
+                try self.orderbook_subscriptions.put(m.ticker.Owned.str, try self.allocator.dupe(u8, message.senderID.?));
             },
             .ohlc_subscribe => |m| {
                 try self.broker.?.subscribeToOHLC(m.ticker.Owned.str);

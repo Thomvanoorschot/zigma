@@ -5,11 +5,12 @@ const brkr_actr = @import("broker_actor.zig");
 const conn_actr = @import("../http/connection_actor.zig");
 const shared_models = @import("shared_models");
 
-const OHLCActorMessage = shared_models.OHLCActor.message_union;
+const OHLCActorMessage = shared_models.OHLCActor;
 const OHLCList = shared_models.OHLCList;
-const BrokerActorMessage = shared_models.BrokerActor.message_union;
+const BrokerActorMessage = shared_models.BrokerActor;
 const OHLCUpdate = shared_models.OHLCUpdate;
 const OHLC = shared_models.OHLC;
+const ConnectionActorMessage = shared_models.ConnectionActor;
 
 const xev = backstage.xev;
 const ActorInterface = backstage.ActorInterface;
@@ -18,50 +19,47 @@ const Context = backstage.Context;
 const BrokerType = brkr_impl.BrokerType;
 const BrokerActor = brkr_actr.BrokerActor;
 const Envelope = backstage.Envelope;
-const ConnectionMessage = conn_actr.ConnectionMessage;
 
 pub const OHLCActor = struct {
     allocator: Allocator,
-    arena: std.heap.ArenaAllocator,
+    arena_state: std.heap.ArenaAllocator,
     ctx: *Context,
-    broker_actor: ?*ActorInterface = null,
     ohlc_list: OHLCList,
-    subscriptions: std.ArrayList(*ActorInterface),
+    subscriptions: std.ArrayList([]const u8),
     notify_subscribers_completion: xev.Completion = undefined,
     const Self = @This();
     pub fn init(ctx: *Context, allocator: Allocator) !*Self {
         const self = try allocator.create(Self);
 
-        var arena = std.heap.ArenaAllocator.init(allocator);
-        errdefer arena.deinit();
+        var arena_state = std.heap.ArenaAllocator.init(allocator);
+        errdefer arena_state.deinit();
 
         self.* = .{
             .allocator = allocator,
-            .arena = arena,
+            .arena_state = arena_state,
             .ctx = ctx,
-            .subscriptions = std.ArrayList(*ActorInterface).init(allocator),
+            .subscriptions = std.ArrayList([]const u8).init(allocator),
             .ohlc_list = OHLCList.init(allocator),
         };
         return self;
     }
 
     pub fn deinit(self: *Self) !void {
-        try self.ctx.deinit();
-        self.arena.deinit();
+        self.arena_state.deinit();
+        try self.ctx.shutdown();
     }
 
-    pub fn receive(self: *Self, message: *const Envelope(OHLCActorMessage)) !void {
-        switch (message.payload) {
-            .init => |_| {
-                const broker_actor = try self.ctx.spawnActor(BrokerActor, BrokerActorMessage, .{
-                    .id = "kraken_broker_actor",
-                });
-
-                try broker_actor.send(self.ctx.actor, BrokerActorMessage{ .init = .{ .broker = .KRAKEN } });
-                self.broker_actor = broker_actor;
-            },
+    pub fn receive(self: *Self, message: Envelope) !void {
+        const ohlc_msg: OHLCActorMessage = try OHLCActorMessage.decode(message.payload, self.allocator);
+        if (ohlc_msg.message == null) {
+            return error.InvalidMessage;
+        }
+        switch (ohlc_msg.message.?) {
             .start => |m| {
-                try self.broker_actor.?.send(self.ctx.actor, BrokerActorMessage{ .ohlc_subscribe = .{ .ticker = m.ticker } });
+                const subscribe_msg = BrokerActorMessage{ .message = .{ .ohlc_subscribe = .{ .ticker = m.ticker } } };
+                const subscribe_msg_bytes = try subscribe_msg.encode(self.allocator);
+                defer self.allocator.free(subscribe_msg_bytes);
+                try self.ctx.send("kraken_broker_actor", subscribe_msg_bytes);
                 try self.ctx.runContinuously(
                     Self,
                     notify_subscribers,
@@ -70,45 +68,52 @@ pub const OHLCActor = struct {
                     20,
                 );
             },
-            .ohlc_update => |m| {
+            .update => |m| {
                 var ohlc_update: OHLCUpdate = m;
                 const ohlc = OHLC{
-                    .symbol = ohlc_update.data.symbol,
-                    .open = ohlc_update.data.open,
-                    .high = ohlc_update.data.high,
-                    .low = ohlc_update.data.low,
-                    .close = ohlc_update.data.close,
-                    .trades = ohlc_update.data.trades,
-                    .volume = ohlc_update.data.volume,
-                    .interval = ohlc_update.data.interval,
-                    .timestamp = ohlc_update.data.timestamp,
+                    .symbol = ohlc_update.symbol,
+                    .open = ohlc_update.open,
+                    .high = ohlc_update.high,
+                    .low = ohlc_update.low,
+                    .close = ohlc_update.close,
+                    .trades = ohlc_update.trades,
+                    .volume = ohlc_update.volume,
+                    .interval = ohlc_update.interval,
+                    .timestamp = ohlc_update.timestamp,
                 };
-                if (self.ohlc_list.getLastOrNull()) |last| {
-                    if (std.mem.eql(u8, last.timestamp, ohlc.timestamp)) {
+                if (self.ohlc_list.ohlc.getLastOrNull()) |last| {
+                    if (std.mem.eql(u8, last.timestamp.Owned.str, ohlc.timestamp.Owned.str)) {
                         // TODO: Probably more effecient to update the last item
-                        _ = self.ohlc_list.pop();
-                        try self.ohlc_list.append(ohlc);
+                        _ = self.ohlc_list.ohlc.pop();
+                        try self.ohlc_list.ohlc.append(ohlc);
                     } else {
-                        try self.ohlc_list.append(ohlc);
+                        try self.ohlc_list.ohlc.append(ohlc);
                     }
                 } else {
-                    try self.ohlc_list.append(ohlc);
+                    try self.ohlc_list.ohlc.append(ohlc);
                 }
                 ohlc_update.deinit();
             },
             .subscribe => |_| {
-                try self.subscriptions.append(message.sender.?);
+                try self.subscriptions.append(try self.allocator.dupe(u8, message.senderID.?));
+            },
+            .unsubscribe => |_| {
+                for (self.subscriptions.items, 0..) |actor_id, i| {
+                    if (std.mem.eql(u8, actor_id, message.senderID.?)) {
+                        _ = self.subscriptions.orderedRemove(i);
+                        self.allocator.free(actor_id);
+                        break;
+                    }
+                }
             },
         }
     }
     fn notify_subscribers(self: *Self) !void {
-        for (self.subscriptions.items) |actor| {
-            try actor.send(
-                self.ctx.actor,
-                ConnectionMessage{
-                    .ohlc_update = self.ohlc_list,
-                },
-            );
+        for (self.subscriptions.items) |actorID| {
+            const ohlc_update_msg = ConnectionActorMessage{ .message = .{ .ohlc_update = self.ohlc_list } };
+            const ohlc_update_msg_bytes = try ohlc_update_msg.encode(self.allocator);
+            defer self.allocator.free(ohlc_update_msg_bytes);
+            try self.ctx.send(actorID, ohlc_update_msg_bytes);
         }
     }
 };

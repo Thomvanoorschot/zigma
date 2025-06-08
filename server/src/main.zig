@@ -20,7 +20,7 @@ const OrderbookActorMessage = shared_models.OrderbookActor;
 const ServerActor = server_actr.ServerActor;
 const ServerActorMessage = shared_models.ServerActor;
 const OHLCActor = ohlc_actr.OHLCActor;
-const OHLCActorMessage = ohlc_actr.OHLCActor;
+const OHLCActorMessage = shared_models.OHLCActor;
 const BrokerActorMessage = shared_models.BrokerActor;
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -67,10 +67,10 @@ pub fn main() !void {
 
     const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
     for (tickers) |ticker| {
+        // Orderbook
         const orderbook_actor = try engine.spawnActor(OrderbookActor, .{
             .id = try std.fmt.allocPrintZ(allocator, "{s}_orderbook_actor", .{ticker}),
         });
-
         const start_msg = OrderbookActorMessage{
             .message = .{ .start = .{
                 .ticker = try ManagedString.copy(ticker, allocator),
@@ -79,6 +79,15 @@ pub fn main() !void {
         const start_msg_bytes = try start_msg.encode(allocator);
         defer allocator.free(start_msg_bytes);
         try orderbook_actor.send(null, start_msg_bytes);
+
+        // OHLC
+        const ohlc_actor = try engine.spawnActor(OHLCActor, .{
+            .id = try std.fmt.allocPrintZ(allocator, "{s}_ohlc_actor", .{ticker}),
+        });
+        const ohlc_start_msg = OHLCActorMessage{ .message = .{ .start = .{ .ticker = try ManagedString.copy(ticker, allocator) } } };
+        const ohlc_start_msg_bytes = try ohlc_start_msg.encode(allocator);
+        defer allocator.free(ohlc_start_msg_bytes);
+        try ohlc_actor.send(null, ohlc_start_msg_bytes);
     }
 
     // const ohlc_actor = try engine.spawnActor(OHLCActor, OHLCMessage, .{

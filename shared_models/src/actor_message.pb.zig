@@ -78,24 +78,21 @@ pub const OHLCActor = struct {
     message: ?message_union,
 
     pub const _message_case = enum {
-        init,
         start,
         update,
         subscribe,
         unsubscribe,
     };
     pub const message_union = union(_message_case) {
-        init: ohlc.OHLCInitRequest,
         start: ohlc.OHLCStartRequest,
         update: ohlc.OHLCUpdate,
         subscribe: misc.Empty,
         unsubscribe: misc.Empty,
         pub const _union_desc = .{
-            .init = fd(1, .{ .SubMessage = {} }),
-            .start = fd(2, .{ .SubMessage = {} }),
-            .update = fd(3, .{ .SubMessage = {} }),
-            .subscribe = fd(4, .{ .SubMessage = {} }),
-            .unsubscribe = fd(5, .{ .SubMessage = {} }),
+            .start = fd(1, .{ .SubMessage = {} }),
+            .update = fd(2, .{ .SubMessage = {} }),
+            .subscribe = fd(3, .{ .SubMessage = {} }),
+            .unsubscribe = fd(4, .{ .SubMessage = {} }),
         };
     };
 
@@ -134,14 +131,14 @@ pub const ConnectionActor = struct {
 
     pub const _message_case = enum {
         orderbook_update,
-        placeholder,
+        ohlc_update,
     };
     pub const message_union = union(_message_case) {
         orderbook_update: orderbook.Orderbook,
-        placeholder: misc.Empty,
+        ohlc_update: ohlc.OHLCList,
         pub const _union_desc = .{
             .orderbook_update = fd(1, .{ .SubMessage = {} }),
-            .placeholder = fd(2, .{ .SubMessage = {} }),
+            .ohlc_update = fd(2, .{ .SubMessage = {} }),
         };
     };
 

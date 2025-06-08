@@ -27,11 +27,10 @@ message BrokerActor {
 
 message OHLCActor {
     oneof message {
-        ohlc.OHLCInitRequest init = 1;
-        ohlc.OHLCStartRequest start = 2;
-        ohlc.OHLCUpdate update = 3;
-        misc.Empty subscribe = 4;
-        misc.Empty unsubscribe = 5;
+        ohlc.OHLCStartRequest start = 1;
+        ohlc.OHLCUpdate update = 2;
+        misc.Empty subscribe = 3;
+        misc.Empty unsubscribe = 4;
     }
 }
 
@@ -45,6 +44,6 @@ message ServerActor {
 message ConnectionActor {
     oneof message {
         orderbook.Orderbook orderbook_update = 1;
-        misc.Empty placeholder = 2;
+        ohlc.OHLCList ohlc_update = 2;
     }
 }

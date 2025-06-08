@@ -23,24 +23,21 @@ pub const OrderbookActor = struct {
     message: ?message_union,
 
     pub const _message_case = enum {
-        init,
         start,
         update,
         subscribe,
         unsubscribe,
     };
     pub const message_union = union(_message_case) {
-        init: orderbook.OrderbookInitRequest,
         start: orderbook.OrderbookStartRequest,
         update: orderbook.OrderbookUpdate,
         subscribe: misc.Empty,
         unsubscribe: misc.Empty,
         pub const _union_desc = .{
-            .init = fd(1, .{ .SubMessage = {} }),
-            .start = fd(2, .{ .SubMessage = {} }),
-            .update = fd(3, .{ .SubMessage = {} }),
-            .subscribe = fd(4, .{ .SubMessage = {} }),
-            .unsubscribe = fd(5, .{ .SubMessage = {} }),
+            .start = fd(1, .{ .SubMessage = {} }),
+            .update = fd(2, .{ .SubMessage = {} }),
+            .subscribe = fd(3, .{ .SubMessage = {} }),
+            .unsubscribe = fd(4, .{ .SubMessage = {} }),
         };
     };
 

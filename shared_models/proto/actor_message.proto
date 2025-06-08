@@ -10,11 +10,10 @@ import "server.proto";
 
 message OrderbookActor {
     oneof message {
-        orderbook.OrderbookInitRequest init = 1;
-        orderbook.OrderbookStartRequest start = 2;
-        orderbook.OrderbookUpdate update = 3;
-        misc.Empty subscribe = 4;
-        misc.Empty unsubscribe = 5;
+        orderbook.OrderbookStartRequest start = 1;
+        orderbook.OrderbookUpdate update = 2;
+        misc.Empty subscribe = 3;
+        misc.Empty unsubscribe = 4;
     }
 }
 

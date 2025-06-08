@@ -89,8 +89,8 @@ pub const ConnectionActor = struct {
                 const msg = OrderbookActorMessage{ .message = .{ .subscribe = .{} } };
                 const msg_bytes = try msg.encode(self.allocator);
                 defer self.allocator.free(msg_bytes);
-                self.ctx.send(ticker, msg_bytes) catch unreachable;
-                self.subscribed_to_orderbooks.append(ticker) catch unreachable;
+                try self.ctx.send(ticker, msg_bytes);
+                try self.subscribed_to_orderbooks.append(ticker);
             } else if (std.mem.startsWith(u8, line, "close_orderbook:")) {
                 const ticker = std.fmt.allocPrintZ(self.allocator, "{s}_orderbook_actor", .{line[16..]}) catch unreachable;
                 // TODO: Need a better way to free this memory
@@ -98,7 +98,7 @@ pub const ConnectionActor = struct {
                 const msg = OrderbookActorMessage{ .message = .{ .unsubscribe = .{} } };
                 const msg_bytes = try msg.encode(self.allocator);
                 defer self.allocator.free(msg_bytes);
-                self.ctx.send(ticker, msg_bytes) catch unreachable;
+                try self.ctx.send(ticker, msg_bytes);
 
                 for (self.subscribed_to_orderbooks.items, 0..) |t, i| {
                     if (std.mem.eql(u8, t, ticker)) {

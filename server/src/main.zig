@@ -6,6 +6,7 @@ const ob_actr = @import("trading/orderbook_actor.zig");
 const ohlc_actr = @import("trading/ohlc_actor.zig");
 const server_actr = @import("http/server_actor.zig");
 const shared_models = @import("shared_models");
+const broker_message = @import("trading/broker_actor.zig");
 const unsafeAnyOpaqueCast = @import("utils/type_utils.zig").unsafeAnyOpaqueCast;
 
 const ManagedString = shared_models.ManagedString;
@@ -19,7 +20,8 @@ const OrderbookActorMessage = shared_models.OrderbookActor;
 const ServerActor = server_actr.ServerActor;
 const ServerActorMessage = shared_models.ServerActor;
 const OHLCActor = ohlc_actr.OHLCActor;
-const OHLCActorMessage = ohlc_actr.OHLCActor.message_union;
+const OHLCActorMessage = ohlc_actr.OHLCActor;
+const BrokerActorMessage = shared_models.BrokerActor;
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer {
@@ -32,6 +34,14 @@ pub fn main() !void {
 
     var engine = try Engine.init(allocator);
     defer engine.deinit();
+
+    const broker_actor = try engine.spawnActor(BrokerActor, .{
+        .id = "kraken_broker_actor",
+    });
+    const broker_init_msg = BrokerActorMessage{ .message = .{ .init = .{ .broker = .KRAKEN } } };
+    const broker_init_msg_bytes = try broker_init_msg.encode(allocator);
+    defer allocator.free(broker_init_msg_bytes);
+    try broker_actor.send(null, broker_init_msg_bytes);
 
     const server_actor = try engine.spawnActor(ServerActor, .{
         .id = "server_actor",
@@ -59,12 +69,6 @@ pub fn main() !void {
         const orderbook_actor = try engine.spawnActor(OrderbookActor, .{
             .id = try std.fmt.allocPrintZ(allocator, "{s}_orderbook_actor", .{ticker}),
         });
-        const init_msg = OrderbookActorMessage{
-            .message = .{ .init = .{ .broker = .KRAKEN } },
-        };
-        const init_msg_bytes = try init_msg.encode(allocator);
-        defer allocator.free(init_msg_bytes);
-        try orderbook_actor.send(null, init_msg_bytes);
 
         const start_msg = OrderbookActorMessage{
             .message = .{ .start = .{

@@ -24,7 +24,6 @@ pub const OrderbookActor = struct {
     allocator: Allocator,
     arena_state: std.heap.ArenaAllocator,
     ctx: *Context,
-    broker_actor: ?*ActorInterface = null,
     orderbook: ?Orderbook = null,
     subscriptions: std.ArrayList([]const u8),
     notify_subscribers_completion: xev.Completion = undefined,
@@ -51,6 +50,7 @@ pub const OrderbookActor = struct {
 
         self.subscriptions.deinit();
         self.arena_state.deinit();
+        try self.ctx.deinit();
     }
 
     pub fn receive(self: *Self, message: Envelope) !void {
@@ -60,16 +60,6 @@ pub const OrderbookActor = struct {
             return error.InvalidMessage;
         }
         switch (orderbook_msg.message.?) {
-            .init => |_| {
-                const broker_actor = try self.ctx.spawnActor(BrokerActor, .{
-                    .id = "kraken_broker_actor",
-                });
-                const init_msg = BrokerActorMessage{ .message = .{ .init = .{ .broker = .KRAKEN } } };
-                const init_msg_bytes = try init_msg.encode(self.allocator);
-                defer self.allocator.free(init_msg_bytes);
-                try broker_actor.send(self.ctx.actor, init_msg_bytes);
-                self.broker_actor = broker_actor;
-            },
             .start => |m| {
                 const bids = std.ArrayList(shared_models.OrderbookLevel).init(self.arena_state.allocator());
                 const asks = std.ArrayList(shared_models.OrderbookLevel).init(self.arena_state.allocator());
@@ -86,7 +76,7 @@ pub const OrderbookActor = struct {
                 const orderbook_subscribe_msg = BrokerActorMessage{ .message = .{ .orderbook_subscribe = .{ .ticker = m.ticker } } };
                 const orderbook_subscribe_msg_bytes = try orderbook_subscribe_msg.encode(self.allocator);
                 defer self.allocator.free(orderbook_subscribe_msg_bytes);
-                try self.broker_actor.?.send(self.ctx.actor, orderbook_subscribe_msg_bytes);
+                try self.ctx.send("kraken_broker_actor", orderbook_subscribe_msg_bytes);
                 try self.ctx.runContinuously(
                     Self,
                     notify_subscribers,

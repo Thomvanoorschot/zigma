@@ -10,11 +10,7 @@ const fd = protobuf.fd;
 const ManagedStruct = protobuf.ManagedStruct;
 
 pub const Empty = struct {
-    placeholder: ?bool = null,
-
-    pub const _desc_table = .{
-        .placeholder = fd(1, .{ .Varint = .Simple }),
-    };
+    pub const _desc_table = .{};
 
     pub usingnamespace protobuf.MessageMixins(@This());
 };

@@ -1,0 +1,52 @@
+const std = @import("std");
+const zignite = @import("zignite");
+const imgui = zignite.imgui;
+
+pub const Menu = struct {
+    allocator: std.mem.Allocator,
+    callback_context: *anyopaque,
+    on_open_orderbook: *const fn (context: *anyopaque, ticker: []const u8) anyerror!void,
+
+    const Self = @This();
+
+    pub fn init(
+        allocator: std.mem.Allocator,
+        callback_context: *anyopaque,
+        on_open_orderbook: *const fn (
+            context: *anyopaque,
+            ticker: []const u8,
+        ) anyerror!void,
+    ) !Self {
+        return .{
+            .allocator = allocator,
+            .callback_context = callback_context,
+            .on_open_orderbook = on_open_orderbook,
+        };
+    }
+    pub fn render(self: *Self) !void {
+        const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
+        if (imgui.igBeginMainMenuBar()) {
+            defer imgui.igEndMainMenuBar();
+            if (imgui.igBeginMenu("Orderbook", true)) {
+                for (tickers) |ticker| {
+                    const c_str = try std.fmt.allocPrintZ(self.allocator, "{s}\r\n", .{ticker});
+                    defer self.allocator.free(c_str);
+                    if (imgui.igMenuItem_Bool(c_str, null, false, true)) {
+                        try self.on_open_orderbook(self.callback_context, ticker);
+                    }
+                }
+                imgui.igEndMenu();
+            }
+            if (imgui.igBeginMenu("OHLC", true)) {
+                for (tickers) |ticker| {
+                    const c_str = try std.fmt.allocPrintZ(self.allocator, "{s}\r\n", .{ticker});
+                    defer self.allocator.free(c_str);
+                    if (imgui.igMenuItem_Bool(c_str, null, false, true)) {
+                        // try self.shared_data.ohlc_windows.openWindow(ticker);
+                    }
+                }
+                imgui.igEndMenu();
+            }
+        }
+    }
+};

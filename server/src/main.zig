@@ -7,7 +7,7 @@ const ohlc_actr = @import("trading/ohlc_actor.zig");
 const server_actr = @import("http/server_actor.zig");
 const shared_models = @import("shared_models");
 const broker_message = @import("trading/broker_actor.zig");
-const unsafeAnyOpaqueCast = @import("utils/type_utils.zig").unsafeAnyOpaqueCast;
+const type_utils = @import("utils/type_utils.zig");
 
 const ManagedString = shared_models.ManagedString;
 const xev = backstage.xev;
@@ -22,6 +22,8 @@ const ServerActorMessage = shared_models.ServerActor;
 const OHLCActor = ohlc_actr.OHLCActor;
 const OHLCActorMessage = shared_models.OHLCActor;
 const BrokerActorMessage = shared_models.BrokerActor;
+const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer {

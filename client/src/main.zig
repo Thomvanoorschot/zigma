@@ -1,14 +1,18 @@
 const std = @import("std");
 const zignite = @import("zignite");
 const App = @import("visualization/app.zig").App;
+const shared_models = @import("shared_models");
+const websocket = @import("wasm/websocket.zig");
 
 const engine = zignite.engine;
-const websocket = @import("wasm/websocket.zig");
+const Orderbook = shared_models.Orderbook;
 
 pub fn main() !void {
     const allocator = std.heap.c_allocator;
 
-    var shared_data = websocket.SharedData{};
+    var shared_data = websocket.SharedData{
+        .orderbooks = std.StringHashMap(*Orderbook).init(allocator),
+    };
     // Create web worker
     const ww = try websocket.WebSocketWebWorker(websocket.SharedData).init(
         std.heap.c_allocator,

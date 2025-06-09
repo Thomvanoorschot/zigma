@@ -3,7 +3,6 @@ const zignite = @import("zignite");
 const shared_models = @import("shared_models");
 
 const shared_data = @import("shared_data.zig");
-const OrderbookWindows = @import("../visualization/orderbook.zig").OrderbookWindows;
 
 const websocket_web_worker = zignite.websocket_web_worker;
 pub const SharedData = shared_data.SharedData;
@@ -16,7 +15,7 @@ pub fn workerEntrypoint(web_worker: *WebSocketWebWorker(SharedData)) !void {
 pub fn onOpenCallback(web_worker: *WebSocketWebWorker(SharedData)) !bool {
     try web_worker.std_out.print("WebSocket opened\n", .{});
     if (web_worker.open_socket) |open_socket| {
-        web_worker.shared_data.orderbook_windows = try OrderbookWindows.init(web_worker.allocator, open_socket);
+        web_worker.shared_data.open_socket = open_socket;
     }
     return true;
 }
@@ -29,7 +28,12 @@ pub fn onMessageCallback(web_worker: *WebSocketWebWorker(SharedData), message: [
     if (ws_message.message) |msg| {
         switch (msg) {
             .orderbook => |orderbook| {
-                try web_worker.shared_data.orderbook_windows.updateOrderbook(orderbook);
+                const ob = web_worker.shared_data.orderbooks.get(orderbook.ticker.Owned.str);
+                if (ob) |o| {
+                    o.* = orderbook;
+                } else {
+                    return error.OrderbookNotFound;
+                }
             },
             else => {
                 return error.UnknownMessageType;

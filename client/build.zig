@@ -14,7 +14,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .with_imgui = true,
-        .with_implot = false,
+        .with_implot = true,
         .use_glfw = true,
         .use_webgpu = true,
         .use_websockets = true,

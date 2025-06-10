@@ -6,6 +6,7 @@ const wg = @import("window_group.zig");
 const ob_window = @import("orderbook_window.zig");
 const mnu = @import("menu.zig");
 const wdw = @import("window.zig");
+const ohlc_wdw = @import("ohlc_window.zig");
 
 const imgui = zignite.imgui;
 const websocket = zignite.websocket;
@@ -15,6 +16,7 @@ const OrderbookWindow = ob_window.OrderbookWindow;
 const WindowGroup = wg.WindowGroup;
 const Menu = mnu.Menu;
 const Window = wdw.Window;
+const OHLCWindow = ohlc_wdw.OHLCWindow;
 
 const StdOut = @TypeOf(std.io.getStdOut().writer());
 const StdErr = @TypeOf(std.io.getStdErr().writer());
@@ -53,6 +55,8 @@ pub const App = struct {
         for (self.orderbook_windows.windows.items) |window| {
             try window.render();
         }
+        var ohlc_window = OHLCWindow.init();
+        try ohlc_window.render();
     }
     pub fn onOpenOrderbook(self_: *anyopaque, ticker: []const u8) !void {
         const self = @as(*Self, @ptrCast(@alignCast(self_)));

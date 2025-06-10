@@ -2,6 +2,24 @@ const std = @import("std");
 const zignite = @import("zignite");
 const imgui = zignite.imgui;
 
+const tickers = [_][]const u8{
+    "ETH/USD",
+    "BTC/USD",
+    "XRP/USD",
+    "DOGE/USD",
+    "SUI/USD",
+    "USDC/USD",
+    "SOL/USD",
+    "PEPE/USD",
+    "ADA/USD",
+    "WIF/USD",
+    "EUR/USD",
+    "FARTCOIN/USD",
+    "AVAX/USD",
+    "LTC/USD",
+    "XLM/USD",
+    "TRUMP/USD",
+};
 pub const Menu = struct {
     allocator: std.mem.Allocator,
     callback_context: *anyopaque,
@@ -24,7 +42,6 @@ pub const Menu = struct {
         };
     }
     pub fn render(self: *Self) !void {
-        const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
         if (imgui.igBeginMainMenuBar()) {
             defer imgui.igEndMainMenuBar();
             if (imgui.igBeginMenu("Orderbook", true)) {

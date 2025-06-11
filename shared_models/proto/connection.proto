@@ -2,3 +2,17 @@ syntax = "proto2";
 
 package connection;
 
+enum SubscriptionType {
+    ORDERBOOK = 1;
+    OHLC = 2;
+}
+
+message SubscribeRequest {
+    required string ticker = 1;
+    required SubscriptionType subscription_type = 2;
+}
+
+message UnsubscribeRequest {
+    required string ticker = 1;
+    required SubscriptionType subscription_type = 2;
+}

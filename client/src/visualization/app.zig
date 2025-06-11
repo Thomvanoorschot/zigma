@@ -17,6 +17,8 @@ const WindowGroup = wg.WindowGroup;
 const Menu = mnu.Menu;
 const Window = wdw.Window;
 const OHLCWindow = ohlc_wdw.OHLCWindow;
+const ClientMessage = shared_models.ClientMessage;
+const ManagedString = shared_models.ManagedString;
 
 const StdOut = @TypeOf(std.io.getStdOut().writer());
 const StdErr = @TypeOf(std.io.getStdErr().writer());
@@ -67,9 +69,15 @@ pub const App = struct {
         if (self.open_socket == null) {
             return;
         }
-        var open_msg_buf: [25]u8 = undefined;
-        const open_msg = try std.fmt.bufPrintZ(&open_msg_buf, "open_orderbook:{s}", .{ticker});
-        _ = websocket.sendText(self.open_socket.?, open_msg);
+
+        const msg_bytes = try ClientMessage.encode(ClientMessage{
+            .message = .{ .subscribe = .{
+                .ticker = try ManagedString.copy(ticker, self.allocator),
+                .subscription_type = .ORDERBOOK,
+            } },
+        }, self.allocator);
+        _ = websocket.sendBinary(self.open_socket.?, msg_bytes);
+        defer self.allocator.free(msg_bytes);
 
         try self.orderbook_windows.openWindow(
             OrderbookWindow.init(ticker, self.shared_data),
@@ -81,9 +89,13 @@ pub const App = struct {
         const self = @as(*Self, @ptrCast(@alignCast(self_)));
         const ticker = window.impl.ticker;
 
-        var close_msg_buf: [26]u8 = undefined;
-        const close_msg = try std.fmt.bufPrintZ(&close_msg_buf, "close_orderbook:{s}", .{ticker});
-        _ = websocket.sendText(self.open_socket.?, close_msg);
+        const str = try ClientMessage.encode(ClientMessage{
+            .message = .{ .unsubscribe = .{
+                .ticker = try ManagedString.copy(ticker, self.allocator),
+                .subscription_type = .ORDERBOOK,
+            } },
+        }, self.allocator);
+        _ = websocket.sendBinary(self.open_socket.?, str);
 
         if (self.shared_data.orderbooks.fetchRemove(ticker)) |kv| {
             kv.value.deinit();
@@ -96,6 +108,11 @@ pub const App = struct {
 
     pub fn onOpenOHLC(self_: *anyopaque, ticker: []const u8) !void {
         const self = @as(*Self, @ptrCast(@alignCast(self_)));
+
+        var open_msg_buf: [25]u8 = undefined;
+        const open_msg = try std.fmt.bufPrintZ(&open_msg_buf, "open_ohlc:{s}", .{ticker});
+        _ = websocket.sendText(self.open_socket.?, open_msg);
+
         try self.ohlc_window.openWindow(OHLCWindow.init(ticker, self.shared_data), self, onCloseOHLC);
     }
     pub fn onCloseOHLC(self_: *anyopaque, window: *Window(OHLCWindow)) !void {
@@ -111,7 +128,7 @@ pub const App = struct {
     pub fn onWebsocketMessageCallback(self_: *anyopaque, message: []const u8) !bool {
         const self = @as(*Self, @ptrCast(@alignCast(self_)));
 
-        const ws_message = shared_models.WsMessage.decode(message, self.allocator) catch |err| {
+        const ws_message = shared_models.ServerMessage.decode(message, self.allocator) catch |err| {
             try self.std_out.print("Failed {any}\n", .{err});
             return true;
         };

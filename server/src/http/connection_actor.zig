@@ -9,9 +9,9 @@ const Context = backstage.Context;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
 const Orderbook = shared_models.Orderbook;
-const WsMessage = shared_models.WsMessage;
+const ServerMessage = shared_models.ServerMessage;
 const ConnectionActorMessage = shared_models.ConnectionActor;
-
+const ClientMessage = shared_models.ClientMessage;
 const OrderbookActorMessage = shared_models.OrderbookActor;
 const ClientConnection = async_zocket.ClientConnection;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
@@ -59,7 +59,7 @@ pub const ConnectionActor = struct {
         }
         switch (connection_msg.message.?) {
             .orderbook_update => |ob| {
-                const str = try WsMessage.encode(WsMessage{
+                const str = try ServerMessage.encode(ServerMessage{
                     .message = .{ .orderbook = ob },
                 }, self.allocator);
                 try self.write(str);
@@ -79,34 +79,35 @@ pub const ConnectionActor = struct {
     ) !void {
         const self = unsafeAnyOpaqueCast(Self, self_);
 
-        var it = std.mem.tokenizeAny(u8, payload, "\r\n");
-
-        while (it.next()) |line| {
-            if (std.mem.startsWith(u8, line, "open_orderbook:")) {
-                const ticker = std.fmt.allocPrintZ(self.allocator, "{s}_orderbook_actor", .{line[15..]}) catch unreachable;
-                // TODO: Need a better way to free this memory
-                // defer self.allocator.free(ticker);
+        const client_msg: ClientMessage = try ClientMessage.decode(payload, self.allocator);
+        if (client_msg.message == null) {
+            return error.InvalidMessage;
+        }
+        switch (client_msg.message.?) {
+            .subscribe => |m| {
+                var actor_id_buf: [25]u8 = undefined;
+                const actor_id = switch (m.subscription_type) {
+                    .ORDERBOOK => try std.fmt.bufPrintZ(&actor_id_buf, "{s}_orderbook_actor", .{m.ticker.Owned.str}),
+                    .OHLC => try std.fmt.bufPrintZ(&actor_id_buf, "{s}_ohlc_actor", .{m.ticker.Owned.str}),
+                    else => unreachable,
+                };
                 const msg = OrderbookActorMessage{ .message = .{ .subscribe = .{} } };
                 const msg_bytes = try msg.encode(self.allocator);
                 defer self.allocator.free(msg_bytes);
-                try self.ctx.send(ticker, msg_bytes);
-                try self.subscribed_to_orderbooks.append(ticker);
-            } else if (std.mem.startsWith(u8, line, "close_orderbook:")) {
-                const ticker = std.fmt.allocPrintZ(self.allocator, "{s}_orderbook_actor", .{line[16..]}) catch unreachable;
-                // TODO: Need a better way to free this memory
-                // defer self.allocator.free(ticker);
+                try self.ctx.send(actor_id, msg_bytes);
+            },
+            .unsubscribe => |m| {
+                var actor_id_buf: [25]u8 = undefined;
+                const actor_id = switch (m.subscription_type) {
+                    .ORDERBOOK => try std.fmt.bufPrintZ(&actor_id_buf, "{s}_orderbook_actor", .{m.ticker.Owned.str}),
+                    .OHLC => try std.fmt.bufPrintZ(&actor_id_buf, "{s}_ohlc_actor", .{m.ticker.Owned.str}),
+                    else => unreachable,
+                };
                 const msg = OrderbookActorMessage{ .message = .{ .unsubscribe = .{} } };
                 const msg_bytes = try msg.encode(self.allocator);
                 defer self.allocator.free(msg_bytes);
-                try self.ctx.send(ticker, msg_bytes);
-
-                for (self.subscribed_to_orderbooks.items, 0..) |t, i| {
-                    if (std.mem.eql(u8, t, ticker)) {
-                        _ = self.subscribed_to_orderbooks.orderedRemove(i);
-                        break;
-                    }
-                }
-            }
+                try self.ctx.send(actor_id, msg_bytes);
+            },
         }
     }
 

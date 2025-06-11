@@ -5,7 +5,8 @@ pub const ManagedString = pb.ManagedString;
 
 // WebSocket messages
 const ws_message = @import("ws_message.pb.zig");
-pub const WsMessage = ws_message.WsMessage;
+pub const ServerMessage = ws_message.ServerMessage;
+pub const ClientMessage = ws_message.ClientMessage;
 
 // Orderbook types
 const orderbook = @import("orderbook.pb.zig");
@@ -36,6 +37,11 @@ pub const BrokerActor = actor_message.BrokerActor;
 pub const OHLCActor = actor_message.OHLCActor;
 pub const ServerActor = actor_message.ServerActor;
 pub const ConnectionActor = actor_message.ConnectionActor;
+
+// Connection types
+const connection = @import("connection.pb.zig");
+pub const SubscribeRequest = connection.SubscribeRequest;
+pub const UnsubscribeRequest = connection.UnsubscribeRequest;
 
 // Server types
 const server = @import("server.pb.zig");

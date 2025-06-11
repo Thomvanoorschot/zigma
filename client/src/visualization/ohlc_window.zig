@@ -26,6 +26,7 @@ pub const OHLCWindow = struct {
     }
 
     pub fn render(self: *Self, window: *Window(Self)) !void {
+        const ohlc_list = self.shared_data.ohlc_windows.get(self.ticker) orelse return;
         // Financial data arrays
         // const dates = [_]f64{ 1546300800, 1546387200, 1546473600, 1546560000, 1546819200, 1546905600, 1546992000, 1547078400, 1547164800, 1547424000, 1547510400, 1547596800, 1547683200, 1547769600, 1547942400, 1548028800, 1548115200, 1548201600, 1548288000, 1548374400, 1548633600, 1548720000, 1548806400, 1548892800, 1548979200, 1549238400, 1549324800, 1549411200, 1549497600, 1549584000, 1549843200, 1549929600, 1550016000, 1550102400, 1550188800, 1550361600, 1550448000, 1550534400, 1550620800, 1550707200, 1550793600, 1551052800, 1551139200, 1551225600, 1551312000, 1551398400, 1551657600, 1551744000, 1551830400, 1551916800, 1552003200, 1552262400, 1552348800, 1552435200, 1552521600, 1552608000, 1552867200, 1552953600, 1553040000, 1553126400, 1553212800, 1553472000, 1553558400, 1553644800, 1553731200, 1553817600, 1554076800, 1554163200, 1554249600, 1554336000, 1554422400, 1554681600, 1554768000, 1554854400, 1554940800, 1555027200, 1555286400, 1555372800, 1555459200, 1555545600, 1555632000, 1555891200, 1555977600, 1556064000, 1556150400, 1556236800, 1556496000, 1556582400, 1556668800, 1556755200, 1556841600, 1557100800, 1557187200, 1557273600, 1557360000, 1557446400, 1557705600, 1557792000, 1557878400, 1557964800, 1558051200, 1558310400, 1558396800, 1558483200, 1558569600, 1558656000, 1558828800, 1558915200, 1559001600, 1559088000, 1559174400, 1559260800, 1559520000, 1559606400, 1559692800, 1559779200, 1559865600, 1560124800, 1560211200, 1560297600, 1560384000, 1560470400, 1560729600, 1560816000, 1560902400, 1560988800, 1561075200, 1561334400, 1561420800, 1561507200, 1561593600, 1561680000, 1561939200, 1562025600, 1562112000, 1562198400, 1562284800, 1562544000, 1562630400, 1562716800, 1562803200, 1562889600, 1563148800, 1563235200, 1563321600, 1563408000, 1563494400, 1563753600, 1563840000, 1563926400, 1564012800, 1564099200, 1564358400, 1564444800, 1564531200, 1564617600, 1564704000, 1564963200, 1565049600, 1565136000, 1565222400, 1565308800, 1565568000, 1565654400, 1565740800, 1565827200, 1565913600, 1566172800, 1566259200, 1566345600, 1566432000, 1566518400, 1566777600, 1566864000, 1566950400, 1567036800, 1567123200, 1567296000, 1567382400, 1567468800, 1567555200, 1567641600, 1567728000, 1567987200, 1568073600, 1568160000, 1568246400, 1568332800, 1568592000, 1568678400, 1568764800, 1568851200, 1568937600, 1569196800, 1569283200, 1569369600, 1569456000, 1569542400, 1569801600, 1569888000, 1569974400, 1570060800, 1570147200, 1570406400, 1570492800, 1570579200, 1570665600, 1570752000, 1571011200, 1571097600, 1571184000, 1571270400, 1571356800, 1571616000, 1571702400, 1571788800, 1571875200, 1571961600 };
 
@@ -63,7 +64,7 @@ pub const OHLCWindow = struct {
 
                 plotCandlestick(
                     "GOOGL",
-                    &self.shared_data.ohlc_list,
+                    &ohlc_list,
                     true,
                     0.25,
                     imgui.ImVec4{ .x = 0.000, .y = 1.000, .z = 0.441, .w = 1.000 },
@@ -76,7 +77,7 @@ pub const OHLCWindow = struct {
     // Custom candlestick plotting function
     fn plotCandlestick(
         label_id: [*:0]const u8,
-        ohlc_list: *OHLCList,
+        ohlc_list: *const OHLCList,
         tooltip: bool,
         width_percent: f32,
         bull_col: imgui.ImVec4,
@@ -88,7 +89,7 @@ pub const OHLCWindow = struct {
 
         const draw_list = plot.ImPlot_GetPlotDrawList();
 
-        const half_width = if (count > 1) (ohlc_slice[1].timestamp_unix - ohlc_slice[0].timestamp_unix) * width_percent else width_percent;
+        const half_width = if (count > 1) @as(f64, @floatFromInt(ohlc_slice[1].timestamp_unix - ohlc_slice[0].timestamp_unix)) * width_percent else width_percent;
 
         // Custom tooltip
         if (plot.ImPlot_IsPlotHovered() and tooltip) {
@@ -129,7 +130,7 @@ pub const OHLCWindow = struct {
             );
             plot.ImPlot_PopPlotClipRect();
 
-            const idx = binarySearch(xs, 0, @as(i32, @intCast(count - 1)), mouse.x);
+            const idx = binarySearch(ohlc_slice, 0, @as(i32, @intCast(count - 1)), mouse.x);
 
             if (idx != -1) {
                 _ = imgui.igBeginTooltip();
@@ -137,14 +138,14 @@ pub const OHLCWindow = struct {
 
                 var buff: [32]u8 = undefined;
                 var date_time: plot.ImPlotTime = undefined;
-                plot.ImPlotTime_FromDouble(&date_time, xs[@as(usize, @intCast(idx))]);
+                plot.ImPlotTime_FromDouble(&date_time, @floatFromInt(ohlc_slice[@as(usize, @intCast(idx))].timestamp_unix));
                 _ = plot.ImPlot_FormatDate(date_time, &buff, 32, plot.ImPlotDateFmt_DayMoYr, plot.ImPlot_GetStyle().*.UseISO8601);
 
                 imgui.igText("Day:   %s", &buff);
-                imgui.igText("Open:  $%.2f", opens[@as(usize, @intCast(idx))]);
-                imgui.igText("Close: $%.2f", closes[@as(usize, @intCast(idx))]);
-                imgui.igText("Low:   $%.2f", lows[@as(usize, @intCast(idx))]);
-                imgui.igText("High:  $%.2f", highs[@as(usize, @intCast(idx))]);
+                imgui.igText("Open:  $%.2f", ohlc_slice[@as(usize, @intCast(idx))].open);
+                imgui.igText("Close: $%.2f", ohlc_slice[@as(usize, @intCast(idx))].close);
+                imgui.igText("Low:   $%.2f", ohlc_slice[@as(usize, @intCast(idx))].low);
+                imgui.igText("High:  $%.2f", ohlc_slice[@as(usize, @intCast(idx))].high);
             }
         }
 
@@ -156,8 +157,8 @@ pub const OHLCWindow = struct {
 
             if (plot.ImPlot_FitThisFrame()) {
                 for (0..count) |i| {
-                    plot.ImPlot_FitPoint(plot.ImPlotPoint{ .x = xs[i], .y = lows[i] });
-                    plot.ImPlot_FitPoint(plot.ImPlotPoint{ .x = xs[i], .y = highs[i] });
+                    plot.ImPlot_FitPoint(plot.ImPlotPoint{ .x = @floatFromInt(ohlc_slice[i].timestamp_unix), .y = ohlc_slice[i].low });
+                    plot.ImPlot_FitPoint(plot.ImPlotPoint{ .x = @floatFromInt(ohlc_slice[i].timestamp_unix), .y = ohlc_slice[i].high });
                 }
             }
 
@@ -167,12 +168,13 @@ pub const OHLCWindow = struct {
                 var low_pos: plot.ImVec2 = undefined;
                 var high_pos: plot.ImVec2 = undefined;
 
-                plot.ImPlot_PlotToPixels_double(&open_pos, xs[i] - half_width, opens[i], plot.ImAxis_X1, plot.ImAxis_Y1);
-                plot.ImPlot_PlotToPixels_double(&close_pos, xs[i] + half_width, closes[i], plot.ImAxis_X1, plot.ImAxis_Y1);
-                plot.ImPlot_PlotToPixels_double(&low_pos, xs[i], lows[i], plot.ImAxis_X1, plot.ImAxis_Y1);
-                plot.ImPlot_PlotToPixels_double(&high_pos, xs[i], highs[i], plot.ImAxis_X1, plot.ImAxis_Y1);
+                const timestamp = @as(f64, @floatFromInt(ohlc_slice[i].timestamp_unix));
+                plot.ImPlot_PlotToPixels_double(&open_pos, timestamp - half_width, ohlc_slice[i].open, plot.ImAxis_X1, plot.ImAxis_Y1);
+                plot.ImPlot_PlotToPixels_double(&close_pos, timestamp + half_width, ohlc_slice[i].close, plot.ImAxis_X1, plot.ImAxis_Y1);
+                plot.ImPlot_PlotToPixels_double(&low_pos, timestamp, ohlc_slice[i].low, plot.ImAxis_X1, plot.ImAxis_Y1);
+                plot.ImPlot_PlotToPixels_double(&high_pos, timestamp, ohlc_slice[i].high, plot.ImAxis_X1, plot.ImAxis_Y1);
 
-                const color = imgui.igGetColorU32_Vec4(if (opens[i] > closes[i]) bear_col else bull_col);
+                const color = imgui.igGetColorU32_Vec4(if (ohlc_slice[i].open > ohlc_slice[i].close) bear_col else bull_col);
 
                 plot.ImDrawList_AddLine(draw_list, low_pos, high_pos, color, 1.0);
                 plot.ImDrawList_AddRectFilled(draw_list, open_pos, close_pos, color, 0.0, imgui.ImDrawFlags_None);
@@ -180,23 +182,24 @@ pub const OHLCWindow = struct {
         }
     }
 
-    fn binarySearch(arr: []const f64, left: i32, right: i32, target: f64) i32 {
+    fn binarySearch(ohlc_slice: []const shared_models.OHLC, left: i32, right: i32, target: f64) i32 {
         if (right >= left) {
             const mid = left + @divTrunc(right - left, 2);
             const mid_usize = @as(usize, @intCast(mid));
 
-            if (arr[mid_usize] == target) {
+            const mid_timestamp = @as(f64, @floatFromInt(ohlc_slice[mid_usize].timestamp_unix));
+            if (mid_timestamp == target) {
                 return mid;
             }
 
-            if (arr[mid_usize] > target) {
-                return binarySearch(arr, left, mid - 1, target);
+            if (mid_timestamp > target) {
+                return binarySearch(ohlc_slice, left, mid - 1, target);
             }
 
-            return binarySearch(arr, mid + 1, right, target);
+            return binarySearch(ohlc_slice, mid + 1, right, target);
         }
 
-        if (left >= 0 and left < arr.len) {
+        if (left >= 0 and left < ohlc_slice.len) {
             return left;
         }
 

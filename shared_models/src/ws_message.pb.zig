@@ -10,10 +10,12 @@ const fd = protobuf.fd;
 const ManagedStruct = protobuf.ManagedStruct;
 /// import package orderbook
 const orderbook = @import("orderbook.pb.zig");
+/// import package connection
+const connection = @import("connection.pb.zig");
 /// import package ohlc
 const ohlc = @import("ohlc.pb.zig");
 
-pub const WsMessage = struct {
+pub const ServerMessage = struct {
     message: ?message_union,
 
     pub const _message_case = enum {
@@ -26,6 +28,29 @@ pub const WsMessage = struct {
         pub const _union_desc = .{
             .orderbook = fd(1, .{ .SubMessage = {} }),
             .ohlc = fd(2, .{ .SubMessage = {} }),
+        };
+    };
+
+    pub const _desc_table = .{
+        .message = fd(null, .{ .OneOf = message_union }),
+    };
+
+    pub usingnamespace protobuf.MessageMixins(@This());
+};
+
+pub const ClientMessage = struct {
+    message: ?message_union,
+
+    pub const _message_case = enum {
+        subscribe,
+        unsubscribe,
+    };
+    pub const message_union = union(_message_case) {
+        subscribe: connection.SubscribeRequest,
+        unsubscribe: connection.UnsubscribeRequest,
+        pub const _union_desc = .{
+            .subscribe = fd(1, .{ .SubMessage = {} }),
+            .unsubscribe = fd(2, .{ .SubMessage = {} }),
         };
     };
 

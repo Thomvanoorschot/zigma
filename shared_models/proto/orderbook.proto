@@ -26,7 +26,7 @@ message OrderbookLevel {
 }
 
 message OrderbookUpdate {
-    required string symbol = 1;
+    required string ticker = 1;
     repeated OrderbookLevel bids = 2;
     repeated OrderbookLevel asks = 3;
     required uint64 checksum = 4;

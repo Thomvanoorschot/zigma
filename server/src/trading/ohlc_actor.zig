@@ -20,6 +20,7 @@ const Context = backstage.Context;
 const BrokerType = brkr_impl.BrokerType;
 const BrokerActor = brkr_actr.BrokerActor;
 const Envelope = backstage.Envelope;
+const ManagedString = shared_models.ManagedString;
 
 pub const OHLCActor = struct {
     allocator: Allocator,
@@ -57,7 +58,10 @@ pub const OHLCActor = struct {
         }
         switch (ohlc_msg.message.?) {
             .start => |m| {
-                const subscribe_msg = BrokerActorMessage{ .message = .{ .ohlc_subscribe = .{ .ticker = m.ticker } } };
+                const subscribe_msg = BrokerActorMessage{
+                    .message = .{ .ohlc_subscribe = .{ .ticker = m.ticker } },
+                };
+                self.ohlc_list.ticker = m.ticker;
                 const subscribe_msg_bytes = try subscribe_msg.encode(self.allocator);
                 defer self.allocator.free(subscribe_msg_bytes);
                 try self.ctx.send("kraken_broker_actor", subscribe_msg_bytes);
@@ -70,18 +74,17 @@ pub const OHLCActor = struct {
                 );
             },
             .update => |m| {
-                var ohlc_update: OHLCUpdate = m;
-                const timestamp_unix = try date_utils.DateTime.parse(ohlc_update.timestamp.Owned.str, .rfc3339);
+                const timestamp_unix = try date_utils.DateTime.parse(m.timestamp.Owned.str, .rfc3339);
                 const ohlc = OHLC{
-                    .symbol = ohlc_update.symbol,
-                    .open = ohlc_update.open,
-                    .high = ohlc_update.high,
-                    .low = ohlc_update.low,
-                    .close = ohlc_update.close,
-                    .trades = ohlc_update.trades,
-                    .volume = ohlc_update.volume,
-                    .interval = ohlc_update.interval,
-                    .timestamp = ohlc_update.timestamp,
+                    .ticker = m.ticker,
+                    .open = m.open,
+                    .high = m.high,
+                    .low = m.low,
+                    .close = m.close,
+                    .trades = m.trades,
+                    .volume = m.volume,
+                    .interval = m.interval,
+                    .timestamp = m.timestamp,
                     .timestamp_unix = @intCast(timestamp_unix.unix(.seconds)),
                 };
                 if (self.ohlc_list.ohlc.getLastOrNull()) |last| {
@@ -95,12 +98,14 @@ pub const OHLCActor = struct {
                 } else {
                     try self.ohlc_list.ohlc.append(ohlc);
                 }
-                ohlc_update.deinit();
+                m.deinit();
             },
             .subscribe => |_| {
+                std.log.info("subscribing to ohlc: {s}", .{self.ohlc_list.ticker.Owned.str});
                 try self.subscriptions.append(try self.allocator.dupe(u8, message.senderID.?));
             },
             .unsubscribe => |_| {
+                std.log.info("unsubscribing from ohlc: {s}", .{self.ohlc_list.ticker.Owned.str});
                 for (self.subscriptions.items, 0..) |actor_id, i| {
                     if (std.mem.eql(u8, actor_id, message.senderID.?)) {
                         _ = self.subscriptions.orderedRemove(i);
@@ -113,7 +118,9 @@ pub const OHLCActor = struct {
     }
     fn notify_subscribers(self: *Self) !void {
         for (self.subscriptions.items) |actorID| {
-            const ohlc_update_msg = ConnectionActorMessage{ .message = .{ .ohlc_update = self.ohlc_list } };
+            const ohlc_update_msg = ConnectionActorMessage{ .message = .{
+                .ohlc_update = self.ohlc_list,
+            } };
             const ohlc_update_msg_bytes = try ohlc_update_msg.encode(self.allocator);
             defer self.allocator.free(ohlc_update_msg_bytes);
             try self.ctx.send(actorID, ohlc_update_msg_bytes);

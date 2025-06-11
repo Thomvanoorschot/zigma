@@ -151,7 +151,7 @@ pub const Broker = struct {
         }
         const obu = try self.allocator.create(OrderbookUpdate);
         obu.* = .{
-            .symbol = try ManagedString.copy(item.symbol, self.allocator),
+            .ticker = try ManagedString.copy(item.symbol, self.allocator),
             .bids = converted_bids,
             .asks = converted_asks,
             .checksum = item.checksum,
@@ -164,7 +164,7 @@ pub const Broker = struct {
         const item = update.data[0];
         const ohlc = try self.allocator.create(OHLCUpdate);
         ohlc.* = .{
-            .symbol = try ManagedString.copy(item.symbol, self.allocator),
+            .ticker = try ManagedString.copy(item.symbol, self.allocator),
             .open = item.open,
             .high = item.high,
             .low = item.low,

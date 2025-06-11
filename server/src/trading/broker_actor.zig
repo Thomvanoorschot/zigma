@@ -98,7 +98,7 @@ pub const BrokerActor = struct {
         if (try message) |m| {
             switch (m) {
                 .orderbook_update => |update| {
-                    if (self.orderbook_subscriptions.get(update.symbol.Owned.str)) |actorID| {
+                    if (self.orderbook_subscriptions.get(update.ticker.Owned.str)) |actorID| {
                         const update_msg = OrderbookActorMessage{
                             .message = .{ .update = update.* },
                         };
@@ -108,7 +108,7 @@ pub const BrokerActor = struct {
                     }
                 },
                 .ohlc_update => |update| {
-                    if (self.ohlc_subscriptions.get(update.symbol.Owned.str)) |actorID| {
+                    if (self.ohlc_subscriptions.get(update.ticker.Owned.str)) |actorID| {
                         const update_msg = OHLCActorMessage{
                             .message = .{ .update = update.* },
                         };

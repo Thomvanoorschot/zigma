@@ -12,17 +12,19 @@ const ManagedStruct = protobuf.ManagedStruct;
 const broker = @import("broker.pb.zig");
 
 pub const OHLCList = struct {
+    ticker: ManagedString,
     ohlc: ArrayList(OHLC),
 
     pub const _desc_table = .{
-        .ohlc = fd(1, .{ .List = .{ .SubMessage = {} } }),
+        .ticker = fd(1, .String),
+        .ohlc = fd(2, .{ .List = .{ .SubMessage = {} } }),
     };
 
     pub usingnamespace protobuf.MessageMixins(@This());
 };
 
 pub const OHLC = struct {
-    symbol: ManagedString,
+    ticker: ManagedString,
     open: f64,
     high: f64,
     low: f64,
@@ -34,7 +36,7 @@ pub const OHLC = struct {
     timestamp_unix: u64,
 
     pub const _desc_table = .{
-        .symbol = fd(1, .String),
+        .ticker = fd(1, .String),
         .open = fd(2, .{ .FixedInt = .I64 }),
         .high = fd(3, .{ .FixedInt = .I64 }),
         .low = fd(4, .{ .FixedInt = .I64 }),
@@ -70,7 +72,7 @@ pub const OHLCStartRequest = struct {
 };
 
 pub const OHLCUpdate = struct {
-    symbol: ManagedString,
+    ticker: ManagedString,
     open: f64,
     high: f64,
     low: f64,
@@ -81,7 +83,7 @@ pub const OHLCUpdate = struct {
     timestamp: ManagedString,
 
     pub const _desc_table = .{
-        .symbol = fd(1, .String),
+        .ticker = fd(1, .String),
         .open = fd(2, .{ .FixedInt = .I64 }),
         .high = fd(3, .{ .FixedInt = .I64 }),
         .low = fd(4, .{ .FixedInt = .I64 }),

@@ -62,14 +62,14 @@ pub const OrderbookLevel = struct {
 };
 
 pub const OrderbookUpdate = struct {
-    symbol: ManagedString,
+    ticker: ManagedString,
     bids: ArrayList(OrderbookLevel),
     asks: ArrayList(OrderbookLevel),
     checksum: u64,
     timestamp: ?ManagedString = null,
 
     pub const _desc_table = .{
-        .symbol = fd(1, .String),
+        .ticker = fd(1, .String),
         .bids = fd(2, .{ .List = .{ .SubMessage = {} } }),
         .asks = fd(3, .{ .List = .{ .SubMessage = {} } }),
         .checksum = fd(4, .{ .Varint = .Simple }),

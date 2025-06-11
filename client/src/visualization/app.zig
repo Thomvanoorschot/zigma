@@ -89,13 +89,14 @@ pub const App = struct {
         const self = @as(*Self, @ptrCast(@alignCast(self_)));
         const ticker = window.impl.ticker;
 
-        const str = try ClientMessage.encode(ClientMessage{
+        const msg_bytes = try ClientMessage.encode(ClientMessage{
             .message = .{ .unsubscribe = .{
                 .ticker = try ManagedString.copy(ticker, self.allocator),
                 .subscription_type = .ORDERBOOK,
             } },
         }, self.allocator);
-        _ = websocket.sendBinary(self.open_socket.?, str);
+        _ = websocket.sendBinary(self.open_socket.?, msg_bytes);
+        defer self.allocator.free(msg_bytes);
 
         if (self.shared_data.orderbooks.fetchRemove(ticker)) |kv| {
             kv.value.deinit();
@@ -108,12 +109,20 @@ pub const App = struct {
 
     pub fn onOpenOHLC(self_: *anyopaque, ticker: []const u8) !void {
         const self = @as(*Self, @ptrCast(@alignCast(self_)));
+        const msg_bytes = try ClientMessage.encode(ClientMessage{
+            .message = .{ .subscribe = .{
+                .ticker = try ManagedString.copy(ticker, self.allocator),
+                .subscription_type = .OHLC,
+            } },
+        }, self.allocator);
+        _ = websocket.sendBinary(self.open_socket.?, msg_bytes);
+        defer self.allocator.free(msg_bytes);
 
-        var open_msg_buf: [25]u8 = undefined;
-        const open_msg = try std.fmt.bufPrintZ(&open_msg_buf, "open_ohlc:{s}", .{ticker});
-        _ = websocket.sendText(self.open_socket.?, open_msg);
-
-        try self.ohlc_window.openWindow(OHLCWindow.init(ticker, self.shared_data), self, onCloseOHLC);
+        try self.ohlc_window.openWindow(
+            OHLCWindow.init(ticker, self.shared_data),
+            self,
+            onCloseOHLC,
+        );
     }
     pub fn onCloseOHLC(self_: *anyopaque, window: *Window(OHLCWindow)) !void {
         const self = @as(*Self, @ptrCast(@alignCast(self_)));
@@ -141,8 +150,15 @@ pub const App = struct {
                     try self.shared_data.orderbooks.put(orderbook.ticker.Owned.str, orderbook);
                     return true;
                 },
-                else => {
-                    return error.UnknownMessageType;
+                .ohlc => |ohlc| {
+                    if (ohlc.ohlc.items.len == 0) {
+                        return true;
+                    }
+                    if (self.shared_data.ohlc.fetchRemove(ohlc.ticker.Owned.str)) |kv| {
+                        kv.value.deinit();
+                    }
+                    try self.shared_data.ohlc.put(ohlc.ticker.Owned.str, ohlc);
+                    return true;
                 },
             }
         }

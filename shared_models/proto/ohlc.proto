@@ -5,11 +5,12 @@ package ohlc;
 import "broker.proto";
 
 message OHLCList {
-    repeated OHLC ohlc = 1;
+    required string ticker = 1;
+    repeated OHLC ohlc = 2;
 }
 
 message OHLC {
-    required string symbol = 1;
+    required string ticker = 1;
     required double open = 2;
     required double high = 3;
     required double low = 4;
@@ -30,7 +31,7 @@ message OHLCStartRequest {
 }
 
 message OHLCUpdate {
-    required string symbol = 1;
+    required string ticker = 1;
     required double open = 2;
     required double high = 3;
     required double low = 4;

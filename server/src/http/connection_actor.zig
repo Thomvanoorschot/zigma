@@ -13,6 +13,7 @@ const ServerMessage = shared_models.ServerMessage;
 const ConnectionActorMessage = shared_models.ConnectionActor;
 const ClientMessage = shared_models.ClientMessage;
 const OrderbookActorMessage = shared_models.OrderbookActor;
+const OHLCActorMessage = shared_models.OHLCActor;
 const ClientConnection = async_zocket.ClientConnection;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
@@ -58,18 +59,18 @@ pub const ConnectionActor = struct {
             return error.InvalidMessage;
         }
         switch (connection_msg.message.?) {
-            .orderbook_update => |ob| {
+            .orderbook_update => |m| {
                 const str = try ServerMessage.encode(ServerMessage{
-                    .message = .{ .orderbook = ob },
+                    .message = .{ .orderbook = m },
                 }, self.allocator);
                 try self.write(str);
             },
-            // .ohlc_update => |m| {
-            //     const str = try stringifyOHLCList(self.allocator, m);
-            //     // TODO Need to wrap the messages in a struct that holds a message type so that I can multiplex the messages
-            //     try self.write(str);
-            // },
-            else => unreachable,
+            .ohlc_update => |m| {
+                const str = try ServerMessage.encode(ServerMessage{
+                    .message = .{ .ohlc = m },
+                }, self.allocator);
+                try self.write(str);
+            },
         }
     }
 
@@ -86,25 +87,40 @@ pub const ConnectionActor = struct {
         switch (client_msg.message.?) {
             .subscribe => |m| {
                 var actor_id_buf: [25]u8 = undefined;
+                var msg_bytes: []u8 = undefined;
+
                 const actor_id = switch (m.subscription_type) {
-                    .ORDERBOOK => try std.fmt.bufPrintZ(&actor_id_buf, "{s}_orderbook_actor", .{m.ticker.Owned.str}),
-                    .OHLC => try std.fmt.bufPrintZ(&actor_id_buf, "{s}_ohlc_actor", .{m.ticker.Owned.str}),
+                    .ORDERBOOK => blk: {
+                        const msg = OrderbookActorMessage{ .message = .{ .subscribe = .{} } };
+                        msg_bytes = try msg.encode(self.allocator);
+                        break :blk try std.fmt.bufPrintZ(&actor_id_buf, "{s}_orderbook_actor", .{m.ticker.Owned.str});
+                    },
+                    .OHLC => blk: {
+                        const msg = OHLCActorMessage{ .message = .{ .subscribe = .{} } };
+                        msg_bytes = try msg.encode(self.allocator);
+                        break :blk try std.fmt.bufPrintZ(&actor_id_buf, "{s}_ohlc_actor", .{m.ticker.Owned.str});
+                    },
                     else => unreachable,
                 };
-                const msg = OrderbookActorMessage{ .message = .{ .subscribe = .{} } };
-                const msg_bytes = try msg.encode(self.allocator);
                 defer self.allocator.free(msg_bytes);
                 try self.ctx.send(actor_id, msg_bytes);
             },
             .unsubscribe => |m| {
                 var actor_id_buf: [25]u8 = undefined;
+                var msg_bytes: []u8 = undefined;
                 const actor_id = switch (m.subscription_type) {
-                    .ORDERBOOK => try std.fmt.bufPrintZ(&actor_id_buf, "{s}_orderbook_actor", .{m.ticker.Owned.str}),
-                    .OHLC => try std.fmt.bufPrintZ(&actor_id_buf, "{s}_ohlc_actor", .{m.ticker.Owned.str}),
+                    .ORDERBOOK => blk: {
+                        const msg = OrderbookActorMessage{ .message = .{ .unsubscribe = .{} } };
+                        msg_bytes = try msg.encode(self.allocator);
+                        break :blk try std.fmt.bufPrintZ(&actor_id_buf, "{s}_orderbook_actor", .{m.ticker.Owned.str});
+                    },
+                    .OHLC => blk: {
+                        const msg = OHLCActorMessage{ .message = .{ .unsubscribe = .{} } };
+                        msg_bytes = try msg.encode(self.allocator);
+                        break :blk try std.fmt.bufPrintZ(&actor_id_buf, "{s}_ohlc_actor", .{m.ticker.Owned.str});
+                    },
                     else => unreachable,
                 };
-                const msg = OrderbookActorMessage{ .message = .{ .unsubscribe = .{} } };
-                const msg_bytes = try msg.encode(self.allocator);
                 defer self.allocator.free(msg_bytes);
                 try self.ctx.send(actor_id, msg_bytes);
             },

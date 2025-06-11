@@ -6,5 +6,5 @@ const OHLCList = shared_models.OHLCList;
 
 pub const SharedData = struct {
     orderbooks: std.StringHashMap(Orderbook),
-    ohlc_windows: std.StringHashMap(OHLCList),
+    ohlc: std.StringHashMap(OHLCList),
 };

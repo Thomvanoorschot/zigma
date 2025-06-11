@@ -12,16 +12,13 @@ message OrderbookActor {
     oneof message {
         orderbook.OrderbookStartRequest start = 1;
         orderbook.OrderbookUpdate update = 2;
-        misc.Empty subscribe = 3;
-        misc.Empty unsubscribe = 4;
     }
 }
 
 message BrokerActor {
     oneof message {
         broker.BrokerInitRequest init = 1;
-        broker.BrokerSubscribeRequest orderbook_subscribe = 2;
-        broker.BrokerSubscribeRequest ohlc_subscribe = 3;
+        broker.BrokerSubscribeRequest subscribe = 2;
     }
 }
 
@@ -29,8 +26,6 @@ message OHLCActor {
     oneof message {
         ohlc.OHLCStartRequest start = 1;
         ohlc.OHLCUpdate update = 2;
-        misc.Empty subscribe = 3;
-        misc.Empty unsubscribe = 4;
     }
 }
 

@@ -21,7 +21,6 @@ pub const ConnectionActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context = undefined,
     client_conn: *ClientConnection = undefined,
-    subscribed_to_orderbooks: std.ArrayList([]const u8),
 
     const Self = @This();
     pub fn init(ctx: *Context, allocator: std.mem.Allocator) !*Self {
@@ -31,7 +30,6 @@ pub const ConnectionActor = struct {
         self.* = .{
             .ctx = ctx,
             .allocator = allocator,
-            .subscribed_to_orderbooks = std.ArrayList([]const u8).init(allocator),
         };
         return self;
     }
@@ -44,20 +42,15 @@ pub const ConnectionActor = struct {
     }
 
     pub fn deinit(self: *Self) !void {
-        for (self.subscribed_to_orderbooks.items) |ticker| {
-            std.debug.print("unsubscribing from {s}\n", .{ticker});
-            const msg = OrderbookActorMessage{ .message = .{ .unsubscribe = .{} } };
-            const msg_bytes = try msg.encode(self.allocator);
-            defer self.allocator.free(msg_bytes);
-            try self.ctx.send(ticker, msg_bytes);
-        }
+        try self.ctx.shutdown();
     }
 
-    pub fn receive(self: *Self, message: Envelope) !void {
-        const connection_msg: ConnectionActorMessage = try ConnectionActorMessage.decode(message.payload, self.allocator);
+    pub fn receive(self: *Self, envelope: Envelope) !void {
+        const connection_msg: ConnectionActorMessage = try ConnectionActorMessage.decode(envelope.message, self.allocator);
         if (connection_msg.message == null) {
             return error.InvalidMessage;
         }
+
         switch (connection_msg.message.?) {
             .orderbook_update => |m| {
                 const str = try ServerMessage.encode(ServerMessage{
@@ -87,42 +80,30 @@ pub const ConnectionActor = struct {
         switch (client_msg.message.?) {
             .subscribe => |m| {
                 var actor_id_buf: [25]u8 = undefined;
-                var msg_bytes: []u8 = undefined;
 
                 const actor_id = switch (m.subscription_type) {
                     .ORDERBOOK => blk: {
-                        const msg = OrderbookActorMessage{ .message = .{ .subscribe = .{} } };
-                        msg_bytes = try msg.encode(self.allocator);
                         break :blk try std.fmt.bufPrintZ(&actor_id_buf, "{s}_orderbook_actor", .{m.ticker.Owned.str});
                     },
                     .OHLC => blk: {
-                        const msg = OHLCActorMessage{ .message = .{ .subscribe = .{} } };
-                        msg_bytes = try msg.encode(self.allocator);
                         break :blk try std.fmt.bufPrintZ(&actor_id_buf, "{s}_ohlc_actor", .{m.ticker.Owned.str});
                     },
                     else => unreachable,
                 };
-                defer self.allocator.free(msg_bytes);
-                try self.ctx.send(actor_id, msg_bytes);
+                try self.ctx.subscribeToActor(actor_id);
             },
             .unsubscribe => |m| {
                 var actor_id_buf: [25]u8 = undefined;
-                var msg_bytes: []u8 = undefined;
                 const actor_id = switch (m.subscription_type) {
                     .ORDERBOOK => blk: {
-                        const msg = OrderbookActorMessage{ .message = .{ .unsubscribe = .{} } };
-                        msg_bytes = try msg.encode(self.allocator);
                         break :blk try std.fmt.bufPrintZ(&actor_id_buf, "{s}_orderbook_actor", .{m.ticker.Owned.str});
                     },
                     .OHLC => blk: {
-                        const msg = OHLCActorMessage{ .message = .{ .unsubscribe = .{} } };
-                        msg_bytes = try msg.encode(self.allocator);
                         break :blk try std.fmt.bufPrintZ(&actor_id_buf, "{s}_ohlc_actor", .{m.ticker.Owned.str});
                     },
                     else => unreachable,
                 };
-                defer self.allocator.free(msg_bytes);
-                try self.ctx.send(actor_id, msg_bytes);
+                try self.ctx.unsubscribeFromActor(actor_id);
             },
         }
     }

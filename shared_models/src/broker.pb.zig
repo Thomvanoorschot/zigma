@@ -14,6 +14,12 @@ pub const BrokerType = enum(i32) {
     _,
 };
 
+pub const MarketData = enum(i32) {
+    ORDERBOOK = 1,
+    OHLC = 2,
+    _,
+};
+
 pub const BrokerInitRequest = struct {
     broker: BrokerType,
 
@@ -26,9 +32,11 @@ pub const BrokerInitRequest = struct {
 
 pub const BrokerSubscribeRequest = struct {
     ticker: ManagedString,
+    market_data: MarketData,
 
     pub const _desc_table = .{
         .ticker = fd(1, .String),
+        .market_data = fd(2, .{ .Varint = .Simple }),
     };
 
     pub usingnamespace protobuf.MessageMixins(@This());

@@ -10,6 +10,13 @@ message BrokerInitRequest {
     required broker.BrokerType broker = 1;
 };
 
+enum MarketData {
+    ORDERBOOK = 1;
+    OHLC = 2;
+}
+
 message BrokerSubscribeRequest {
     required string ticker = 1;
+    required MarketData market_data = 2;
 }
+

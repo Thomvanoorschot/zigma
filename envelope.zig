@@ -19,101 +19,81 @@ pub const Envelope = struct {
     /// Serializes envelope to bytes. Caller must free the returned buffer.
     pub fn toBytes(self: *const Envelope, allocator: std.mem.Allocator) ![]u8 {
         const HeaderType = u32;
-        const lenFieldSize = @sizeOf(HeaderType); // 4
-        const idLenSize = @sizeOf(u16); // 2
+        const len_field_size = @sizeOf(HeaderType); // 4
+        const id_len_size = @sizeOf(u16); // 2
 
-        const senderIDLen: usize = if (self.senderID) |idSlice| idSlice.len else 0;
-        const payloadLen: usize = self.payload.len;
+        const sender_id_len: usize = if (self.senderID) |idSlice| idSlice.len else 0;
+        const envelope_type_len: usize = @sizeOf(EnvelopeType);
+        const payload_len: usize = self.payload.len;
 
-        // Validate input sizes
-        if (senderIDLen > MAX_SENDER_ID_LEN) {
-            return error.SenderIDTooLarge;
-        }
-        if (payloadLen > MAX_PAYLOAD_LEN) {
-            return error.PayloadTooLarge;
-        }
+        const remaining_len = id_len_size + sender_id_len + envelope_type_len + payload_len;
+        const total_size = len_field_size + remaining_len;
 
-        const remainingLen = idLenSize + senderIDLen + payloadLen;
-        if (remainingLen > MAX_REMAINING_LEN) {
-            return error.MessageTooLarge;
-        }
-
-        const totalSize = lenFieldSize + remainingLen;
-
-        var buf: []u8 = try allocator.alloc(u8, totalSize);
-        errdefer allocator.free(buf);
+        var buf: []u8 = try allocator.alloc(u8, total_size);
+        defer if (false) allocator.free(buf);
 
         var idx: usize = 0;
 
-        // Write remaining length (safe cast after validation)
-        std.mem.writeInt(HeaderType, @ptrCast(buf[idx .. idx + lenFieldSize]), @intCast(remainingLen), std.builtin.Endian.big);
-        idx += lenFieldSize;
+        std.mem.writeInt(HeaderType, @ptrCast(buf[idx .. idx + len_field_size]), @intCast(remaining_len), std.builtin.Endian.big);
+        idx += len_field_size;
 
-        // Write sender ID length (safe cast after validation)
-        std.mem.writeInt(u16, @ptrCast(buf[idx .. idx + idLenSize]), @intCast(senderIDLen), std.builtin.Endian.big);
-        idx += idLenSize;
+        std.mem.writeInt(u16, @ptrCast(buf[idx .. idx + id_len_size]), @intCast(sender_id_len), std.builtin.Endian.big);
+        idx += id_len_size;
 
-        // Write sender ID if present
         if (self.senderID) |idSlice| {
-            @memcpy(buf[idx .. idx + senderIDLen], idSlice);
-            idx += senderIDLen;
+            @memcpy(buf[idx .. idx + sender_id_len], idSlice);
+            idx += sender_id_len;
         }
 
-        // Write payload
-        @memcpy(buf[idx .. idx + payloadLen], self.payload);
-        idx += payloadLen;
+        std.mem.writeInt(u8, @ptrCast(buf[idx .. idx + envelope_type_len]), @intFromEnum(self.envelopeType), std.builtin.Endian.big);
+        idx += envelope_type_len;
 
-        // Sanity check
-        if (idx != totalSize) {
+        @memcpy(buf[idx .. idx + payload_len], self.payload);
+        idx += payload_len;
+
+        if (idx != total_size) {
             return error.UnexpectedFrameSize;
         }
 
         return buf;
     }
 
-    pub fn fromBytes(frameBuf: []const u8) !Envelope {
+    pub fn fromBytes(
+        frame_buf: []const u8,
+    ) !Envelope {
         const HeaderType = u32;
-        const lenFieldSize = @sizeOf(HeaderType); // 4
-        const idLenSize = @sizeOf(u16); // 2
+        const len_field_size = @sizeOf(HeaderType); // 4
+        const id_len_size = @sizeOf(u16); // 2
 
-        // Check minimum frame size
-        if (frameBuf.len < lenFieldSize + idLenSize) {
+        if (frame_buf.len < len_field_size + id_len_size) {
             return error.TruncatedFrame;
         }
 
-        // Read and validate remaining length
-        const remainingLen = std.mem.readInt(HeaderType, @ptrCast(frameBuf[0..lenFieldSize]), std.builtin.Endian.big);
-        if (remainingLen + lenFieldSize != frameBuf.len) {
+        const length_minus_4 = std.mem.readInt(HeaderType, @ptrCast(frame_buf[0..len_field_size]), std.builtin.Endian.big);
+        if (length_minus_4 + len_field_size != frame_buf.len) {
             return error.InvalidLength;
         }
 
-        // Read sender ID length
-        const rawIDLen = std.mem.readInt(u16, @ptrCast(frameBuf[lenFieldSize .. lenFieldSize + idLenSize]), std.builtin.Endian.big);
-        const senderIDLen: usize = rawIDLen;
+        const raw_id_len = std.mem.readInt(u16, @ptrCast(frame_buf[len_field_size .. len_field_size + id_len_size]), std.builtin.Endian.big);
+        const sender_id_len = raw_id_len;
 
-        // Validate frame has enough bytes for sender ID
-        if (frameBuf.len < lenFieldSize + idLenSize + senderIDLen) {
+        if (frame_buf.len < len_field_size + id_len_size + sender_id_len) {
             return error.TruncatedFrame;
         }
 
-        // Extract sender ID
-        var senderID_out: ?[]const u8 = null;
-        if (senderIDLen > 0) {
-            senderID_out = frameBuf[(lenFieldSize + idLenSize)..(lenFieldSize + idLenSize + senderIDLen)];
+        var sender_id_out: ?[]const u8 = null;
+        if (sender_id_len > 0) {
+            sender_id_out = frame_buf[(len_field_size + id_len_size)..(len_field_size + id_len_size + sender_id_len)];
         }
 
-        // Extract payload (everything remaining)
-        const payloadStart = lenFieldSize + idLenSize + senderIDLen;
-        const payload_out = frameBuf[payloadStart..];
-
-        // Additional validation: ensure we consumed exactly the right amount
-        const expectedPayloadLen = remainingLen - idLenSize - senderIDLen;
-        if (payload_out.len != expectedPayloadLen) {
-            return error.InvalidFrameStructure;
-        }
+        const envelope_type_raw = std.mem.readInt(u8, @ptrCast(frame_buf[len_field_size + id_len_size + sender_id_len .. len_field_size + id_len_size + sender_id_len + @sizeOf(EnvelopeType)]), std.builtin.Endian.big);
+        const envelope_type = @enumFromInt(EnvelopeType, envelope_type_raw);
+        const payload_start = len_field_size + id_len_size + sender_id_len + @sizeOf(EnvelopeType);
+        const payload_out = frame_buf[payload_start..frame_buf.len];
 
         return Envelope{
-            .senderID = senderID_out,
+            .senderID = sender_id_out,
+            .envelopeType = envelope_type,
             .payload = payload_out,
         };
     }

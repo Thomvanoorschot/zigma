@@ -37,8 +37,8 @@ pub const ServerActor = struct {
         try self.ctx.shutdown();
     }
 
-    pub fn receive(self: *Self, message: Envelope) !void {
-        const server_msg: ServerActorMessage = try ServerActorMessage.decode(message.payload, self.allocator);
+    pub fn receive(self: *Self, envelope: Envelope) !void {
+        const server_msg: ServerActorMessage = try ServerActorMessage.decode(envelope.message, self.allocator);
         if (server_msg.message == null) {
             return error.InvalidMessage;
         }

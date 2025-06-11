@@ -22,9 +22,6 @@ pub const BrokerActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context,
     broker: ?BrokerImpl = null,
-    // TODO: This currently limits to a single subscriber per ticker, need to change this
-    orderbook_subscriptions: std.StringHashMap([]const u8),
-    ohlc_subscriptions: std.StringHashMap([]const u8),
     completion: xev.Completion = undefined,
 
     const Self = @This();
@@ -35,8 +32,6 @@ pub const BrokerActor = struct {
         self.* = .{
             .ctx = ctx,
             .allocator = allocator,
-            .orderbook_subscriptions = std.StringHashMap([]const u8).init(allocator),
-            .ohlc_subscriptions = std.StringHashMap([]const u8).init(allocator),
         };
 
         return self;
@@ -47,26 +42,11 @@ pub const BrokerActor = struct {
             broker.deinit();
         }
 
-        var orderbook_it = self.orderbook_subscriptions.iterator();
-        while (orderbook_it.next()) |actor_id| {
-            self.allocator.free(actor_id.key_ptr.*);
-        }
-        self.orderbook_subscriptions.deinit();
-
-        var ohlc_it = self.ohlc_subscriptions.iterator();
-        while (ohlc_it.next()) |actor_id| {
-            self.allocator.free(actor_id.key_ptr.*);
-        }
-        self.ohlc_subscriptions.deinit();
-
         try self.ctx.shutdown();
-
-        // 3. Clean up self
-        self.allocator.destroy(self);
     }
 
-    pub fn receive(self: *Self, message: Envelope) !void {
-        const broker_msg: BrokerActorMessage = try BrokerActorMessage.decode(message.payload, self.allocator);
+    pub fn receive(self: *Self, envelope: Envelope) !void {
+        const broker_msg: BrokerActorMessage = try BrokerActorMessage.decode(envelope.message, self.allocator);
         if (broker_msg.message == null) {
             return error.InvalidMessage;
         }
@@ -80,14 +60,12 @@ pub const BrokerActor = struct {
                     readMessage,
                 );
             },
-            .orderbook_subscribe => |m| {
-                // TODO Split this up into seperate messages?
-                try self.broker.?.subscribeToOrderbook(m.ticker.Owned.str);
-                try self.orderbook_subscriptions.put(m.ticker.Owned.str, try self.allocator.dupe(u8, message.senderID.?));
-            },
-            .ohlc_subscribe => |m| {
-                try self.broker.?.subscribeToOHLC(m.ticker.Owned.str);
-                try self.ohlc_subscriptions.put(m.ticker.Owned.str, message.senderID.?);
+            .subscribe => |m| {
+                switch (m.market_data) {
+                    .ORDERBOOK => try self.broker.?.subscribeToOrderbook(m.ticker.Owned.str),
+                    .OHLC => try self.broker.?.subscribeToOHLC(m.ticker.Owned.str),
+                    else => return error.UnsupportedMarketData,
+                }
             },
         }
     }
@@ -98,24 +76,20 @@ pub const BrokerActor = struct {
         if (try message) |m| {
             switch (m) {
                 .orderbook_update => |update| {
-                    if (self.orderbook_subscriptions.get(update.ticker.Owned.str)) |actorID| {
-                        const update_msg = OrderbookActorMessage{
-                            .message = .{ .update = update.* },
-                        };
-                        const update_msg_bytes = try update_msg.encode(self.allocator);
-                        defer self.allocator.free(update_msg_bytes);
-                        try self.ctx.send(actorID, update_msg_bytes);
-                    }
+                    const update_msg = OrderbookActorMessage{
+                        .message = .{ .update = update.* },
+                    };
+                    const update_msg_bytes = try update_msg.encode(self.allocator);
+                    defer self.allocator.free(update_msg_bytes);
+                    try self.ctx.publishToTopic("orderbook_updates", update_msg_bytes);
                 },
                 .ohlc_update => |update| {
-                    if (self.ohlc_subscriptions.get(update.ticker.Owned.str)) |actorID| {
-                        const update_msg = OHLCActorMessage{
-                            .message = .{ .update = update.* },
-                        };
-                        const update_msg_bytes = try update_msg.encode(self.allocator);
-                        defer self.allocator.free(update_msg_bytes);
-                        try self.ctx.send(actorID, update_msg_bytes);
-                    }
+                    const update_msg = OHLCActorMessage{
+                        .message = .{ .update = update.* },
+                    };
+                    const update_msg_bytes = try update_msg.encode(self.allocator);
+                    defer self.allocator.free(update_msg_bytes);
+                    try self.ctx.publishToTopic("ohlc_updates", update_msg_bytes);
                 },
             }
         }

@@ -25,19 +25,13 @@ pub const OrderbookActor = struct {
     pub const _message_case = enum {
         start,
         update,
-        subscribe,
-        unsubscribe,
     };
     pub const message_union = union(_message_case) {
         start: orderbook.OrderbookStartRequest,
         update: orderbook.OrderbookUpdate,
-        subscribe: misc.Empty,
-        unsubscribe: misc.Empty,
         pub const _union_desc = .{
             .start = fd(1, .{ .SubMessage = {} }),
             .update = fd(2, .{ .SubMessage = {} }),
-            .subscribe = fd(3, .{ .SubMessage = {} }),
-            .unsubscribe = fd(4, .{ .SubMessage = {} }),
         };
     };
 
@@ -53,17 +47,14 @@ pub const BrokerActor = struct {
 
     pub const _message_case = enum {
         init,
-        orderbook_subscribe,
-        ohlc_subscribe,
+        subscribe,
     };
     pub const message_union = union(_message_case) {
         init: broker.BrokerInitRequest,
-        orderbook_subscribe: broker.BrokerSubscribeRequest,
-        ohlc_subscribe: broker.BrokerSubscribeRequest,
+        subscribe: broker.BrokerSubscribeRequest,
         pub const _union_desc = .{
             .init = fd(1, .{ .SubMessage = {} }),
-            .orderbook_subscribe = fd(2, .{ .SubMessage = {} }),
-            .ohlc_subscribe = fd(3, .{ .SubMessage = {} }),
+            .subscribe = fd(2, .{ .SubMessage = {} }),
         };
     };
 
@@ -80,19 +71,13 @@ pub const OHLCActor = struct {
     pub const _message_case = enum {
         start,
         update,
-        subscribe,
-        unsubscribe,
     };
     pub const message_union = union(_message_case) {
         start: ohlc.OHLCStartRequest,
         update: ohlc.OHLCUpdate,
-        subscribe: misc.Empty,
-        unsubscribe: misc.Empty,
         pub const _union_desc = .{
             .start = fd(1, .{ .SubMessage = {} }),
             .update = fd(2, .{ .SubMessage = {} }),
-            .subscribe = fd(3, .{ .SubMessage = {} }),
-            .unsubscribe = fd(4, .{ .SubMessage = {} }),
         };
     };
 

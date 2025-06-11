@@ -25,7 +25,6 @@ pub const OrderbookActor = struct {
     arena_state: std.heap.ArenaAllocator,
     ctx: *Context,
     orderbook: ?Orderbook = null,
-    subscriptions: std.ArrayList([]const u8),
     notify_subscribers_completion: xev.Completion = undefined,
     const Self = @This();
     pub fn init(ctx: *Context, allocator: Allocator) !*Self {
@@ -38,23 +37,17 @@ pub const OrderbookActor = struct {
             .allocator = allocator,
             .arena_state = arena_state,
             .ctx = ctx,
-            .subscriptions = std.ArrayList([]const u8).init(allocator),
         };
         return self;
     }
 
     pub fn deinit(self: *Self) !void {
-        for (self.subscriptions.items) |actor_id| {
-            self.allocator.free(actor_id);
-        }
-
-        self.subscriptions.deinit();
         self.arena_state.deinit();
         try self.ctx.shutdown();
     }
 
-    pub fn receive(self: *Self, message: Envelope) !void {
-        const orderbook_msg: OrderbookActorMessage = try OrderbookActorMessage.decode(message.payload, self.allocator);
+    pub fn receive(self: *Self, envelope: Envelope) !void {
+        const orderbook_msg: OrderbookActorMessage = try OrderbookActorMessage.decode(envelope.message, self.allocator);
 
         if (orderbook_msg.message == null) {
             return error.InvalidMessage;
@@ -73,10 +66,19 @@ pub const OrderbookActor = struct {
                 errdefer bids.deinit();
                 errdefer asks.deinit();
 
-                const orderbook_subscribe_msg = BrokerActorMessage{ .message = .{ .orderbook_subscribe = .{ .ticker = m.ticker } } };
+                const orderbook_subscribe_msg = BrokerActorMessage{
+                    .message = .{
+                        .subscribe = .{
+                            .ticker = m.ticker,
+                            .market_data = .ORDERBOOK,
+                        },
+                    },
+                };
                 const orderbook_subscribe_msg_bytes = try orderbook_subscribe_msg.encode(self.allocator);
                 defer self.allocator.free(orderbook_subscribe_msg_bytes);
                 try self.ctx.send("kraken_broker_actor", orderbook_subscribe_msg_bytes);
+
+                try self.ctx.subscribeToActorTopic("kraken_broker_actor", "orderbook_updates");
                 try self.ctx.runContinuously(
                     Self,
                     notify_subscribers,
@@ -89,29 +91,13 @@ pub const OrderbookActor = struct {
                 try processLevelUpdates(&self.orderbook.?, m.bids, m.asks);
                 m.deinit();
             },
-            .subscribe => |_| {
-                std.log.info("subscribing to orderbook: {s}", .{self.orderbook.?.ticker.Owned.str});
-                try self.subscriptions.append(try self.allocator.dupe(u8, message.senderID.?));
-            },
-            .unsubscribe => |_| {
-                std.log.info("unsubscribing from orderbook: {s}", .{self.orderbook.?.ticker.Owned.str});
-                for (self.subscriptions.items, 0..) |actor_id, i| {
-                    if (std.mem.eql(u8, actor_id, message.senderID.?)) {
-                        _ = self.subscriptions.orderedRemove(i);
-                        self.allocator.free(actor_id);
-                        break;
-                    }
-                }
-            },
         }
     }
     fn notify_subscribers(self: *Self) !void {
-        for (self.subscriptions.items) |actorID| {
-            const orderbook_update_msg = ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } };
-            const orderbook_update_msg_bytes = try orderbook_update_msg.encode(self.allocator);
-            defer self.allocator.free(orderbook_update_msg_bytes);
-            try self.ctx.send(actorID, orderbook_update_msg_bytes);
-        }
+        const orderbook_update_msg = ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } };
+        const orderbook_update_msg_bytes = try orderbook_update_msg.encode(self.allocator);
+        defer self.allocator.free(orderbook_update_msg_bytes);
+        try self.ctx.publish(orderbook_update_msg_bytes);
     }
 };
 

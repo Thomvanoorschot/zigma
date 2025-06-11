@@ -43,7 +43,12 @@ pub fn main() !void {
     const broker_init_msg = BrokerActorMessage{ .message = .{ .init = .{ .broker = .KRAKEN } } };
     const broker_init_msg_bytes = try broker_init_msg.encode(allocator);
     defer allocator.free(broker_init_msg_bytes);
-    try broker_actor.send(null, broker_init_msg_bytes);
+    try engine.send(
+        null,
+        broker_actor.ctx.actor_id,
+        .send,
+        broker_init_msg_bytes,
+    );
 
     const server_actor = try engine.spawnActor(ServerActor, .{
         .id = "server_actor",
@@ -58,14 +63,24 @@ pub fn main() !void {
     };
     const init_server_msg_bytes = try init_server_msg.encode(allocator);
     defer allocator.free(init_server_msg_bytes);
-    try server_actor.send(null, init_server_msg_bytes);
+    try engine.send(
+        null,
+        server_actor.ctx.actor_id,
+        .send,
+        init_server_msg_bytes,
+    );
 
     const accept_server_msg = ServerActorMessage{
         .message = .{ .accept = .{} },
     };
     const accept_server_msg_bytes = try accept_server_msg.encode(allocator);
     defer allocator.free(accept_server_msg_bytes);
-    try server_actor.send(null, accept_server_msg_bytes);
+    try engine.send(
+        null,
+        server_actor.ctx.actor_id,
+        .send,
+        accept_server_msg_bytes,
+    );
 
     const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
     for (tickers) |ticker| {
@@ -80,7 +95,12 @@ pub fn main() !void {
         };
         const start_msg_bytes = try start_msg.encode(allocator);
         defer allocator.free(start_msg_bytes);
-        try orderbook_actor.send(null, start_msg_bytes);
+        try engine.send(
+            null,
+            orderbook_actor.ctx.actor_id,
+            .send,
+            start_msg_bytes,
+        );
 
         // OHLC
         const ohlc_actor = try engine.spawnActor(OHLCActor, .{
@@ -89,7 +109,12 @@ pub fn main() !void {
         const ohlc_start_msg = OHLCActorMessage{ .message = .{ .start = .{ .ticker = try ManagedString.copy(ticker, allocator) } } };
         const ohlc_start_msg_bytes = try ohlc_start_msg.encode(allocator);
         defer allocator.free(ohlc_start_msg_bytes);
-        try ohlc_actor.send(null, ohlc_start_msg_bytes);
+        try engine.send(
+            null,
+            ohlc_actor.ctx.actor_id,
+            .send,
+            ohlc_start_msg_bytes,
+        );
     }
 
     // const ohlc_actor = try engine.spawnActor(OHLCActor, OHLCMessage, .{

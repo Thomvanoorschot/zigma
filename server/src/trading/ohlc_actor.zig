@@ -27,7 +27,6 @@ pub const OHLCActor = struct {
     arena_state: std.heap.ArenaAllocator,
     ctx: *Context,
     ohlc_list: OHLCList,
-    subscriptions: std.ArrayList([]const u8),
     notify_subscribers_completion: xev.Completion = undefined,
     const Self = @This();
     pub fn init(ctx: *Context, allocator: Allocator) !*Self {
@@ -40,7 +39,6 @@ pub const OHLCActor = struct {
             .allocator = allocator,
             .arena_state = arena_state,
             .ctx = ctx,
-            .subscriptions = std.ArrayList([]const u8).init(allocator),
             .ohlc_list = OHLCList.init(allocator),
         };
         return self;
@@ -51,20 +49,28 @@ pub const OHLCActor = struct {
         try self.ctx.shutdown();
     }
 
-    pub fn receive(self: *Self, message: Envelope) !void {
-        const ohlc_msg: OHLCActorMessage = try OHLCActorMessage.decode(message.payload, self.allocator);
+    pub fn receive(self: *Self, envelope: Envelope) !void {
+        const ohlc_msg: OHLCActorMessage = try OHLCActorMessage.decode(envelope.message, self.allocator);
         if (ohlc_msg.message == null) {
             return error.InvalidMessage;
         }
         switch (ohlc_msg.message.?) {
             .start => |m| {
-                const subscribe_msg = BrokerActorMessage{
-                    .message = .{ .ohlc_subscribe = .{ .ticker = m.ticker } },
-                };
                 self.ohlc_list.ticker = m.ticker;
-                const subscribe_msg_bytes = try subscribe_msg.encode(self.allocator);
-                defer self.allocator.free(subscribe_msg_bytes);
-                try self.ctx.send("kraken_broker_actor", subscribe_msg_bytes);
+
+                const ohlc_subscribe_msg = BrokerActorMessage{
+                    .message = .{
+                        .subscribe = .{
+                            .ticker = m.ticker,
+                            .market_data = .OHLC,
+                        },
+                    },
+                };
+                const ohlc_subscribe_msg_bytes = try ohlc_subscribe_msg.encode(self.allocator);
+                defer self.allocator.free(ohlc_subscribe_msg_bytes);
+                try self.ctx.send("kraken_broker_actor", ohlc_subscribe_msg_bytes);
+
+                try self.ctx.subscribeToActorTopic("kraken_broker_actor", "ohlc_updates");
                 try self.ctx.runContinuously(
                     Self,
                     notify_subscribers,
@@ -100,30 +106,14 @@ pub const OHLCActor = struct {
                 }
                 m.deinit();
             },
-            .subscribe => |_| {
-                std.log.info("subscribing to ohlc: {s}", .{self.ohlc_list.ticker.Owned.str});
-                try self.subscriptions.append(try self.allocator.dupe(u8, message.senderID.?));
-            },
-            .unsubscribe => |_| {
-                std.log.info("unsubscribing from ohlc: {s}", .{self.ohlc_list.ticker.Owned.str});
-                for (self.subscriptions.items, 0..) |actor_id, i| {
-                    if (std.mem.eql(u8, actor_id, message.senderID.?)) {
-                        _ = self.subscriptions.orderedRemove(i);
-                        self.allocator.free(actor_id);
-                        break;
-                    }
-                }
-            },
         }
     }
     fn notify_subscribers(self: *Self) !void {
-        for (self.subscriptions.items) |actorID| {
-            const ohlc_update_msg = ConnectionActorMessage{ .message = .{
-                .ohlc_update = self.ohlc_list,
-            } };
-            const ohlc_update_msg_bytes = try ohlc_update_msg.encode(self.allocator);
-            defer self.allocator.free(ohlc_update_msg_bytes);
-            try self.ctx.send(actorID, ohlc_update_msg_bytes);
-        }
+        const ohlc_update_msg = ConnectionActorMessage{ .message = .{
+            .ohlc_update = self.ohlc_list,
+        } };
+        const ohlc_update_msg_bytes = try ohlc_update_msg.encode(self.allocator);
+        defer self.allocator.free(ohlc_update_msg_bytes);
+        try self.ctx.publish(ohlc_update_msg_bytes);
     }
 };

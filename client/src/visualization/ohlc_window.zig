@@ -69,11 +69,13 @@ pub const OHLCWindow = struct {
             if (plot.ImPlot_BeginPlot(title, plot.ImVec2{ .x = -1, .y = 0 }, plot.ImPlotFlags_None)) {
                 defer plot.ImPlot_EndPlot();
 
-                plot.ImPlot_SetupAxes(null, null, 0, plot.ImPlotAxisFlags_AutoFit | plot.ImPlotAxisFlags_RangeFit);
+                // plot.ImPlot_SetupAxes(null, null, 0, plot.ImPlotAxisFlags_AutoFit | plot.ImPlotAxisFlags_RangeFit);
+                plot.ImPlot_SetupAxes(null, null, plot.ImPlotAxisFlags_None, plot.ImPlotAxisFlags_None);
                 // plot.ImPlot_SetupAxesLimits(1546300800, 1571961600, 1250, 1600, plot.ImPlotCond_Once);
                 plot.ImPlot_SetupAxisScale_PlotScale(plot.ImAxis_X1, plot.ImPlotScale_Time);
                 // // plot.ImPlot_SetupAxisLimitsConstraints(plot.ImAxis_X1, 1546300800, 1571961600);
                 // plot.ImPlot_SetupAxisZoomConstraints(plot.ImAxis_X1, 60 * 60 * 24 * 14, 1571961600 - 1546300800);
+
                 plot.ImPlot_SetupAxisFormat_Str(plot.ImAxis_Y1, "$%.0f");
 
                 plotCandlestick(

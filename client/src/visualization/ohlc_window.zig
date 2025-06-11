@@ -3,31 +3,29 @@ const std = @import("std");
 const zignite = @import("zignite");
 const shared_models = @import("shared_models");
 const wdw = @import("window.zig");
+const sd = @import("../wasm/shared_data.zig");
 
 const Window = wdw.Window;
 const imgui = zignite.imgui;
 const plot = zignite.implot;
 const glfw = zignite.glfw;
 const websocket = zignite.websocket;
-
+const SharedData = sd.SharedData;
 const OHLCList = shared_models.OHLCList;
 
 pub const OHLCWindow = struct {
-    // ohlc: *OHLCList,
+    ticker: []const u8,
+    shared_data: *SharedData,
     const Self = @This();
 
-    // pub fn init(ohlc: *OHLCList) Self {
-    pub fn init() Self {
+    pub fn init(ticker: []const u8, shared_data: *SharedData) Self {
         return .{
-            // .ohlc = ohlc,
+            .ticker = ticker,
+            .shared_data = shared_data,
         };
     }
 
-    // pub fn render(self: *Self, window: *Window(Self)) !void {
-    pub fn render(self: *Self) !void {
-        _ = self;
-        // _ = window;
-
+    pub fn render(self: *Self, window: *Window(Self)) !void {
         // Financial data arrays
         const dates = [_]f64{ 1546300800, 1546387200, 1546473600, 1546560000, 1546819200, 1546905600, 1546992000, 1547078400, 1547164800, 1547424000, 1547510400, 1547596800, 1547683200, 1547769600, 1547942400, 1548028800, 1548115200, 1548201600, 1548288000, 1548374400, 1548633600, 1548720000, 1548806400, 1548892800, 1548979200, 1549238400, 1549324800, 1549411200, 1549497600, 1549584000, 1549843200, 1549929600, 1550016000, 1550102400, 1550188800, 1550361600, 1550448000, 1550534400, 1550620800, 1550707200, 1550793600, 1551052800, 1551139200, 1551225600, 1551312000, 1551398400, 1551657600, 1551744000, 1551830400, 1551916800, 1552003200, 1552262400, 1552348800, 1552435200, 1552521600, 1552608000, 1552867200, 1552953600, 1553040000, 1553126400, 1553212800, 1553472000, 1553558400, 1553644800, 1553731200, 1553817600, 1554076800, 1554163200, 1554249600, 1554336000, 1554422400, 1554681600, 1554768000, 1554854400, 1554940800, 1555027200, 1555286400, 1555372800, 1555459200, 1555545600, 1555632000, 1555891200, 1555977600, 1556064000, 1556150400, 1556236800, 1556496000, 1556582400, 1556668800, 1556755200, 1556841600, 1557100800, 1557187200, 1557273600, 1557360000, 1557446400, 1557705600, 1557792000, 1557878400, 1557964800, 1558051200, 1558310400, 1558396800, 1558483200, 1558569600, 1558656000, 1558828800, 1558915200, 1559001600, 1559088000, 1559174400, 1559260800, 1559520000, 1559606400, 1559692800, 1559779200, 1559865600, 1560124800, 1560211200, 1560297600, 1560384000, 1560470400, 1560729600, 1560816000, 1560902400, 1560988800, 1561075200, 1561334400, 1561420800, 1561507200, 1561593600, 1561680000, 1561939200, 1562025600, 1562112000, 1562198400, 1562284800, 1562544000, 1562630400, 1562716800, 1562803200, 1562889600, 1563148800, 1563235200, 1563321600, 1563408000, 1563494400, 1563753600, 1563840000, 1563926400, 1564012800, 1564099200, 1564358400, 1564444800, 1564531200, 1564617600, 1564704000, 1564963200, 1565049600, 1565136000, 1565222400, 1565308800, 1565568000, 1565654400, 1565740800, 1565827200, 1565913600, 1566172800, 1566259200, 1566345600, 1566432000, 1566518400, 1566777600, 1566864000, 1566950400, 1567036800, 1567123200, 1567296000, 1567382400, 1567468800, 1567555200, 1567641600, 1567728000, 1567987200, 1568073600, 1568160000, 1568246400, 1568332800, 1568592000, 1568678400, 1568764800, 1568851200, 1568937600, 1569196800, 1569283200, 1569369600, 1569456000, 1569542400, 1569801600, 1569888000, 1569974400, 1570060800, 1570147200, 1570406400, 1570492800, 1570579200, 1570665600, 1570752000, 1571011200, 1571097600, 1571184000, 1571270400, 1571356800, 1571616000, 1571702400, 1571788800, 1571875200, 1571961600 };
 
@@ -40,11 +38,20 @@ pub const OHLCWindow = struct {
         const closes = [_]f64{ 1283.35, 1315.3, 1326.1, 1317.4, 1321.5, 1317.4, 1323.5, 1319.2, 1321.3, 1323.3, 1319.7, 1325.1, 1323.6, 1313.8, 1282.05, 1279.05, 1314.2, 1315.2, 1310.8, 1329.1, 1334.5, 1340.2, 1340.5, 1350, 1347.1, 1344.3, 1344.6, 1339.7, 1339.4, 1343.7, 1337, 1338.9, 1340.1, 1338.7, 1346.8, 1324.25, 1329.55, 1369.6, 1372.5, 1352.4, 1357.6, 1354.2, 1353.4, 1346, 1341, 1323.8, 1311.9, 1309.1, 1312.2, 1310.7, 1324.3, 1315.7, 1322.4, 1333.8, 1319.4, 1327.1, 1325.8, 1330.9, 1325.8, 1331.6, 1336.5, 1346.7, 1339.2, 1334.7, 1313.3, 1316.5, 1312.4, 1313.4, 1313.3, 1312.2, 1313.7, 1319.9, 1326.3, 1331.9, 1311.3, 1313.4, 1309.4, 1295.2, 1294.7, 1294.1, 1277.9, 1295.8, 1291.2, 1297.4, 1297.7, 1306.8, 1299.4, 1303.6, 1302.2, 1289.9, 1299.2, 1301.8, 1303.6, 1299.5, 1303.2, 1305.3, 1319.5, 1313.6, 1315.1, 1303.5, 1293, 1294.6, 1290.4, 1291.4, 1302.7, 1301, 1284.15, 1284.95, 1294.3, 1297.9, 1304.1, 1322.6, 1339.3, 1340.1, 1344.9, 1354, 1357.4, 1340.7, 1342.7, 1348.2, 1355.1, 1355.9, 1354.2, 1362.1, 1360.1, 1408.3, 1411.2, 1429.5, 1430.1, 1426.8, 1423.4, 1425.1, 1400.8, 1419.8, 1432.9, 1423.55, 1412.1, 1412.2, 1412.8, 1424.9, 1419.3, 1424.8, 1426.1, 1423.6, 1435.9, 1440.8, 1439.4, 1439.7, 1434.5, 1436.5, 1427.5, 1432.2, 1433.3, 1441.8, 1437.8, 1432.4, 1457.5, 1476.5, 1484.2, 1519.6, 1509.5, 1508.5, 1517.2, 1514.1, 1527.8, 1531.2, 1523.6, 1511.6, 1515.7, 1515.7, 1508.5, 1537.6, 1537.2, 1551.8, 1549.1, 1536.9, 1529.4, 1538.05, 1535.15, 1555.9, 1560.4, 1525.5, 1515.5, 1511.1, 1499.2, 1503.2, 1507.4, 1499.5, 1511.5, 1513.4, 1515.8, 1506.2, 1515.1, 1531.5, 1540.2, 1512.3, 1515.2, 1506.4, 1472.9, 1489, 1507.9, 1513.8, 1512.9, 1504.4, 1503.9, 1512.8, 1500.9, 1488.7, 1497.6, 1483.5, 1494, 1498.3, 1494.1, 1488.1, 1487.5, 1495.7, 1504.7, 1505.3 };
 
         plot.ImPlot_GetStyle().*.UseLocalTime = false;
-        var open = true;
-        if (imgui.igBegin("Candlestick Chart", &open, imgui.ImGuiWindowFlags_None)) {
+
+        if (!window.pos_set) {
+            imgui.igSetNextWindowPos(window.initial_pos, imgui.ImGuiCond_FirstUseEver, imgui.ImVec2{ .x = 0, .y = 0 });
+            imgui.igSetNextWindowSize(imgui.ImVec2{ .x = 480, .y = 360 }, imgui.ImGuiCond_FirstUseEver);
+            window.pos_set = true;
+        }
+
+        var title_buf: [128]u8 = undefined;
+        const title = try std.fmt.bufPrintZ(&title_buf, "OHLC - {s}", .{self.ticker});
+
+        if (imgui.igBegin(title, &window.popen, imgui.ImGuiWindowFlags_None)) {
             defer imgui.igEnd();
 
-            if (plot.ImPlot_BeginPlot("Candlestick Chart", plot.ImVec2{ .x = -1, .y = 0 }, plot.ImPlotFlags_None)) {
+            if (plot.ImPlot_BeginPlot(title, plot.ImVec2{ .x = -1, .y = 0 }, plot.ImPlotFlags_None)) {
                 defer plot.ImPlot_EndPlot();
 
                 plot.ImPlot_SetupAxes(null, null, 0, plot.ImPlotAxisFlags_AutoFit | plot.ImPlotAxisFlags_RangeFit);
@@ -54,8 +61,19 @@ pub const OHLCWindow = struct {
                 // plot.ImPlot_SetupAxisZoomConstraints(plot.ImAxis_X1, 60 * 60 * 24 * 14, 1571961600 - 1546300800);
                 plot.ImPlot_SetupAxisFormat_Str(plot.ImAxis_Y1, "$%.0f");
 
-                // Custom candlestick plotting function
-                plotCandlestick("GOOGL", &dates, &opens, &closes, &lows, &highs, dates.len, true, 0.25, imgui.ImVec4{ .x = 0.000, .y = 1.000, .z = 0.441, .w = 1.000 }, imgui.ImVec4{ .x = 0.853, .y = 0.050, .z = 0.310, .w = 1.000 });
+                plotCandlestick(
+                    "GOOGL",
+                    &dates,
+                    &opens,
+                    &closes,
+                    &lows,
+                    &highs,
+                    dates.len,
+                    true,
+                    0.25,
+                    imgui.ImVec4{ .x = 0.000, .y = 1.000, .z = 0.441, .w = 1.000 },
+                    imgui.ImVec4{ .x = 0.853, .y = 0.050, .z = 0.310, .w = 1.000 },
+                );
             }
         }
     }
@@ -76,10 +94,8 @@ pub const OHLCWindow = struct {
     ) void {
         if (count == 0) return;
 
-        // Get ImGui window DrawList
         const draw_list = plot.ImPlot_GetPlotDrawList();
 
-        // Calculate real value width
         const half_width = if (count > 1) (xs[1] - xs[0]) * width_percent else width_percent;
 
         // Custom tooltip
@@ -121,10 +137,8 @@ pub const OHLCWindow = struct {
             );
             plot.ImPlot_PopPlotClipRect();
 
-            // Find mouse location index
             const idx = binarySearch(xs, 0, @as(i32, @intCast(count - 1)), mouse.x);
 
-            // Render tooltip (won't be affected by plot clip rect)
             if (idx != -1) {
                 _ = imgui.igBeginTooltip();
                 defer imgui.igEndTooltip();
@@ -142,14 +156,12 @@ pub const OHLCWindow = struct {
             }
         }
 
-        // Begin plot item
         if (plot.ImPlot_BeginItem(label_id, plot.ImPlotItemFlags_None, plot.ImPlotCol_Fill)) {
             defer plot.ImPlot_EndItem();
 
             // Override legend icon color
             plot.ImPlot_GetCurrentItem().*.Color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.25, .y = 0.25, .z = 0.25, .w = 1.0 });
 
-            // Fit data if requested
             if (plot.ImPlot_FitThisFrame()) {
                 for (0..count) |i| {
                     plot.ImPlot_FitPoint(plot.ImPlotPoint{ .x = xs[i], .y = lows[i] });
@@ -157,7 +169,6 @@ pub const OHLCWindow = struct {
                 }
             }
 
-            // Render data
             for (0..count) |i| {
                 var open_pos: plot.ImVec2 = undefined;
                 var close_pos: plot.ImVec2 = undefined;
@@ -177,7 +188,6 @@ pub const OHLCWindow = struct {
         }
     }
 
-    // Binary search helper function
     fn binarySearch(arr: []const f64, left: i32, right: i32, target: f64) i32 {
         if (right >= left) {
             const mid = left + @divTrunc(right - left, 2);
@@ -194,7 +204,6 @@ pub const OHLCWindow = struct {
             return binarySearch(arr, mid + 1, right, target);
         }
 
-        // Return closest index if exact match not found
         if (left >= 0 and left < arr.len) {
             return left;
         }

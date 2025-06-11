@@ -13,7 +13,7 @@ pub fn main() !void {
     const allocator = std.heap.c_allocator;
 
     var shared_data = SharedData{
-        .orderbooks = std.StringHashMap(*Orderbook).init(allocator),
+        .orderbooks = std.StringHashMap(Orderbook).init(allocator),
     };
 
     // Create engine

@@ -29,6 +29,7 @@ pub const App = struct {
     std_err: StdErr = std.io.getStdErr().writer(),
     menu: Menu,
     orderbook_windows: *WindowGroup(OrderbookWindow),
+    ohlc_window: *WindowGroup(OHLCWindow),
 
     const Self = @This();
     pub fn init(allocator: std.mem.Allocator, shared_data: *SharedData) !*Self {
@@ -40,8 +41,10 @@ pub const App = struct {
                 allocator,
                 self,
                 onOpenOrderbook,
+                onOpenOHLC,
             ),
             .orderbook_windows = try WindowGroup(OrderbookWindow).init(allocator),
+            .ohlc_window = try WindowGroup(OHLCWindow).init(allocator),
         };
         return self;
     }
@@ -55,51 +58,49 @@ pub const App = struct {
         for (self.orderbook_windows.windows.items) |window| {
             try window.render();
         }
-        var ohlc_window = OHLCWindow.init();
-        try ohlc_window.render();
+        for (self.ohlc_window.windows.items) |window| {
+            try window.render();
+        }
     }
     pub fn onOpenOrderbook(self_: *anyopaque, ticker: []const u8) !void {
         const self = @as(*Self, @ptrCast(@alignCast(self_)));
         if (self.open_socket == null) {
             return;
         }
-        // Send open message to server
         var open_msg_buf: [25]u8 = undefined;
         const open_msg = try std.fmt.bufPrintZ(&open_msg_buf, "open_orderbook:{s}", .{ticker});
         _ = websocket.sendText(self.open_socket.?, open_msg);
 
-        // Create orderbook for shared data, not really a fan of this and should probably be changed to something more elegant
-        const ob = try self.allocator.create(Orderbook);
-        errdefer self.allocator.destroy(ob);
-
-        try self.shared_data.orderbooks.put(ticker, ob);
-        errdefer _ = self.shared_data.orderbooks.remove(ticker);
-
-        // Open window
         try self.orderbook_windows.openWindow(
-            OrderbookWindow.init(ob),
+            OrderbookWindow.init(ticker, self.shared_data),
             self,
             onCloseOrderbook,
         );
     }
     pub fn onCloseOrderbook(self_: *anyopaque, window: *Window(OrderbookWindow)) !void {
         const self = @as(*Self, @ptrCast(@alignCast(self_)));
-        const ticker = window.impl.orderbook.ticker.Owned.str;
+        const ticker = window.impl.ticker;
 
-        // Send close message to server
         var close_msg_buf: [26]u8 = undefined;
         const close_msg = try std.fmt.bufPrintZ(&close_msg_buf, "close_orderbook:{s}", .{ticker});
         _ = websocket.sendText(self.open_socket.?, close_msg);
 
-        // Remove orderbook from shared data
         if (self.shared_data.orderbooks.fetchRemove(ticker)) |kv| {
-            self.allocator.destroy(kv.value);
+            kv.value.deinit();
         } else {
             return error.OrderbookNotFound;
         }
 
-        // Remove window
         self.orderbook_windows.removeWindow(window);
+    }
+
+    pub fn onOpenOHLC(self_: *anyopaque, ticker: []const u8) !void {
+        const self = @as(*Self, @ptrCast(@alignCast(self_)));
+        try self.ohlc_window.openWindow(OHLCWindow.init(ticker, self.shared_data), self, onCloseOHLC);
+    }
+    pub fn onCloseOHLC(self_: *anyopaque, window: *Window(OHLCWindow)) !void {
+        const self = @as(*Self, @ptrCast(@alignCast(self_)));
+        self.ohlc_window.removeWindow(window);
     }
 
     pub fn onWebsocketOpenCallback(self_: *anyopaque, open_socket: websocket.WebSocket) !bool {
@@ -117,11 +118,11 @@ pub const App = struct {
         if (ws_message.message) |msg| {
             switch (msg) {
                 .orderbook => |orderbook| {
-                    const ob = self.shared_data.orderbooks.get(orderbook.ticker.Owned.str);
-                    if (ob) |o| {
-                        o.* = orderbook;
-                        return true;
+                    if (self.shared_data.orderbooks.fetchRemove(orderbook.ticker.Owned.str)) |kv| {
+                        kv.value.deinit();
                     }
+                    try self.shared_data.orderbooks.put(orderbook.ticker.Owned.str, orderbook);
+                    return true;
                 },
                 else => {
                     return error.UnknownMessageType;

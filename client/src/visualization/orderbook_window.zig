@@ -1,36 +1,35 @@
 const std = @import("std");
-
 const zignite = @import("zignite");
 const shared_models = @import("shared_models");
 const wdw = @import("window.zig");
+const sd = @import("../wasm/shared_data.zig");
 
 const Window = wdw.Window;
 const imgui = zignite.imgui;
 const plot = zignite.implot;
 const glfw = zignite.glfw;
 const websocket = zignite.websocket;
-
+const SharedData = sd.SharedData;
 const OrderBook = shared_models.Orderbook;
 const Orderbook = shared_models.Orderbook;
 
 pub const OrderbookWindow = struct {
-    orderbook: *Orderbook,
+    ticker: []const u8,
+    shared_data: *SharedData,
     const Self = @This();
 
-    pub fn init(orderbook: *Orderbook) Self {
+    pub fn init(ticker: []const u8, shared_data: *SharedData) Self {
         return .{
-            .orderbook = orderbook,
+            .ticker = ticker,
+            .shared_data = shared_data,
         };
     }
 
     pub fn render(self: *Self, window: *Window(Self)) !void {
-        if (self.orderbook.ticker.isEmpty()) {
-            return;
-        }
-        const orderbook = self.orderbook;
+        const orderbook = self.shared_data.orderbooks.get(self.ticker) orelse return;
 
         var title_buf: [128]u8 = undefined;
-        const title = std.fmt.bufPrintZ(&title_buf, "Order Book - {s} ({s})", .{ orderbook.ticker.Owned.str, orderbook.exchange.Owned.str }) catch unreachable;
+        const title = std.fmt.bufPrintZ(&title_buf, "Order Book - {s} ({s})", .{ self.ticker, orderbook.exchange.Owned.str }) catch unreachable;
 
         if (!window.pos_set) {
             imgui.igSetNextWindowPos(window.initial_pos, imgui.ImGuiCond_FirstUseEver, imgui.ImVec2{ .x = 0, .y = 0 });

@@ -24,6 +24,7 @@ pub const Menu = struct {
     allocator: std.mem.Allocator,
     callback_context: *anyopaque,
     on_open_orderbook: *const fn (context: *anyopaque, ticker: []const u8) anyerror!void,
+    on_open_ohlc: *const fn (context: *anyopaque, ticker: []const u8) anyerror!void,
 
     const Self = @This();
 
@@ -34,11 +35,16 @@ pub const Menu = struct {
             context: *anyopaque,
             ticker: []const u8,
         ) anyerror!void,
+        on_open_ohlc: *const fn (
+            context: *anyopaque,
+            ticker: []const u8,
+        ) anyerror!void,
     ) !Self {
         return .{
             .allocator = allocator,
             .callback_context = callback_context,
             .on_open_orderbook = on_open_orderbook,
+            .on_open_ohlc = on_open_ohlc,
         };
     }
     pub fn render(self: *Self) !void {
@@ -59,7 +65,7 @@ pub const Menu = struct {
                     const c_str = try std.fmt.allocPrintZ(self.allocator, "{s}\r\n", .{ticker});
                     defer self.allocator.free(c_str);
                     if (imgui.igMenuItem_Bool(c_str, null, false, true)) {
-                        // try self.shared_data.ohlc_windows.openWindow(ticker);
+                        try self.on_open_ohlc(self.callback_context, ticker);
                     }
                 }
                 imgui.igEndMenu();

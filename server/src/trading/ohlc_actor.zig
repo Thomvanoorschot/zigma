@@ -4,6 +4,7 @@ const brkr_impl = @import("broker_impl.zig");
 const brkr_actr = @import("broker_actor.zig");
 const conn_actr = @import("../http/connection_actor.zig");
 const shared_models = @import("shared_models");
+const date_utils = @import("../utils/date_utils.zig");
 
 const OHLCActorMessage = shared_models.OHLCActor;
 const OHLCList = shared_models.OHLCList;
@@ -70,6 +71,7 @@ pub const OHLCActor = struct {
             },
             .update => |m| {
                 var ohlc_update: OHLCUpdate = m;
+                const timestamp_unix = try date_utils.DateTime.parse(ohlc_update.timestamp.Owned.str, .rfc3339);
                 const ohlc = OHLC{
                     .symbol = ohlc_update.symbol,
                     .open = ohlc_update.open,
@@ -80,6 +82,7 @@ pub const OHLCActor = struct {
                     .volume = ohlc_update.volume,
                     .interval = ohlc_update.interval,
                     .timestamp = ohlc_update.timestamp,
+                    .timestamp_unix = @intCast(timestamp_unix.unix(.seconds)),
                 };
                 if (self.ohlc_list.ohlc.getLastOrNull()) |last| {
                     if (std.mem.eql(u8, last.timestamp.Owned.str, ohlc.timestamp.Owned.str)) {

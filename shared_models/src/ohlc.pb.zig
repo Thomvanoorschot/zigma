@@ -31,6 +31,7 @@ pub const OHLC = struct {
     volume: f64,
     interval: u64,
     timestamp: ManagedString,
+    timestamp_unix: u64,
 
     pub const _desc_table = .{
         .symbol = fd(1, .String),
@@ -42,6 +43,7 @@ pub const OHLC = struct {
         .volume = fd(7, .{ .FixedInt = .I64 }),
         .interval = fd(8, .{ .Varint = .Simple }),
         .timestamp = fd(9, .String),
+        .timestamp_unix = fd(10, .{ .Varint = .Simple }),
     };
 
     pub usingnamespace protobuf.MessageMixins(@This());

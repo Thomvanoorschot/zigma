@@ -7,6 +7,7 @@ const sd = @import("wasm/shared_data.zig");
 const SharedData = sd.SharedData;
 const engine = zignite.engine;
 const Orderbook = shared_models.Orderbook;
+const OHLCList = shared_models.OHLCList;
 const WebsocketWebWorker = zignite.websocket_web_worker.WebSocketWebWorker;
 
 pub fn main() !void {
@@ -14,6 +15,7 @@ pub fn main() !void {
 
     var shared_data = SharedData{
         .orderbooks = std.StringHashMap(Orderbook).init(allocator),
+        .ohlc_windows = std.StringHashMap(OHLCList).init(allocator),
     };
 
     // Create engine

@@ -18,6 +18,7 @@ message OHLC {
     required double volume = 7;
     required uint64 interval = 8;
     required string timestamp = 9;
+    required uint64 timestamp_unix = 10;
 }
 
 message OHLCInitRequest {

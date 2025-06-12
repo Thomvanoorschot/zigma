@@ -151,9 +151,8 @@ test "can receive orderbook updates" {
     const orderbook_actor = try engine.spawnActor(OrderbookActor, .{
         .id = "orderbook_actor",
     });
-    const actor_impl = @as(*OrderbookActor, @ptrCast(@alignCast(orderbook_actor.impl)));
 
-    actor_impl.orderbook = Orderbook{
+    orderbook_actor.orderbook = Orderbook{
         .bids = std.ArrayList(OrderbookLevel).init(std.testing.allocator),
         .asks = std.ArrayList(OrderbookLevel).init(std.testing.allocator),
         .max_depth = 10,
@@ -164,7 +163,7 @@ test "can receive orderbook updates" {
         .update = .{
             .bids = std.ArrayList(OrderbookLevel).init(std.testing.allocator),
             .asks = std.ArrayList(OrderbookLevel).init(std.testing.allocator),
-            .symbol = ManagedString.static("BTC-USD"),
+            .ticker = ManagedString.static("BTC-USD"),
             .checksum = 0,
             .timestamp = null,
         },
@@ -172,7 +171,7 @@ test "can receive orderbook updates" {
 
     const update_orderbook_msg_bytes = try update_orderbook_msg.encode(std.testing.allocator);
     defer std.testing.allocator.free(update_orderbook_msg_bytes);
-    try engine.send(null, "orderbook_actor", update_orderbook_msg_bytes);
+    try engine.send(null, "orderbook_actor", .send, update_orderbook_msg_bytes);
 
     const start_time = std.time.milliTimestamp();
     const duration_ms = 2000;
@@ -180,7 +179,7 @@ test "can receive orderbook updates" {
         try engine.loop.run(.once);
     }
 
-    try actor_impl.deinit();
+    try orderbook_actor.deinit();
     engine.deinit();
 }
 

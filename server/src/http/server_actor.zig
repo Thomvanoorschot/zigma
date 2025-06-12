@@ -75,7 +75,7 @@ pub const ServerActor = struct {
             return .rearm;
         };
 
-        const actor_interface = self.ctx.spawnChildActor(ConnectionActor, .{
+        const connection_actor = self.ctx.spawnChildActor(ConnectionActor, .{
             .id = fd_string,
         }) catch |err| {
             std.log.err("Failed to spawn connection actor: {any}", .{err});
@@ -83,7 +83,6 @@ pub const ServerActor = struct {
             return .rearm;
         };
 
-        var connection_actor = @as(*ConnectionActor, @ptrCast(@alignCast(actor_interface.ctx.actor.impl)));
         connection_actor.setup(client_conn);
 
         return .rearm;

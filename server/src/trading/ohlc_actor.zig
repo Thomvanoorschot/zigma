@@ -58,17 +58,14 @@ pub const OHLCActor = struct {
             .start => |m| {
                 self.ohlc_list.ticker = m.ticker;
 
-                const ohlc_subscribe_msg = BrokerActorMessage{
+                try self.ctx.send("kraken_broker_actor", BrokerActorMessage{
                     .message = .{
                         .subscribe = .{
                             .ticker = m.ticker,
                             .market_data = .OHLC,
                         },
                     },
-                };
-                const ohlc_subscribe_msg_bytes = try ohlc_subscribe_msg.encode(self.allocator);
-                defer self.allocator.free(ohlc_subscribe_msg_bytes);
-                try self.ctx.send("kraken_broker_actor", ohlc_subscribe_msg_bytes);
+                });
 
                 try self.ctx.subscribeToActorTopic("kraken_broker_actor", "ohlc_updates");
                 try self.ctx.runContinuously(

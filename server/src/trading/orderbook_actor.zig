@@ -66,17 +66,14 @@ pub const OrderbookActor = struct {
                 errdefer bids.deinit();
                 errdefer asks.deinit();
 
-                const orderbook_subscribe_msg = BrokerActorMessage{
+                try self.ctx.send("kraken_broker_actor", BrokerActorMessage{
                     .message = .{
                         .subscribe = .{
                             .ticker = m.ticker,
                             .market_data = .ORDERBOOK,
                         },
                     },
-                };
-                const orderbook_subscribe_msg_bytes = try orderbook_subscribe_msg.encode(self.allocator);
-                defer self.allocator.free(orderbook_subscribe_msg_bytes);
-                try self.ctx.send("kraken_broker_actor", orderbook_subscribe_msg_bytes);
+                });
 
                 try self.ctx.subscribeToActorTopic("kraken_broker_actor", "orderbook_updates");
                 try self.ctx.runContinuously(
@@ -159,7 +156,8 @@ test "can receive orderbook updates" {
         .exchange = ManagedString.static("kraken"),
         .ticker = ManagedString.static("BTC-USD"),
     };
-    const update_orderbook_msg = OrderbookActorMessage{ .message = .{
+
+    try engine.send(null, "orderbook_actor", .send, OrderbookActorMessage{ .message = .{
         .update = .{
             .bids = std.ArrayList(OrderbookLevel).init(std.testing.allocator),
             .asks = std.ArrayList(OrderbookLevel).init(std.testing.allocator),
@@ -167,11 +165,7 @@ test "can receive orderbook updates" {
             .checksum = 0,
             .timestamp = null,
         },
-    } };
-
-    const update_orderbook_msg_bytes = try update_orderbook_msg.encode(std.testing.allocator);
-    defer std.testing.allocator.free(update_orderbook_msg_bytes);
-    try engine.send(null, "orderbook_actor", .send, update_orderbook_msg_bytes);
+    } });
 
     const start_time = std.time.milliTimestamp();
     const duration_ms = 2000;

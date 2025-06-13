@@ -60,14 +60,15 @@ pub const OHLCActor = struct {
 
                 try self.ctx.send("kraken_broker_actor", BrokerActorMessage{
                     .message = .{
-                        .subscribe = .{
+                        .start = .{
                             .ticker = m.ticker,
                             .market_data = .OHLC,
                         },
                     },
                 });
-
-                try self.ctx.subscribeToActorTopic("kraken_broker_actor", "ohlc_updates");
+                var topic_buf: [40]u8 = undefined;
+                const topic = try std.fmt.bufPrintZ(&topic_buf, "ohlc_updates_{s}", .{m.ticker.Owned.str});
+                try self.ctx.subscribeToActorTopic("kraken_broker_actor", topic);
                 try self.ctx.runContinuously(
                     Self,
                     notify_subscribers,
@@ -106,11 +107,8 @@ pub const OHLCActor = struct {
         }
     }
     fn notify_subscribers(self: *Self) !void {
-        const ohlc_update_msg = ConnectionActorMessage{ .message = .{
-            .ohlc_update = self.ohlc_list,
-        } };
-        const ohlc_update_msg_bytes = try ohlc_update_msg.encode(self.allocator);
-        defer self.allocator.free(ohlc_update_msg_bytes);
-        try self.ctx.publish(ohlc_update_msg_bytes);
+        try self.ctx.publish(
+            ConnectionActorMessage{ .message = .{ .ohlc_update = self.ohlc_list } },
+        );
     }
 };

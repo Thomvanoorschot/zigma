@@ -47,14 +47,14 @@ pub const BrokerActor = struct {
 
     pub const _message_case = enum {
         init,
-        subscribe,
+        start,
     };
     pub const message_union = union(_message_case) {
         init: broker.BrokerInitRequest,
-        subscribe: broker.BrokerSubscribeRequest,
+        start: broker.BrokerStartRequest,
         pub const _union_desc = .{
             .init = fd(1, .{ .SubMessage = {} }),
-            .subscribe = fd(2, .{ .SubMessage = {} }),
+            .start = fd(2, .{ .SubMessage = {} }),
         };
     };
 

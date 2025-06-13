@@ -30,7 +30,7 @@ pub const BrokerInitRequest = struct {
     pub usingnamespace protobuf.MessageMixins(@This());
 };
 
-pub const BrokerSubscribeRequest = struct {
+pub const BrokerStartRequest = struct {
     ticker: ManagedString,
     market_data: MarketData,
 

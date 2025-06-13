@@ -15,7 +15,7 @@ enum MarketData {
     OHLC = 2;
 }
 
-message BrokerSubscribeRequest {
+message BrokerStartRequest {
     required string ticker = 1;
     required MarketData market_data = 2;
 }

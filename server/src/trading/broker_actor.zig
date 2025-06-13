@@ -60,7 +60,7 @@ pub const BrokerActor = struct {
                     readMessage,
                 );
             },
-            .subscribe => |m| {
+            .start => |m| {
                 switch (m.market_data) {
                     .ORDERBOOK => try self.broker.?.subscribeToOrderbook(m.ticker.Owned.str),
                     .OHLC => try self.broker.?.subscribeToOHLC(m.ticker.Owned.str),
@@ -76,20 +76,18 @@ pub const BrokerActor = struct {
         if (try message) |m| {
             switch (m) {
                 .orderbook_update => |update| {
-                    const update_msg = OrderbookActorMessage{
+                    var topic_buf: [40]u8 = undefined;
+                    const topic = try std.fmt.bufPrintZ(&topic_buf, "orderbook_updates_{s}", .{update.ticker.Owned.str});
+                    try self.ctx.publishToTopic(topic, OrderbookActorMessage{
                         .message = .{ .update = update.* },
-                    };
-                    const update_msg_bytes = try update_msg.encode(self.allocator);
-                    defer self.allocator.free(update_msg_bytes);
-                    try self.ctx.publishToTopic("orderbook_updates", update_msg_bytes);
+                    });
                 },
                 .ohlc_update => |update| {
-                    const update_msg = OHLCActorMessage{
+                    var topic_buf: [40]u8 = undefined;
+                    const topic = try std.fmt.bufPrintZ(&topic_buf, "ohlc_updates_{s}", .{update.ticker.Owned.str});
+                    try self.ctx.publishToTopic(topic, OHLCActorMessage{
                         .message = .{ .update = update.* },
-                    };
-                    const update_msg_bytes = try update_msg.encode(self.allocator);
-                    defer self.allocator.free(update_msg_bytes);
-                    try self.ctx.publishToTopic("ohlc_updates", update_msg_bytes);
+                    });
                 },
             }
         }

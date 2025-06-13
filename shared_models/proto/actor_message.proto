@@ -18,7 +18,7 @@ message OrderbookActor {
 message BrokerActor {
     oneof message {
         broker.BrokerInitRequest init = 1;
-        broker.BrokerSubscribeRequest subscribe = 2;
+        broker.BrokerStartRequest start = 2;
     }
 }
 

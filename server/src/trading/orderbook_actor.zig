@@ -67,15 +67,15 @@ pub const OrderbookActor = struct {
                 errdefer asks.deinit();
 
                 try self.ctx.send("kraken_broker_actor", BrokerActorMessage{
-                    .message = .{
-                        .subscribe = .{
-                            .ticker = m.ticker,
-                            .market_data = .ORDERBOOK,
-                        },
-                    },
+                    .message = .{ .start = .{
+                        .ticker = m.ticker,
+                        .market_data = .ORDERBOOK,
+                    } },
                 });
 
-                try self.ctx.subscribeToActorTopic("kraken_broker_actor", "orderbook_updates");
+                var topic_buf: [40]u8 = undefined;
+                const topic = try std.fmt.bufPrintZ(&topic_buf, "orderbook_updates_{s}", .{m.ticker.Owned.str});
+                try self.ctx.subscribeToActorTopic("kraken_broker_actor", topic);
                 try self.ctx.runContinuously(
                     Self,
                     notify_subscribers,
@@ -91,10 +91,9 @@ pub const OrderbookActor = struct {
         }
     }
     fn notify_subscribers(self: *Self) !void {
-        const orderbook_update_msg = ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } };
-        const orderbook_update_msg_bytes = try orderbook_update_msg.encode(self.allocator);
-        defer self.allocator.free(orderbook_update_msg_bytes);
-        try self.ctx.publish(orderbook_update_msg_bytes);
+        try self.ctx.publish(
+            ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } },
+        );
     }
 };
 

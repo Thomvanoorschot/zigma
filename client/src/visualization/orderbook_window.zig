@@ -109,7 +109,7 @@ pub const OrderbookWindow = struct {
                     imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, price_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(1);
-                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{ask.qty}) catch "ERR";
+                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{ask.qty}) catch "ERR";
                     imgui.igText(vol_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(2);

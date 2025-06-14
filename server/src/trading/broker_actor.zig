@@ -46,6 +46,7 @@ pub const BrokerActor = struct {
     }
 
     pub fn receive(self: *Self, envelope: Envelope) !void {
+        defer envelope.deinit(self.allocator);
         const broker_msg: BrokerActorMessage = try BrokerActorMessage.decode(envelope.message, self.allocator);
         if (broker_msg.message == null) {
             return error.InvalidMessage;

@@ -46,11 +46,11 @@ pub const ConnectionActor = struct {
     }
 
     pub fn receive(self: *Self, envelope: Envelope) !void {
+        defer envelope.deinit(self.allocator);
         const connection_msg: ConnectionActorMessage = try ConnectionActorMessage.decode(envelope.message, self.allocator);
         if (connection_msg.message == null) {
             return error.InvalidMessage;
         }
-
         switch (connection_msg.message.?) {
             .orderbook_update => |m| {
                 const str = try ServerMessage.encode(ServerMessage{

@@ -47,6 +47,7 @@ pub const OrderbookActor = struct {
     }
 
     pub fn receive(self: *Self, envelope: Envelope) !void {
+        defer envelope.deinit(self.allocator);
         const orderbook_msg: OrderbookActorMessage = try OrderbookActorMessage.decode(envelope.message, self.allocator);
 
         if (orderbook_msg.message == null) {

@@ -43,7 +43,6 @@ pub fn main() !void {
     try engine.send(
         null,
         broker_actor.ctx.actor_id,
-        .send,
         BrokerActorMessage{ .message = .{ .init = .{ .broker = .KRAKEN } } },
     );
 
@@ -51,18 +50,19 @@ pub fn main() !void {
         .id = "server_actor",
     });
 
-    try engine.send(null, server_actor.ctx.actor_id, .send, ServerActorMessage{
-        .message = .{ .init = .{
+    try engine.send(
+        null,
+        server_actor.ctx.actor_id,
+        ServerActorMessage{ .message = .{ .init = .{
             .host = ManagedString.static("0.0.0.0"),
             .port = 8081,
             .max_connections = 1024,
-        } },
-    });
+        } } },
+    );
 
     try engine.send(
         null,
         server_actor.ctx.actor_id,
-        .send,
         ServerActorMessage{ .message = .{ .accept = .{} } },
     );
 
@@ -72,17 +72,25 @@ pub fn main() !void {
         const orderbook_actor = try engine.spawnActor(OrderbookActor, .{
             .id = try std.fmt.allocPrintZ(allocator, "{s}_orderbook_actor", .{ticker}),
         });
-        try engine.send(null, orderbook_actor.ctx.actor_id, .send, OrderbookActorMessage{
-            .message = .{ .start = .{ .ticker = try ManagedString.copy(ticker, allocator) } },
-        });
+        try engine.send(
+            null,
+            orderbook_actor.ctx.actor_id,
+            OrderbookActorMessage{
+                .message = .{ .start = .{ .ticker = try ManagedString.copy(ticker, allocator) } },
+            },
+        );
 
         // OHLC
         const ohlc_actor = try engine.spawnActor(OHLCActor, .{
             .id = try std.fmt.allocPrintZ(allocator, "{s}_ohlc_actor", .{ticker}),
         });
-        try engine.send(null, ohlc_actor.ctx.actor_id, .send, OHLCActorMessage{
-            .message = .{ .start = .{ .ticker = try ManagedString.copy(ticker, allocator) } },
-        });
+        try engine.send(
+            null,
+            ohlc_actor.ctx.actor_id,
+            OHLCActorMessage{
+                .message = .{ .start = .{ .ticker = try ManagedString.copy(ticker, allocator) } },
+            },
+        );
     }
 
     try engine.run();

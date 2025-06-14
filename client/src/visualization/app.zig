@@ -69,6 +69,11 @@ pub const App = struct {
         if (self.open_socket == null) {
             return;
         }
+        for (self.orderbook_windows.windows.items) |window| {
+            if (std.mem.eql(u8, window.impl.ticker, ticker)) {
+                return;
+            }
+        }
 
         const msg_bytes = try ClientMessage.encode(ClientMessage{
             .message = .{ .subscribe = .{
@@ -109,12 +114,20 @@ pub const App = struct {
 
     pub fn onOpenOHLC(self_: *anyopaque, ticker: []const u8) !void {
         const self = @as(*Self, @ptrCast(@alignCast(self_)));
+
+        for (self.ohlc_window.windows.items) |window| {
+            if (std.mem.eql(u8, window.impl.ticker, ticker)) {
+                return;
+            }
+        }
+
         const msg_bytes = try ClientMessage.encode(ClientMessage{
             .message = .{ .subscribe = .{
                 .ticker = try ManagedString.copy(ticker, self.allocator),
                 .subscription_type = .OHLC,
             } },
         }, self.allocator);
+
         _ = websocket.sendBinary(self.open_socket.?, msg_bytes);
         defer self.allocator.free(msg_bytes);
 

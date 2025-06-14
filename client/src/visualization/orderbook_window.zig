@@ -67,28 +67,32 @@ pub const OrderbookWindow = struct {
 
                 imgui.igTableHeadersRow();
 
-                var ask_cum_vol: f64 = 0;
                 for (asks.items, 0..) |_, i| {
                     const ask = asks.items[asks.items.len - 1 - i];
-                    ask_cum_vol += ask.qty;
 
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
+                    // Draw depth bar in Total column (right to left)
                     const depth_ratio = ask.qty / max_vol;
                     if (depth_ratio > 0) {
-                        var rect_col0: imgui.ImRect = undefined;
-                        var rect_col2: imgui.ImRect = undefined;
-                        imgui.igTableGetCellBgRect(&rect_col0, imgui.igGetCurrentTable(), 0);
-                        imgui.igTableGetCellBgRect(&rect_col2, imgui.igGetCurrentTable(), 2);
+                        // Get the Total column rect (column 2) for width
+                        var total_col_rect: imgui.ImRect = undefined;
+                        imgui.igTableGetCellBgRect(&total_col_rect, imgui.igGetCurrentTable(), 2);
 
-                        const full_row_min = imgui.ImVec2{ .x = rect_col0.Min.x, .y = rect_col0.Min.y };
-                        const full_row_max = imgui.ImVec2{ .x = rect_col2.Max.x, .y = rect_col0.Max.y };
+                        // Get row rect from first column to get full row height
+                        var row_rect: imgui.ImRect = undefined;
+                        imgui.igTableGetCellBgRect(&row_rect, imgui.igGetCurrentTable(), 0);
 
-                        const bar_width = (full_row_max.x - full_row_min.x) * @as(f32, @floatCast(depth_ratio));
-                        const bar_max = imgui.ImVec2{ .x = full_row_max.x - bar_width, .y = full_row_max.y };
+                        // Calculate bar width as proportion of Total column width
+                        const total_col_width = total_col_rect.Max.x - total_col_rect.Min.x;
+                        const bar_width = total_col_width * @as(f32, @floatCast(depth_ratio));
 
-                        const ask_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 0.3 });
-                        imgui.ImDrawList_AddRectFilled(draw_list, bar_max, full_row_max, ask_depth_color, 0.0, imgui.ImDrawFlags_None);
+                        // Position bar from right edge, extending leftward, using full row height
+                        const bar_start = imgui.ImVec2{ .x = total_col_rect.Max.x - bar_width, .y = row_rect.Min.y };
+                        const bar_end = imgui.ImVec2{ .x = total_col_rect.Max.x, .y = row_rect.Max.y };
+
+                        const ask_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 0.4 });
+                        imgui.ImDrawList_AddRectFilled(draw_list, bar_start, bar_end, ask_depth_color, 0.0, imgui.ImDrawFlags_None);
                     }
 
                     _ = imgui.igTableSetColumnIndex(0);
@@ -96,11 +100,11 @@ pub const OrderbookWindow = struct {
                     imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, price_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(1);
-                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{ask.qty}) catch "ERR";
+                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{ask.qty}) catch "ERR";
                     imgui.igText(vol_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(2);
-                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{ask_cum_vol * ask.price}) catch "ERR";
+                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{ask.qty}) catch "ERR";
                     imgui.igText(total_fmt.ptr);
                 }
             }
@@ -120,27 +124,30 @@ pub const OrderbookWindow = struct {
 
                 imgui.igTableHeadersRow();
 
-                var bid_cum_vol: f64 = 0;
                 for (bids.items) |bid| {
-                    bid_cum_vol += bid.qty;
-
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
+                    // Draw depth bar in Total column (right to left)
                     const depth_ratio = bid.qty / max_vol;
                     if (depth_ratio > 0) {
-                        var rect_col0: imgui.ImRect = undefined;
-                        var rect_col2: imgui.ImRect = undefined;
-                        imgui.igTableGetCellBgRect(&rect_col0, imgui.igGetCurrentTable(), 0);
-                        imgui.igTableGetCellBgRect(&rect_col2, imgui.igGetCurrentTable(), 2);
+                        // Get the Total column rect (column 2) for width
+                        var total_col_rect: imgui.ImRect = undefined;
+                        imgui.igTableGetCellBgRect(&total_col_rect, imgui.igGetCurrentTable(), 2);
 
-                        const full_row_min = imgui.ImVec2{ .x = rect_col0.Min.x, .y = rect_col0.Min.y };
-                        const full_row_max = imgui.ImVec2{ .x = rect_col2.Max.x, .y = rect_col0.Max.y };
+                        // Get row rect from first column to get full row height
+                        var row_rect: imgui.ImRect = undefined;
+                        imgui.igTableGetCellBgRect(&row_rect, imgui.igGetCurrentTable(), 0);
 
-                        const bar_width = (full_row_max.x - full_row_min.x) * @as(f32, @floatCast(depth_ratio));
-                        const bar_max = imgui.ImVec2{ .x = full_row_max.x - bar_width, .y = full_row_max.y };
+                        // Calculate bar width as proportion of Total column width
+                        const total_col_width = total_col_rect.Max.x - total_col_rect.Min.x;
+                        const bar_width = total_col_width * @as(f32, @floatCast(depth_ratio));
 
-                        const bid_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 0.3 });
-                        imgui.ImDrawList_AddRectFilled(draw_list, bar_max, full_row_max, bid_depth_color, 0.0, imgui.ImDrawFlags_None);
+                        // Position bar from right edge, extending leftward, using full row height
+                        const bar_start = imgui.ImVec2{ .x = total_col_rect.Max.x - bar_width, .y = row_rect.Min.y };
+                        const bar_end = imgui.ImVec2{ .x = total_col_rect.Max.x, .y = row_rect.Max.y };
+
+                        const bid_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 0.4 });
+                        imgui.ImDrawList_AddRectFilled(draw_list, bar_start, bar_end, bid_depth_color, 0.0, imgui.ImDrawFlags_None);
                     }
 
                     _ = imgui.igTableSetColumnIndex(0);
@@ -148,11 +155,11 @@ pub const OrderbookWindow = struct {
                     imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, price_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(1);
-                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{bid.qty}) catch "ERR";
+                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid.qty}) catch "ERR";
                     imgui.igText(vol_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(2);
-                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid_cum_vol * bid.price}) catch "ERR";
+                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{bid.qty}) catch "ERR";
                     imgui.igText(total_fmt.ptr);
                 }
             }

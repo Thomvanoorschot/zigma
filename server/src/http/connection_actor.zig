@@ -56,12 +56,14 @@ pub const ConnectionActor = struct {
                 const str = try ServerMessage.encode(ServerMessage{
                     .message = .{ .orderbook = m },
                 }, self.allocator);
+                defer self.allocator.free(str);
                 try self.write(str);
             },
             .ohlc_update => |m| {
                 const str = try ServerMessage.encode(ServerMessage{
                     .message = .{ .ohlc = m },
                 }, self.allocator);
+                defer self.allocator.free(str);
                 try self.write(str);
             },
         }
@@ -79,7 +81,7 @@ pub const ConnectionActor = struct {
         }
         switch (client_msg.message.?) {
             .subscribe => |m| {
-                var actor_id_buf: [25]u8 = undefined;
+                var actor_id_buf: [40]u8 = undefined;
 
                 const actor_id = switch (m.subscription_type) {
                     .ORDERBOOK => blk: {
@@ -93,7 +95,7 @@ pub const ConnectionActor = struct {
                 try self.ctx.subscribeToActor(actor_id);
             },
             .unsubscribe => |m| {
-                var actor_id_buf: [25]u8 = undefined;
+                var actor_id_buf: [40]u8 = undefined;
                 const actor_id = switch (m.subscription_type) {
                     .ORDERBOOK => blk: {
                         break :blk try std.fmt.bufPrintZ(&actor_id_buf, "{s}_orderbook_actor", .{m.ticker.Owned.str});

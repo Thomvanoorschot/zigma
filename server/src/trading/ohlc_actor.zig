@@ -27,7 +27,6 @@ pub const OHLCActor = struct {
     arena_state: std.heap.ArenaAllocator,
     ctx: *Context,
     ohlc_list: OHLCList,
-    notify_subscribers_completion: xev.Completion = undefined,
     const Self = @This();
     pub fn init(ctx: *Context, allocator: Allocator) !*Self {
         const self = try allocator.create(Self);
@@ -70,10 +69,9 @@ pub const OHLCActor = struct {
                 var topic_buf: [40]u8 = undefined;
                 const topic = try std.fmt.bufPrintZ(&topic_buf, "ohlc_updates_{s}", .{m.ticker.Owned.str});
                 try self.ctx.subscribeToActorTopic("kraken_broker_actor", topic);
-                try self.ctx.runContinuously(
+                try self.ctx.runRecurring(
                     Self,
                     notify_subscribers,
-                    &self.notify_subscribers_completion,
                     self,
                     20,
                 );

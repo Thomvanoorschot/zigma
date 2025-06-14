@@ -52,20 +52,18 @@ pub const OrderbookWindow = struct {
                 max_vol = 1.0;
             }
 
-            const table_flags = imgui.ImGuiTableFlags_RowBg | imgui.ImGuiTableFlags_BordersInnerV | imgui.ImGuiTableFlags_SizingFixedFit;
-
+            const table_flags = imgui.ImGuiTableFlags_BordersInnerV | imgui.ImGuiTableFlags_SizingFixedFit;
             const text_buf_size = 64;
             var text_buf: [text_buf_size]u8 = undefined;
 
-            if (imgui.igBeginTable("AsksTable", 2, table_flags, .{ .x = 0, .y = 0 }, 0)) {
+            const draw_list = imgui.igGetWindowDrawList();
+
+            if (imgui.igBeginTable("AsksTable", 3, table_flags, .{ .x = 0, .y = 0 }, 0)) {
                 defer imgui.igEndTable();
 
                 imgui.igTableSetupColumn("Price", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
-                imgui.igTableSetupColumn("Volume", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
-
-                imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
-                _ = imgui.igTableSetColumnIndex(0);
-                imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, "Asks");
+                imgui.igTableSetupColumn("Size", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
+                imgui.igTableSetupColumn("Total", imgui.ImGuiTableColumnFlags_WidthFixed, 100.0, 0);
 
                 imgui.igTableHeadersRow();
 
@@ -76,13 +74,34 @@ pub const OrderbookWindow = struct {
 
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
+                    const depth_ratio = ask.qty / max_vol;
+                    if (depth_ratio > 0) {
+                        var rect_col0: imgui.ImRect = undefined;
+                        var rect_col2: imgui.ImRect = undefined;
+                        imgui.igTableGetCellBgRect(&rect_col0, imgui.igGetCurrentTable(), 0);
+                        imgui.igTableGetCellBgRect(&rect_col2, imgui.igGetCurrentTable(), 2);
+
+                        const full_row_min = imgui.ImVec2{ .x = rect_col0.Min.x, .y = rect_col0.Min.y };
+                        const full_row_max = imgui.ImVec2{ .x = rect_col2.Max.x, .y = rect_col0.Max.y };
+
+                        const bar_width = (full_row_max.x - full_row_min.x) * @as(f32, @floatCast(depth_ratio));
+                        const bar_max = imgui.ImVec2{ .x = full_row_max.x - bar_width, .y = full_row_max.y };
+
+                        const ask_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 0.3 });
+                        imgui.ImDrawList_AddRectFilled(draw_list, bar_max, full_row_max, ask_depth_color, 0.0, imgui.ImDrawFlags_None);
+                    }
+
                     _ = imgui.igTableSetColumnIndex(0);
                     const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{ask.price}) catch "ERR";
                     imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, price_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(1);
                     const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{ask.qty}) catch "ERR";
-                    imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, vol_fmt.ptr);
+                    imgui.igText(vol_fmt.ptr);
+
+                    _ = imgui.igTableSetColumnIndex(2);
+                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{ask_cum_vol * ask.price}) catch "ERR";
+                    imgui.igText(total_fmt.ptr);
                 }
             }
 
@@ -92,15 +111,12 @@ pub const OrderbookWindow = struct {
             imgui.igText(spread_text.ptr);
             imgui.igSeparator();
 
-            if (imgui.igBeginTable("BidsTable", 2, table_flags, .{ .x = 0, .y = 0 }, 0)) {
+            if (imgui.igBeginTable("BidsTable", 3, table_flags, .{ .x = 0, .y = 0 }, 0)) {
                 defer imgui.igEndTable();
 
                 imgui.igTableSetupColumn("Price", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
-                imgui.igTableSetupColumn("Volume", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
-
-                imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
-                _ = imgui.igTableSetColumnIndex(0);
-                imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, "Bids");
+                imgui.igTableSetupColumn("Size", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
+                imgui.igTableSetupColumn("Total", imgui.ImGuiTableColumnFlags_WidthFixed, 100.0, 0);
 
                 imgui.igTableHeadersRow();
 
@@ -110,12 +126,34 @@ pub const OrderbookWindow = struct {
 
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
+                    const depth_ratio = bid.qty / max_vol;
+                    if (depth_ratio > 0) {
+                        var rect_col0: imgui.ImRect = undefined;
+                        var rect_col2: imgui.ImRect = undefined;
+                        imgui.igTableGetCellBgRect(&rect_col0, imgui.igGetCurrentTable(), 0);
+                        imgui.igTableGetCellBgRect(&rect_col2, imgui.igGetCurrentTable(), 2);
+
+                        const full_row_min = imgui.ImVec2{ .x = rect_col0.Min.x, .y = rect_col0.Min.y };
+                        const full_row_max = imgui.ImVec2{ .x = rect_col2.Max.x, .y = rect_col0.Max.y };
+
+                        const bar_width = (full_row_max.x - full_row_min.x) * @as(f32, @floatCast(depth_ratio));
+                        const bar_max = imgui.ImVec2{ .x = full_row_max.x - bar_width, .y = full_row_max.y };
+
+                        const bid_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 0.3 });
+                        imgui.ImDrawList_AddRectFilled(draw_list, bar_max, full_row_max, bid_depth_color, 0.0, imgui.ImDrawFlags_None);
+                    }
+
                     _ = imgui.igTableSetColumnIndex(0);
                     const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid.price}) catch "ERR";
                     imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, price_fmt.ptr);
+
                     _ = imgui.igTableSetColumnIndex(1);
                     const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.3}", .{bid.qty}) catch "ERR";
-                    imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, vol_fmt.ptr);
+                    imgui.igText(vol_fmt.ptr);
+
+                    _ = imgui.igTableSetColumnIndex(2);
+                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid_cum_vol * bid.price}) catch "ERR";
+                    imgui.igText(total_fmt.ptr);
                 }
             }
         }

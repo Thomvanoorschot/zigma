@@ -42,7 +42,6 @@ pub const OrderbookWindow = struct {
             const bids = orderbook.bids;
             const asks = orderbook.asks;
 
-            // Calculate max cumulative volume for proper scaling
             var max_vol: f64 = 0.0;
             var temp_cum: f64 = 0.0;
             for (bids.items) |bid| {
@@ -99,16 +98,17 @@ pub const OrderbookWindow = struct {
                     const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{remaining_ask_vol}) catch "ERR";
                     imgui.igText(total_fmt.ptr);
 
-                    // Get cell rect AFTER setting up the column content
                     const depth_ratio = remaining_ask_vol / max_vol;
                     if (depth_ratio > 0) {
+                        var size_col_rect: imgui.ImRect = undefined;
                         var total_col_rect: imgui.ImRect = undefined;
+                        imgui.igTableGetCellBgRect(&size_col_rect, imgui.igGetCurrentTable(), 1);
                         imgui.igTableGetCellBgRect(&total_col_rect, imgui.igGetCurrentTable(), 2);
 
-                        const total_col_width = total_col_rect.Max.x - total_col_rect.Min.x;
-                        const bar_width = total_col_width * @as(f32, @floatCast(depth_ratio));
+                        const combined_width = total_col_rect.Max.x - size_col_rect.Min.x;
+                        const bar_width = combined_width * @as(f32, @floatCast(depth_ratio));
 
-                        const bar_start = imgui.ImVec2{ .x = total_col_rect.Max.x - bar_width, .y = total_col_rect.Min.y };
+                        const bar_start = imgui.ImVec2{ .x = total_col_rect.Max.x - bar_width, .y = size_col_rect.Min.y };
                         const bar_end = imgui.ImVec2{ .x = total_col_rect.Max.x, .y = total_col_rect.Max.y };
 
                         const ask_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 0.4 });
@@ -152,16 +152,17 @@ pub const OrderbookWindow = struct {
                     const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{bid_cum_vol}) catch "ERR";
                     imgui.igText(total_fmt.ptr);
 
-                    // Get cell rect AFTER setting up the column content
                     const depth_ratio = bid_cum_vol / max_vol;
                     if (depth_ratio > 0) {
+                        var size_col_rect: imgui.ImRect = undefined;
                         var total_col_rect: imgui.ImRect = undefined;
+                        imgui.igTableGetCellBgRect(&size_col_rect, imgui.igGetCurrentTable(), 1);
                         imgui.igTableGetCellBgRect(&total_col_rect, imgui.igGetCurrentTable(), 2);
 
-                        const total_col_width = total_col_rect.Max.x - total_col_rect.Min.x;
-                        const bar_width = total_col_width * @as(f32, @floatCast(depth_ratio));
+                        const combined_width = total_col_rect.Max.x - size_col_rect.Min.x;
+                        const bar_width = combined_width * @as(f32, @floatCast(depth_ratio));
 
-                        const bar_start = imgui.ImVec2{ .x = total_col_rect.Max.x - bar_width, .y = total_col_rect.Min.y };
+                        const bar_start = imgui.ImVec2{ .x = total_col_rect.Max.x - bar_width, .y = size_col_rect.Min.y };
                         const bar_end = imgui.ImVec2{ .x = total_col_rect.Max.x, .y = total_col_rect.Max.y };
 
                         const bid_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 0.4 });

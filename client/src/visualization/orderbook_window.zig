@@ -87,6 +87,19 @@ pub const OrderbookWindow = struct {
 
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
+                    _ = imgui.igTableSetColumnIndex(0);
+                    const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{ask.price}) catch "ERR";
+                    imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, price_fmt.ptr);
+
+                    _ = imgui.igTableSetColumnIndex(1);
+                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{ask.qty}) catch "ERR";
+                    imgui.igText(vol_fmt.ptr);
+
+                    _ = imgui.igTableSetColumnIndex(2);
+                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{remaining_ask_vol}) catch "ERR";
+                    imgui.igText(total_fmt.ptr);
+
+                    // Get cell rect AFTER setting up the column content
                     const depth_ratio = remaining_ask_vol / max_vol;
                     if (depth_ratio > 0) {
                         var total_col_rect: imgui.ImRect = undefined;
@@ -101,18 +114,6 @@ pub const OrderbookWindow = struct {
                         const ask_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 0.4 });
                         imgui.ImDrawList_AddRectFilled(draw_list, bar_start, bar_end, ask_depth_color, 0.0, imgui.ImDrawFlags_None);
                     }
-
-                    _ = imgui.igTableSetColumnIndex(0);
-                    const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{ask.price}) catch "ERR";
-                    imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, price_fmt.ptr);
-
-                    _ = imgui.igTableSetColumnIndex(1);
-                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{ask.qty}) catch "ERR";
-                    imgui.igText(vol_fmt.ptr);
-
-                    _ = imgui.igTableSetColumnIndex(2);
-                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{remaining_ask_vol}) catch "ERR";
-                    imgui.igText(total_fmt.ptr);
 
                     remaining_ask_vol -= ask.qty;
                 }
@@ -139,6 +140,19 @@ pub const OrderbookWindow = struct {
 
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
+                    _ = imgui.igTableSetColumnIndex(0);
+                    const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid.price}) catch "ERR";
+                    imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, price_fmt.ptr);
+
+                    _ = imgui.igTableSetColumnIndex(1);
+                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid.qty}) catch "ERR";
+                    imgui.igText(vol_fmt.ptr);
+
+                    _ = imgui.igTableSetColumnIndex(2);
+                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{bid_cum_vol}) catch "ERR";
+                    imgui.igText(total_fmt.ptr);
+
+                    // Get cell rect AFTER setting up the column content
                     const depth_ratio = bid_cum_vol / max_vol;
                     if (depth_ratio > 0) {
                         var total_col_rect: imgui.ImRect = undefined;
@@ -153,18 +167,6 @@ pub const OrderbookWindow = struct {
                         const bid_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 0.4 });
                         imgui.ImDrawList_AddRectFilled(draw_list, bar_start, bar_end, bid_depth_color, 0.0, imgui.ImDrawFlags_None);
                     }
-
-                    _ = imgui.igTableSetColumnIndex(0);
-                    const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid.price}) catch "ERR";
-                    imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, price_fmt.ptr);
-
-                    _ = imgui.igTableSetColumnIndex(1);
-                    const vol_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid.qty}) catch "ERR";
-                    imgui.igText(vol_fmt.ptr);
-
-                    _ = imgui.igTableSetColumnIndex(2);
-                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{bid_cum_vol}) catch "ERR";
-                    imgui.igText(total_fmt.ptr);
                 }
             }
         }

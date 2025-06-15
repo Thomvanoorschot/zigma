@@ -76,7 +76,6 @@ pub const OrderbookWindow = struct {
 
                 imgui.igTableHeadersRow();
 
-                // Calculate total ask volume first
                 var total_ask_volume: f64 = 0;
                 for (asks.items) |ask| {
                     total_ask_volume += ask.qty;
@@ -84,11 +83,10 @@ pub const OrderbookWindow = struct {
 
                 var remaining_ask_vol = total_ask_volume;
                 for (asks.items, 0..) |_, i| {
-                    const ask = asks.items[asks.items.len - 1 - i];
+                    const ask = asks.items[i];
 
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
-                    // Use remaining volume (largest at top, smallest at bottom)
                     const depth_ratio = remaining_ask_vol / max_vol;
                     if (depth_ratio > 0) {
                         var total_col_rect: imgui.ImRect = undefined;
@@ -113,12 +111,9 @@ pub const OrderbookWindow = struct {
                     imgui.igText(vol_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(2);
-                    // Show individual cumulative volume (not remaining volume)
-                    const individual_cum_vol = total_ask_volume - remaining_ask_vol + ask.qty;
-                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{individual_cum_vol}) catch "ERR";
+                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{remaining_ask_vol}) catch "ERR";
                     imgui.igText(total_fmt.ptr);
 
-                    // Subtract this ask's volume for next iteration
                     remaining_ask_vol -= ask.qty;
                 }
             }
@@ -144,7 +139,6 @@ pub const OrderbookWindow = struct {
 
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
-                    // Use cumulative volume for bar sizing (creates the slope effect)
                     const depth_ratio = bid_cum_vol / max_vol;
                     if (depth_ratio > 0) {
                         var total_col_rect: imgui.ImRect = undefined;
@@ -169,7 +163,7 @@ pub const OrderbookWindow = struct {
                     imgui.igText(vol_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(2);
-                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{bid.qty}) catch "ERR";
+                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{bid_cum_vol}) catch "ERR";
                     imgui.igText(total_fmt.ptr);
                 }
             }

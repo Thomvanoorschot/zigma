@@ -41,9 +41,7 @@ pub const Broker = struct {
                 allocator,
                 loop,
                 .{
-                    // .host = "127.0.0.1",
                     .host = "ws.kraken.com",
-                    // .port = 8080,
                     .port = 443,
                     .path = "/v2",
                     .use_tls = true,

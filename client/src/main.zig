@@ -32,7 +32,7 @@ pub fn main() !void {
     // Create web worker
     const ww = try WebsocketWebWorker.init(
         std.heap.c_allocator,
-        "ws://127.0.0.1:8081",
+        "wss://127.0.0.1:8081",
         .{
             .callback_ctx = app,
             .on_open_cb = App.onWebsocketOpenCallback,

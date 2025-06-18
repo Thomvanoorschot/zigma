@@ -65,6 +65,6 @@ This project provides hands-on experience with: \
 ## Project Status
 
 ![](example_full.gif)
-![](example_start.gif)
+![](example_docking.gif)
 
 🚧 Early Development – The actor framework and core components are currently being designed and implemented.

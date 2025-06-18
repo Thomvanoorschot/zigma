@@ -90,7 +90,7 @@ pub const OrderbookWindow = struct {
 
                     _ = imgui.igTableSetColumnIndex(0);
                     const price_fmt = formatPrice(ask.price, &text_buf);
-                    imgui.igPushStyleColor_U32(imgui.ImGuiCol_Text, imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.95, .y = 0.4, .z = 0.4, .w = 1.0 }));
+                    imgui.igPushStyleColor_U32(imgui.ImGuiCol_Text, imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.93, .y = 0.32, .z = 0.31, .w = 1.0 }));
                     imgui.igText(price_fmt.ptr);
                     imgui.igPopStyleColor(1);
 
@@ -115,7 +115,7 @@ pub const OrderbookWindow = struct {
                         const bar_start = imgui.ImVec2{ .x = total_col_rect.Max.x - bar_width, .y = size_col_rect.Min.y + 1 };
                         const bar_end = imgui.ImVec2{ .x = total_col_rect.Max.x, .y = total_col_rect.Max.y - 1 };
 
-                        const ask_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.8, .y = 0.3, .z = 0.3, .w = 0.25 });
+                        const ask_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.93, .y = 0.32, .z = 0.31, .w = 0.25 });
                         imgui.ImDrawList_AddRectFilled(draw_list, bar_start, bar_end, ask_depth_color, 2.0, imgui.ImDrawFlags_None);
                     }
 
@@ -173,7 +173,7 @@ pub const OrderbookWindow = struct {
 
                     _ = imgui.igTableSetColumnIndex(0);
                     const price_fmt = formatPrice(bid.price, &text_buf);
-                    imgui.igPushStyleColor_U32(imgui.ImGuiCol_Text, imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.4, .y = 0.9, .z = 0.4, .w = 1.0 }));
+                    imgui.igPushStyleColor_U32(imgui.ImGuiCol_Text, imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.15, .y = 0.65, .z = 0.60, .w = 1.0 }));
                     imgui.igText(price_fmt.ptr);
                     imgui.igPopStyleColor(1);
 
@@ -198,7 +198,7 @@ pub const OrderbookWindow = struct {
                         const bar_start = imgui.ImVec2{ .x = total_col_rect.Max.x - bar_width, .y = size_col_rect.Min.y + 1 };
                         const bar_end = imgui.ImVec2{ .x = total_col_rect.Max.x, .y = total_col_rect.Max.y - 1 };
 
-                        const bid_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.3, .y = 0.7, .z = 0.3, .w = 0.25 });
+                        const bid_depth_color = imgui.igGetColorU32_Vec4(imgui.ImVec4{ .x = 0.15, .y = 0.65, .z = 0.60, .w = 0.25 });
                         imgui.ImDrawList_AddRectFilled(draw_list, bar_start, bar_end, bid_depth_color, 2.0, imgui.ImDrawFlags_None);
                     }
                 }

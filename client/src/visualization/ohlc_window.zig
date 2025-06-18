@@ -83,8 +83,8 @@ pub const OHLCWindow = struct {
                     &ohlc_list,
                     true,
                     0.25,
-                    imgui.ImVec4{ .x = 0.000, .y = 1.000, .z = 0.441, .w = 1.000 },
-                    imgui.ImVec4{ .x = 0.853, .y = 0.050, .z = 0.310, .w = 1.000 },
+                    imgui.ImVec4{ .x = 0.15, .y = 0.65, .z = 0.60, .w = 1.0 },
+                    imgui.ImVec4{ .x = 0.93, .y = 0.32, .z = 0.31, .w = 1.0 },
                 );
             }
         }

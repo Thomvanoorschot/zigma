@@ -67,8 +67,6 @@ pub const OHLCWindow = struct {
         const title = try std.fmt.bufPrintZ(&title_buf, "OHLC - {s}", .{self.ticker});
 
         if (imgui.igBegin(title, &window.popen, imgui.ImGuiWindowFlags_None)) {
-            defer imgui.igEnd();
-
             if (plot.ImPlot_BeginPlot(title, plot.ImVec2{ .x = -1, .y = 0 }, plot.ImPlotFlags_None)) {
                 defer plot.ImPlot_EndPlot();
 
@@ -90,6 +88,7 @@ pub const OHLCWindow = struct {
                 );
             }
         }
+        imgui.igEnd();
     }
 
     // Custom candlestick plotting function

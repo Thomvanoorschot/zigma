@@ -36,9 +36,7 @@ pub const OrderbookWindow = struct {
             window.pos_set = true;
         }
 
-        if (window.popen and imgui.igBegin(title, &window.popen, imgui.ImGuiWindowFlags_None)) {
-            defer imgui.igEnd();
-
+        if (imgui.igBegin(title, &window.popen, imgui.ImGuiWindowFlags_None)) {
             const bids = orderbook.bids;
             const asks = orderbook.asks;
 
@@ -69,9 +67,9 @@ pub const OrderbookWindow = struct {
             if (imgui.igBeginTable("AsksTable", 3, table_flags, .{ .x = 0, .y = 0 }, 0)) {
                 defer imgui.igEndTable();
 
-                imgui.igTableSetupColumn("Price", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
-                imgui.igTableSetupColumn("Size", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
-                imgui.igTableSetupColumn("Total", imgui.ImGuiTableColumnFlags_WidthFixed, 100.0, 0);
+                imgui.igTableSetupColumn("Price", imgui.ImGuiTableColumnFlags_WidthFixed, 95.0, 0);
+                imgui.igTableSetupColumn("Size", imgui.ImGuiTableColumnFlags_WidthFixed, 95.0, 0);
+                imgui.igTableSetupColumn("Total", imgui.ImGuiTableColumnFlags_WidthFixed, 95.0, 0);
 
                 imgui.igTableHeadersRow();
 
@@ -87,7 +85,7 @@ pub const OrderbookWindow = struct {
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
                     _ = imgui.igTableSetColumnIndex(0);
-                    const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{ask.price}) catch "ERR";
+                    const price_fmt = formatPrice(ask.price, &text_buf);
                     imgui.igTextColored(imgui.ImVec4{ .x = 1, .y = 0, .z = 0, .w = 1 }, price_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(1);
@@ -95,7 +93,7 @@ pub const OrderbookWindow = struct {
                     imgui.igText(vol_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(2);
-                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{remaining_ask_vol}) catch "ERR";
+                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{remaining_ask_vol}) catch "ERR";
                     imgui.igText(total_fmt.ptr);
 
                     const depth_ratio = remaining_ask_vol / max_vol;
@@ -121,16 +119,37 @@ pub const OrderbookWindow = struct {
 
             imgui.igSeparator();
             const spread_val = if (asks.items.len > 0 and bids.items.len > 0) asks.items[0].price - bids.items[0].price else 0.0;
-            const spread_text = std.fmt.bufPrintZ(&text_buf, "Spread: {d:.2}", .{spread_val}) catch "ERR";
+            const best_ask = if (asks.items.len > 0) asks.items[0].price else 0.0;
+
+            // Determine appropriate decimal places based on price magnitude
+            const spread_text = if (best_ask >= 1000.0)
+                std.fmt.bufPrintZ(&text_buf, "Spread: {d:.2}", .{spread_val}) catch "ERR"
+            else if (best_ask >= 100.0)
+                std.fmt.bufPrintZ(&text_buf, "Spread: {d:.3}", .{spread_val}) catch "ERR"
+            else if (best_ask >= 10.0)
+                std.fmt.bufPrintZ(&text_buf, "Spread: {d:.4}", .{spread_val}) catch "ERR"
+            else if (best_ask >= 1.0)
+                std.fmt.bufPrintZ(&text_buf, "Spread: {d:.5}", .{spread_val}) catch "ERR"
+            else if (best_ask >= 0.1)
+                std.fmt.bufPrintZ(&text_buf, "Spread: {d:.6}", .{spread_val}) catch "ERR"
+            else if (best_ask >= 0.01)
+                std.fmt.bufPrintZ(&text_buf, "Spread: {d:.7}", .{spread_val}) catch "ERR"
+            else if (best_ask >= 0.001)
+                std.fmt.bufPrintZ(&text_buf, "Spread: {d:.8}", .{spread_val}) catch "ERR"
+            else if (best_ask >= 0.0001)
+                std.fmt.bufPrintZ(&text_buf, "Spread: {d:.9}", .{spread_val}) catch "ERR"
+            else
+                std.fmt.bufPrintZ(&text_buf, "Spread: {d:.10}", .{spread_val}) catch "ERR";
+
             imgui.igText(spread_text.ptr);
             imgui.igSeparator();
 
             if (imgui.igBeginTable("BidsTable", 3, table_flags, .{ .x = 0, .y = 0 }, 0)) {
                 defer imgui.igEndTable();
 
-                imgui.igTableSetupColumn("Price", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
-                imgui.igTableSetupColumn("Size", imgui.ImGuiTableColumnFlags_WidthFixed, 80.0, 0);
-                imgui.igTableSetupColumn("Total", imgui.ImGuiTableColumnFlags_WidthFixed, 100.0, 0);
+                imgui.igTableSetupColumn("Price", imgui.ImGuiTableColumnFlags_WidthFixed, 95.0, 0);
+                imgui.igTableSetupColumn("Size", imgui.ImGuiTableColumnFlags_WidthFixed, 95.0, 0);
+                imgui.igTableSetupColumn("Total", imgui.ImGuiTableColumnFlags_WidthFixed, 95.0, 0);
 
                 imgui.igTableHeadersRow();
 
@@ -141,7 +160,7 @@ pub const OrderbookWindow = struct {
                     imgui.igTableNextRow(imgui.ImGuiTableRowFlags_None, 0);
 
                     _ = imgui.igTableSetColumnIndex(0);
-                    const price_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid.price}) catch "ERR";
+                    const price_fmt = formatPrice(bid.price, &text_buf);
                     imgui.igTextColored(imgui.ImVec4{ .x = 0, .y = 1, .z = 0, .w = 1 }, price_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(1);
@@ -149,7 +168,7 @@ pub const OrderbookWindow = struct {
                     imgui.igText(vol_fmt.ptr);
 
                     _ = imgui.igTableSetColumnIndex(2);
-                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.8}", .{bid_cum_vol}) catch "ERR";
+                    const total_fmt = std.fmt.bufPrintZ(&text_buf, "{d:.2}", .{bid_cum_vol}) catch "ERR";
                     imgui.igText(total_fmt.ptr);
 
                     const depth_ratio = bid_cum_vol / max_vol;
@@ -171,5 +190,27 @@ pub const OrderbookWindow = struct {
                 }
             }
         }
+        imgui.igEnd();
     }
 };
+
+fn formatPrice(price: f64, buf: []u8) []const u8 {
+    return if (price >= 1000.0)
+        std.fmt.bufPrintZ(buf, "{d:.2}", .{price}) catch "ERR"
+    else if (price >= 100.0)
+        std.fmt.bufPrintZ(buf, "{d:.3}", .{price}) catch "ERR"
+    else if (price >= 10.0)
+        std.fmt.bufPrintZ(buf, "{d:.4}", .{price}) catch "ERR"
+    else if (price >= 1.0)
+        std.fmt.bufPrintZ(buf, "{d:.5}", .{price}) catch "ERR"
+    else if (price >= 0.1)
+        std.fmt.bufPrintZ(buf, "{d:.6}", .{price}) catch "ERR"
+    else if (price >= 0.01)
+        std.fmt.bufPrintZ(buf, "{d:.7}", .{price}) catch "ERR"
+    else if (price >= 0.001)
+        std.fmt.bufPrintZ(buf, "{d:.8}", .{price}) catch "ERR"
+    else if (price >= 0.0001)
+        std.fmt.bufPrintZ(buf, "{d:.9}", .{price}) catch "ERR"
+    else
+        std.fmt.bufPrintZ(buf, "{d:.10}", .{price}) catch "ERR";
+}

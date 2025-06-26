@@ -5,12 +5,18 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const enable_inspector = true;
+
     // Dependencies
     const backstage_dep = b.dependency("backstage", .{
         .target = target,
         .optimize = optimize,
-        .enable_inspector = true,
+        .enable_inspector = enable_inspector,
     });
+    if (enable_inspector) {
+        const inspector = backstage_dep.artifact("inspector");
+        b.installArtifact(inspector);
+    }
     const async_zocket_dep = b.dependency("async_zocket", .{
         .target = target,
         .optimize = optimize,

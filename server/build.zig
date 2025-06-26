@@ -9,6 +9,7 @@ pub fn build(b: *std.Build) void {
     const backstage_dep = b.dependency("backstage", .{
         .target = target,
         .optimize = optimize,
+        .enable_inspector = true,
     });
     const async_zocket_dep = b.dependency("async_zocket", .{
         .target = target,
@@ -31,12 +32,6 @@ pub fn build(b: *std.Build) void {
         .root_source_file = .{ .cwd_relative = "src/main.zig" },
     });
 
-    // Add imports
-    // server_mod.addImport("backstage", backstage_dep.module("backstage"));
-    // server_mod.addImport("async_zocket", async_zocket_dep.module("async_zocket"));
-    // server_mod.addImport("zbor", zbor_dep.module("zbor"));
-    // server_mod.addImport("shared_models", shared_models_dep.module("shared_models"));
-    // Add executable
     const exe = b.addExecutable(.{
         .name = "zigma_server",
         .root_module = server_mod,

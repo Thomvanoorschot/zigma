@@ -31,6 +31,16 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    // Handle shared protobuf dependency -- This is pretty annoying but I don't know how to do it better
+    const protobuf_dep = b.dependency("protobuf", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const backstage_mod = backstage_dep.module("backstage");
+    const shared_models_mod = shared_models_dep.module("shared_models");
+    backstage_mod.addImport("protobuf", protobuf_dep.module("protobuf"));
+    shared_models_mod.addImport("protobuf", protobuf_dep.module("protobuf"));
+
     // Server module
     const server_mod = b.addModule("server", .{
         .target = target,
@@ -44,10 +54,10 @@ pub fn build(b: *std.Build) void {
     });
 
     // Add imports to executable
-    exe.root_module.addImport("backstage", backstage_dep.module("backstage"));
+    exe.root_module.addImport("backstage", backstage_mod);
     exe.root_module.addImport("async_zocket", async_zocket_dep.module("async_zocket"));
     exe.root_module.addImport("zbor", zbor_dep.module("zbor"));
-    exe.root_module.addImport("shared_models", shared_models_dep.module("shared_models"));
+    exe.root_module.addImport("shared_models", shared_models_mod);
 
     b.installArtifact(exe);
 

@@ -76,23 +76,15 @@ pub const OrderbookActor = struct {
                 var topic_buf: [40]u8 = undefined;
                 const topic = try std.fmt.bufPrintZ(&topic_buf, "orderbook_updates_{s}", .{m.ticker.Owned.str});
                 try self.ctx.subscribeToActorTopic("kraken_broker_actor", topic);
-                try self.ctx.runRecurring(
-                    Self,
-                    notify_subscribers,
-                    self,
-                    5,
-                );
             },
             .update => |m| {
                 try processLevelUpdates(&self.orderbook.?, m.bids, m.asks);
                 m.deinit();
+                try self.ctx.publish(
+                    ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } },
+                );
             },
         }
-    }
-    fn notify_subscribers(self: *Self) !void {
-        try self.ctx.publish(
-            ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } },
-        );
     }
 };
 

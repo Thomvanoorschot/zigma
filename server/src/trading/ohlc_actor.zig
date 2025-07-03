@@ -69,12 +69,6 @@ pub const OHLCActor = struct {
                 var topic_buf: [40]u8 = undefined;
                 const topic = try std.fmt.bufPrintZ(&topic_buf, "ohlc_updates_{s}", .{m.ticker.Owned.str});
                 try self.ctx.subscribeToActorTopic("kraken_broker_actor", topic);
-                try self.ctx.runRecurring(
-                    Self,
-                    notify_subscribers,
-                    self,
-                    20,
-                );
             },
             .update => |m| {
                 const timestamp_unix = try date_utils.DateTime.parse(m.timestamp.Owned.str, .rfc3339);
@@ -102,12 +96,10 @@ pub const OHLCActor = struct {
                     try self.ohlc_list.ohlc.append(ohlc);
                 }
                 m.deinit();
+                try self.ctx.publish(
+                    ConnectionActorMessage{ .message = .{ .ohlc_update = self.ohlc_list } },
+                );
             },
         }
-    }
-    fn notify_subscribers(self: *Self) !void {
-        try self.ctx.publish(
-            ConnectionActorMessage{ .message = .{ .ohlc_update = self.ohlc_list } },
-        );
     }
 };

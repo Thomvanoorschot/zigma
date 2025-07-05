@@ -40,6 +40,7 @@ pub const ServerActor = struct {
     pub fn receive(self: *Self, envelope: Envelope) !void {
         defer envelope.deinit(self.allocator);
         const server_msg: ServerActorMessage = try ServerActorMessage.decode(envelope.message, self.allocator);
+        defer server_msg.deinit();
         if (server_msg.message == null) {
             return error.InvalidMessage;
         }

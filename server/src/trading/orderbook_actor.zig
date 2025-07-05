@@ -42,13 +42,16 @@ pub const OrderbookActor = struct {
 
     pub fn deinit(self: *Self) !void {
         self.arena_state.deinit();
+        if (self.orderbook) |orderbook| {
+            orderbook.deinit();
+        }
         try self.ctx.shutdown();
     }
 
     pub fn receive(self: *Self, envelope: Envelope) !void {
         defer envelope.deinit(self.allocator);
         const orderbook_msg: OrderbookActorMessage = try OrderbookActorMessage.decode(envelope.message, self.allocator);
-
+        defer orderbook_msg.deinit();
         if (orderbook_msg.message == null) {
             return error.InvalidMessage;
         }
@@ -61,20 +64,20 @@ pub const OrderbookActor = struct {
                     .asks = asks,
                     .max_depth = 10,
                     .exchange = ManagedString.static("kraken"),
-                    .ticker = m.ticker,
+                    .ticker = try m.ticker.dupe(self.allocator),
                 };
                 errdefer bids.deinit();
                 errdefer asks.deinit();
 
                 try self.ctx.send("kraken_broker_actor", BrokerActorMessage{
                     .message = .{ .start = .{
-                        .ticker = m.ticker,
+                        .ticker = self.orderbook.?.ticker,
                         .market_data = .ORDERBOOK,
                     } },
                 });
 
                 var topic_buf: [40]u8 = undefined;
-                const topic = try std.fmt.bufPrintZ(&topic_buf, "orderbook_updates_{s}", .{m.ticker.Owned.str});
+                const topic = try std.fmt.bufPrintZ(&topic_buf, "orderbook_updates_{s}", .{self.orderbook.?.ticker.Owned.str});
                 try self.ctx.subscribeToActorTopic("kraken_broker_actor", topic);
                 try self.ctx.runRecurring(
                     Self,
@@ -85,7 +88,6 @@ pub const OrderbookActor = struct {
             },
             .update => |m| {
                 try processLevelUpdates(&self.orderbook.?, m.bids, m.asks);
-                m.deinit();
                 // try self.ctx.publish(
                 //     ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } },
                 // );

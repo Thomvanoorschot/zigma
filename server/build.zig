@@ -5,7 +5,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const enable_inspector = true;
+    const enable_inspector = false;
 
     // Dependencies
     const backstage_dep = b.dependency("backstage", .{

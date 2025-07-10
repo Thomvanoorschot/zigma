@@ -41,7 +41,6 @@ pub fn main() !void {
         .id = "kraken_broker_actor",
     });
     try engine.send(
-        null,
         broker_actor.ctx.actor_id,
         BrokerActorMessage{ .message = .{ .init = .{ .broker = .KRAKEN } } },
     );
@@ -51,7 +50,6 @@ pub fn main() !void {
     });
 
     try engine.send(
-        null,
         server_actor.ctx.actor_id,
         ServerActorMessage{ .message = .{ .init = .{
             .host = ManagedString.static("0.0.0.0"),
@@ -61,7 +59,6 @@ pub fn main() !void {
     );
 
     try engine.send(
-        null,
         server_actor.ctx.actor_id,
         ServerActorMessage{ .message = .{ .accept = .{} } },
     );
@@ -73,7 +70,6 @@ pub fn main() !void {
             .id = try std.fmt.allocPrintZ(allocator, "{s}_orderbook_actor", .{ticker}),
         });
         try engine.send(
-            null,
             orderbook_actor.ctx.actor_id,
             OrderbookActorMessage{
                 .message = .{ .start = .{ .ticker = try ManagedString.copy(ticker, allocator) } },
@@ -85,7 +81,6 @@ pub fn main() !void {
             .id = try std.fmt.allocPrintZ(allocator, "{s}_ohlc_actor", .{ticker}),
         });
         try engine.send(
-            null,
             ohlc_actor.ctx.actor_id,
             OHLCActorMessage{
                 .message = .{ .start = .{ .ticker = try ManagedString.copy(ticker, allocator) } },

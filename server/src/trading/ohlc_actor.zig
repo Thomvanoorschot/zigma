@@ -49,7 +49,7 @@ pub const OHLCActor = struct {
     }
 
     pub fn receive(self: *Self, envelope: Envelope) !void {
-        defer envelope.deinit(self.allocator);
+        // defer envelope.deinit(self.allocator);
         const ohlc_msg: OHLCActorMessage = try OHLCActorMessage.decode(envelope.message, self.allocator);
         if (ohlc_msg.message == null) {
             return error.InvalidMessage;

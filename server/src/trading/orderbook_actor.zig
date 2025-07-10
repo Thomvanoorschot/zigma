@@ -49,7 +49,7 @@ pub const OrderbookActor = struct {
     }
 
     pub fn receive(self: *Self, envelope: Envelope) !void {
-        defer envelope.deinit(self.allocator);
+        // defer envelope.deinit(self.allocator);
         const orderbook_msg: OrderbookActorMessage = try OrderbookActorMessage.decode(envelope.message, self.allocator);
         defer orderbook_msg.deinit();
         if (orderbook_msg.message == null) {
@@ -162,7 +162,7 @@ test "can receive orderbook updates" {
         .ticker = ManagedString.static("BTC-USD"),
     };
 
-    try engine.send(null, "orderbook_actor", OrderbookActorMessage{ .message = .{
+    try engine.send("orderbook_actor", OrderbookActorMessage{ .message = .{
         .update = .{
             .bids = std.ArrayList(OrderbookLevel).init(std.testing.allocator),
             .asks = std.ArrayList(OrderbookLevel).init(std.testing.allocator),

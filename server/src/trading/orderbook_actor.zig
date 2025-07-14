@@ -45,11 +45,9 @@ pub const OrderbookActor = struct {
         if (self.orderbook) |orderbook| {
             orderbook.deinit();
         }
-        try self.ctx.shutdown();
     }
 
     pub fn receive(self: *Self, envelope: Envelope) !void {
-        // defer envelope.deinit(self.allocator);
         const orderbook_msg: OrderbookActorMessage = try OrderbookActorMessage.decode(envelope.message, self.allocator);
         defer orderbook_msg.deinit();
         if (orderbook_msg.message == null) {
@@ -79,18 +77,18 @@ pub const OrderbookActor = struct {
                 var topic_buf: [40]u8 = undefined;
                 const topic = try std.fmt.bufPrintZ(&topic_buf, "orderbook_updates_{s}", .{self.orderbook.?.ticker.Owned.str});
                 try self.ctx.subscribeToActorTopic("kraken_broker_actor", topic);
-                try self.ctx.runRecurring(
-                    Self,
-                    notify_subscribers,
-                    self,
-                    5,
-                );
+                // try self.ctx.runRecurring(
+                //     Self,
+                //     notify_subscribers,
+                //     self,
+                //     5,
+                // );
             },
             .update => |m| {
                 try processLevelUpdates(&self.orderbook.?, m.bids, m.asks);
-                // try self.ctx.publish(
-                //     ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } },
-                // );
+                try self.ctx.publish(
+                    ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } },
+                );
             },
         }
     }

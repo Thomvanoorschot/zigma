@@ -33,12 +33,9 @@ pub const ServerActor = struct {
         return self;
     }
 
-    pub fn deinit(self: *Self) !void {
-        try self.ctx.shutdown();
-    }
+    pub fn deinit(_: *Self) !void {}
 
     pub fn receive(self: *Self, envelope: Envelope) !void {
-        // defer envelope.deinit(self.allocator);
         const server_msg: ServerActorMessage = try ServerActorMessage.decode(envelope.message, self.allocator);
         defer server_msg.deinit();
         if (server_msg.message == null) {

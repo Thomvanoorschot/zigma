@@ -9,7 +9,7 @@
         // },
         .backstage = .{
             .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
-            .hash = "backstage-0.1.0-Lti6bEz8AADUMC0w6w_3ALQDpP-GtM0RhUDtBa-zPpqv",
+            .hash = "backstage-0.1.0-Lti6bIsHAQDuJGvDQmRTE18N-t6BwQ30ss-O9XJ55qov",
         },
         .async_zocket = .{
             .path = "../../async_zocket",

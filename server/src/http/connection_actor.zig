@@ -42,11 +42,10 @@ pub const ConnectionActor = struct {
     }
 
     pub fn deinit(self: *Self) !void {
-        try self.ctx.shutdown();
+        try self.ctx.poisonPill();
     }
 
     pub fn receive(self: *Self, envelope: Envelope) !void {
-        // defer envelope.deinit(self.allocator);
         const connection_msg: ConnectionActorMessage = try ConnectionActorMessage.decode(envelope.message, self.allocator);
         defer connection_msg.deinit();
         if (connection_msg.message == null) {

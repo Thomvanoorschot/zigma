@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Server",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/server/zig-out/bin/zigma_server",
+      "args": [],
+      "cwd": "${workspaceFolder}/server",
+      // "internalConsoleOptions": "openOnSessionStart",
+      "preLaunchTask": "build",
+    }
+  ]
+}

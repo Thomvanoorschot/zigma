@@ -41,12 +41,9 @@ pub const BrokerActor = struct {
         if (self.broker) |*broker| {
             broker.deinit();
         }
-
-        try self.ctx.shutdown();
     }
 
     pub fn receive(self: *Self, envelope: Envelope) !void {
-        // defer envelope.deinit(self.allocator);
         const broker_msg: BrokerActorMessage = try BrokerActorMessage.decode(envelope.message, self.allocator);
         defer broker_msg.deinit();
         if (broker_msg.message == null) {

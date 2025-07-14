@@ -45,11 +45,9 @@ pub const OHLCActor = struct {
 
     pub fn deinit(self: *Self) !void {
         self.arena_state.deinit();
-        try self.ctx.shutdown();
     }
 
     pub fn receive(self: *Self, envelope: Envelope) !void {
-        // defer envelope.deinit(self.allocator);
         const ohlc_msg: OHLCActorMessage = try OHLCActorMessage.decode(envelope.message, self.allocator);
         if (ohlc_msg.message == null) {
             return error.InvalidMessage;

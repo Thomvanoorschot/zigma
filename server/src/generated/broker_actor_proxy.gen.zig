@@ -62,10 +62,7 @@ pub const BrokerActorProxy = struct {
     pub inline fn setup(self: *Self, broker_type: BrokerType) !void {
         var params_str = std.ArrayList(u8).init(self.allocator);
         defer params_str.deinit();
-        try zborStringify(broker_type, .{
-            .allocator = self.allocator,
-            .array_serialization_type = .ArrayIndefinite,
-        }, params_str.writer());
+        try zborStringify(broker_type, .{}, params_str.writer());
         const method_call = MethodCall{
             .method_id = 0,
             .params = params_str.items,

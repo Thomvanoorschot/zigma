@@ -24,12 +24,12 @@ pub const Orderbook = struct {
 
     const Self = @This();
 
-    pub fn processLevelUpdates(orderbook: *Self, bids: std.ArrayList(OrderbookLevel), asks: std.ArrayList(OrderbookLevel)) !void {
-        for (bids.items) |bid| {
+    pub fn processLevelUpdates(orderbook: *Self, bids: []const OrderbookLevel, asks: []const OrderbookLevel) !void {
+        for (bids) |bid| {
             try updateOrderbook(orderbook, bid.price, bid.qty, true);
         }
 
-        for (asks.items) |ask| {
+        for (asks) |ask| {
             try updateOrderbook(orderbook, ask.price, ask.qty, false);
         }
     }

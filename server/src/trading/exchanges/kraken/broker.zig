@@ -139,15 +139,16 @@ pub const Broker = struct {
     fn convertOrderbookUpdateData(self: *Self, update: ws_messages.OrderbookUpdateMessage) !*OrderbookUpdate {
         const item = update.data[0];
 
-        var converted_bids = std.ArrayList(OrderbookLevel).init(self.allocator);
-        for (item.bids) |bid| {
-            try converted_bids.append(.{ .price = bid.price, .qty = bid.qty });
+        const converted_bids = try self.allocator.alloc(OrderbookLevel, item.bids.len);
+        for (item.bids, 0..) |bid, i| {
+            converted_bids[i] = .{ .price = bid.price, .qty = bid.qty };
         }
 
-        var converted_asks = std.ArrayList(OrderbookLevel).init(self.allocator);
-        for (item.asks) |ask| {
-            try converted_asks.append(.{ .price = ask.price, .qty = ask.qty });
+        const converted_asks = try self.allocator.alloc(OrderbookLevel, item.asks.len);
+        for (item.asks, 0..) |ask, i| {
+            converted_asks[i] = .{ .price = ask.price, .qty = ask.qty };
         }
+
         const obu = try self.allocator.create(OrderbookUpdate);
         obu.* = .{
             .ticker = item.symbol,

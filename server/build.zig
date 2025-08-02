@@ -14,7 +14,7 @@ pub fn build(b: *std.Build) void {
         .enable_inspector = enable_inspector,
         .generate_proxies = true,
     });
-    // generateActorProxies(b, backstage_dep);
+    generateActorProxies(b, backstage_dep);
 
     if (enable_inspector) {
         const inspector = backstage_dep.artifact("inspector");

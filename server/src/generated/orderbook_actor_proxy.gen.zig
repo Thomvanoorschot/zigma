@@ -21,7 +21,7 @@ pub const OrderbookActorProxy = struct {
     ctx: *Context,
     allocator: std.mem.Allocator,
     underlying: *OrderbookActor,
-
+    
     const Self = @This();
 
     pub const Method = enum(u32) {
@@ -45,28 +45,12 @@ pub const OrderbookActorProxy = struct {
         self.allocator.destroy(self);
     }
     inline fn methodWrapper0(self: *Self, params: []const u8) !void {
-        const result = try zborParse(
-            []const u8,
-            try zborDataItem.new(params),
-            .{
-                .allocator = self.allocator,
-                .ignore_override = true,
-            },
-        );
+        const result = try zborParse([]const u8, try zborDataItem.new(params), .{ .allocator = self.allocator });
         return self.underlying.start(result);
     }
 
     inline fn methodWrapper1(self: *Self, params: []const u8) !void {
-        std.log.info("params: {s}", .{params});
-        const result = try zborParse(
-            OrderbookUpdate,
-            try zborDataItem.new(params),
-            .{
-                .allocator = self.allocator,
-                .ignore_override = true,
-                .array_serialization_type = .ArrayIndefinite,
-            },
-        );
+        const result = try zborParse(OrderbookUpdate, try zborDataItem.new(params), .{ .allocator = self.allocator });
         return self.underlying.update(result);
     }
 
@@ -78,8 +62,7 @@ pub const OrderbookActorProxy = struct {
             .method_id = 0,
             .params = params_str.items,
         };
-        return self.ctx.enqueueMethodCall(self.ctx.actor_id, method_call);
-    }
+        return self.ctx.enqueueMethodCall(self.ctx.actor_id, method_call);    }
 
     pub inline fn update(self: *Self, u: OrderbookUpdate) !void {
         var params_str = std.ArrayList(u8).init(self.allocator);
@@ -89,12 +72,10 @@ pub const OrderbookActorProxy = struct {
             .method_id = 1,
             .params = params_str.items,
         };
-        return self.ctx.enqueueMethodCall(self.ctx.actor_id, method_call);
-    }
+        return self.ctx.enqueueMethodCall(self.ctx.actor_id, method_call);    }
 
     pub inline fn enqueueMethodCall(self: *Self, method_call: MethodCall) !void {
-        return switch (method_call.method_id) {
-            0 => methodWrapper0(self, method_call.params),
+        return switch (method_call.method_id) {            0 => methodWrapper0(self, method_call.params),
             1 => methodWrapper1(self, method_call.params),
             else => error.UnknownMethod,
         };

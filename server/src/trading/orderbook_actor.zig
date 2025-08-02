@@ -74,9 +74,7 @@ pub const OrderbookActor = struct {
         var stream_buf: [40]u8 = undefined;
         const stream_id = try std.fmt.bufPrintZ(&stream_buf, "{s}_orderbook_actor", .{self.orderbook.?.ticker});
         const stream = try self.ctx.getStream(Orderbook, stream_id);
-        // TODO
-        _ = stream;
-        // try stream.next(self.orderbook.?);
+        try stream.next(self.orderbook.?);
     }
 };
 

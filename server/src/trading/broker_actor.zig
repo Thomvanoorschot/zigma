@@ -1,11 +1,12 @@
 const std = @import("std");
-const krkn = @import("../kraken/broker.zig");
+const krkn = @import("exchanges/kraken/broker.zig");
 const backstage = @import("backstage");
 const brkr_impl = @import("broker_impl.zig");
 const orderbook_actor = @import("orderbook_actor.zig");
 const ohlc_actor = @import("ohlc_actor.zig");
-const shared_models = @import("shared_models");
 const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
+const OrderbookUpdate = @import("types/orderbook_update.zig").OrderbookUpdate;
+const OHLCUpdate = @import("types/ohlc_update.zig").OHLCUpdate;
 
 const xev = backstage.xev;
 const Context = backstage.Context;
@@ -13,18 +14,8 @@ const BrokerImpl = brkr_impl.BrokerImpl;
 const BrokerPayload = brkr_impl.BrokerPayload;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
-const BrokerActorMessage = shared_models.BrokerActor;
-const OrderbookActorMessage = shared_models.OrderbookActor;
-const OHLCActorMessage = shared_models.OHLCActor;
-
-pub const BrokerType = enum {
-    KRAKEN,
-};
-
-pub const MarketDataType = enum {
-    ORDERBOOK,
-    OHLC,
-};
+const BrokerType = brkr_impl.BrokerType;
+const MarketDataType = brkr_impl.MarketDataType;
 
 // @generate-proxy
 pub const BrokerActor = struct {
@@ -52,7 +43,7 @@ pub const BrokerActor = struct {
         }
     }
 
-    pub fn setup(self: *Self, broker_type: BrokerType) void {
+    pub fn setup(self: *Self, broker_type: BrokerType) !void {
         self.broker = try BrokerImpl.init(
             self.allocator,
             self.ctx.getLoop(),
@@ -66,7 +57,6 @@ pub const BrokerActor = struct {
         switch (market_data_type) {
             .ORDERBOOK => try self.broker.?.subscribeToOrderbook(ticker),
             .OHLC => try self.broker.?.subscribeToOHLC(ticker),
-            else => return error.UnsupportedMarketData,
         }
     }
 
@@ -77,17 +67,15 @@ pub const BrokerActor = struct {
             switch (m) {
                 .orderbook_update => |update| {
                     var topic_buf: [40]u8 = undefined;
-                    const topic = try std.fmt.bufPrintZ(&topic_buf, "orderbook_updates_{s}", .{update.ticker.Owned.str});
-                    try self.ctx.publishToTopic(topic, OrderbookActorMessage{
-                        .message = .{ .update = update.* },
-                    });
+                    const topic = try std.fmt.bufPrintZ(&topic_buf, "orderbook_updates_{s}", .{update.ticker});
+                    const stream = try self.ctx.getStream(OrderbookUpdate, topic);
+                    try stream.next(update.*);
                 },
                 .ohlc_update => |update| {
                     var topic_buf: [40]u8 = undefined;
-                    const topic = try std.fmt.bufPrintZ(&topic_buf, "ohlc_updates_{s}", .{update.ticker.Owned.str});
-                    try self.ctx.publishToTopic(topic, OHLCActorMessage{
-                        .message = .{ .update = update.* },
-                    });
+                    const topic = try std.fmt.bufPrintZ(&topic_buf, "ohlc_updates_{s}", .{update.ticker});
+                    const stream = try self.ctx.getStream(OHLCUpdate, topic);
+                    try stream.next(update.*);
                 },
             }
         }

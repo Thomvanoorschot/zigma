@@ -1,21 +1,19 @@
 const std = @import("std");
 const ws = @import("async_zocket");
-const json_utils = @import("../utils/json_utils.zig");
+const json_utils = @import("../../../utils/json_utils.zig");
 const ws_messages = @import("./ws_messages.zig");
 const backstage = @import("backstage");
-const brkr_impl = @import("../trading/broker_impl.zig");
-const shared_models = @import("shared_models");
-const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
+const brkr_impl = @import("../../broker_impl.zig");
+const unsafeAnyOpaqueCast = @import("../../../utils/type_utils.zig").unsafeAnyOpaqueCast;
+const OrderbookUpdate = @import("../../types/orderbook_update.zig").OrderbookUpdate;
+const OHLCUpdate = @import("../../types/ohlc_update.zig").OHLCUpdate;
+const OrderbookLevel = @import("../../types/orderbook_level.zig").OrderbookLevel;
 
 const xev = backstage.xev;
 const Loop = xev.Loop;
 const BrokerPayload = brkr_impl.BrokerPayload;
-const OrderbookUpdate = shared_models.OrderbookUpdate;
-const OrderbookLevel = shared_models.OrderbookLevel;
-const OHLCUpdate = shared_models.OHLCUpdate;
 const WsSubsribeRequest = ws_messages.WsSubscribeRequest;
 const parseMessage = ws_messages.parseMessage;
-const ManagedString = shared_models.ManagedString;
 
 var broker: ?*Broker = null;
 pub const Broker = struct {
@@ -152,11 +150,11 @@ pub const Broker = struct {
         }
         const obu = try self.allocator.create(OrderbookUpdate);
         obu.* = .{
-            .ticker = try ManagedString.copy(item.symbol, self.allocator),
+            .ticker = item.symbol,
             .bids = converted_bids,
             .asks = converted_asks,
             .checksum = item.checksum,
-            .timestamp = if (item.timestamp != null) try ManagedString.copy(item.timestamp.?, self.allocator) else null,
+            .timestamp = if (item.timestamp != null) item.timestamp.? else null,
         };
         return obu;
     }
@@ -165,7 +163,7 @@ pub const Broker = struct {
         const item = update.data[0];
         const ohlc = try self.allocator.create(OHLCUpdate);
         ohlc.* = .{
-            .ticker = try ManagedString.copy(item.symbol, self.allocator),
+            .ticker = item.symbol,
             .open = item.open,
             .high = item.high,
             .low = item.low,
@@ -173,7 +171,7 @@ pub const Broker = struct {
             .trades = item.trades,
             .volume = item.volume,
             .interval = item.interval,
-            .timestamp = try ManagedString.copy(item.timestamp, self.allocator),
+            .timestamp = item.timestamp,
         };
         return ohlc;
     }

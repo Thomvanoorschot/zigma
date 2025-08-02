@@ -9,23 +9,19 @@ const OrderbookActor = @import("../trading/orderbook_actor.zig").OrderbookActor;
 const brkr_impl = @import("../trading/broker_impl.zig");
 const brkr_actr = @import("../trading/broker_actor.zig");
 const conn_actr = @import("../http/connection_actor.zig");
-const shared_models = @import("shared_models");
+const OrderbookUpdate = @import("../trading/types/orderbook_update.zig").OrderbookUpdate;
+const Orderbook = @import("../trading/types/orderbook.zig").Orderbook;
+const OrderbookLevel = @import("../trading/types/orderbook_level.zig").OrderbookLevel;
+const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
 const BrokerType = brkr_impl.BrokerType;
 const BrokerActor = brkr_actr.BrokerActor;
-const BrokerActorMessage = shared_models.BrokerActor;
-const OrderbookUpdate = shared_models.OrderbookUpdate;
-const OrderbookLevel = shared_models.OrderbookLevel;
-const ConnectionActorMessage = shared_models.ConnectionActor;
-const Orderbook = shared_models.Orderbook;
-const ManagedString = shared_models.ManagedString;
-const OrderbookActorMessage = shared_models.OrderbookActor;
 
 pub const OrderbookActorProxy = struct {
     pub const is_proxy = true;
     ctx: *Context,
     allocator: std.mem.Allocator,
     underlying: *OrderbookActor,
-    
+
     const Self = @This();
 
     pub const Method = enum(u32) {
@@ -49,12 +45,28 @@ pub const OrderbookActorProxy = struct {
         self.allocator.destroy(self);
     }
     inline fn methodWrapper0(self: *Self, params: []const u8) !void {
-        const result = try zborParse([]const u8, try zborDataItem.new(params), .{ .allocator = self.allocator });
+        const result = try zborParse(
+            []const u8,
+            try zborDataItem.new(params),
+            .{
+                .allocator = self.allocator,
+                .ignore_override = true,
+            },
+        );
         return self.underlying.start(result);
     }
 
     inline fn methodWrapper1(self: *Self, params: []const u8) !void {
-        const result = try zborParse(OrderbookUpdate, try zborDataItem.new(params), .{ .allocator = self.allocator });
+        std.log.info("params: {s}", .{params});
+        const result = try zborParse(
+            OrderbookUpdate,
+            try zborDataItem.new(params),
+            .{
+                .allocator = self.allocator,
+                .ignore_override = true,
+                .array_serialization_type = .ArrayIndefinite,
+            },
+        );
         return self.underlying.update(result);
     }
 
@@ -66,7 +78,8 @@ pub const OrderbookActorProxy = struct {
             .method_id = 0,
             .params = params_str.items,
         };
-        return self.ctx.dispatchMethodCall(self.ctx.actor_id, method_call);    }
+        return self.ctx.enqueueMethodCall(self.ctx.actor_id, method_call);
+    }
 
     pub inline fn update(self: *Self, u: OrderbookUpdate) !void {
         var params_str = std.ArrayList(u8).init(self.allocator);
@@ -76,10 +89,12 @@ pub const OrderbookActorProxy = struct {
             .method_id = 1,
             .params = params_str.items,
         };
-        return self.ctx.dispatchMethodCall(self.ctx.actor_id, method_call);    }
+        return self.ctx.enqueueMethodCall(self.ctx.actor_id, method_call);
+    }
 
-    pub inline fn dispatchMethod(self: *Self, method_call: MethodCall) !void {
-        return switch (method_call.method_id) {            0 => methodWrapper0(self, method_call.params),
+    pub inline fn enqueueMethodCall(self: *Self, method_call: MethodCall) !void {
+        return switch (method_call.method_id) {
+            0 => methodWrapper0(self, method_call.params),
             1 => methodWrapper1(self, method_call.params),
             else => error.UnknownMethod,
         };

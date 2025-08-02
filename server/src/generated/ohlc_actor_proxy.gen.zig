@@ -6,20 +6,15 @@ const zborParse = backstage.zborParse;
 const zborStringify = backstage.zborStringify;
 const zborDataItem = backstage.zborDataItem;
 const OHLCActor = @import("../trading/ohlc_actor.zig").OHLCActor;
-const OHLCUpdate = @import("../trading/ohlc_actor.zig").OHLCUpdate;
 const brkr_impl = @import("../trading/broker_impl.zig");
 const brkr_actr = @import("../trading/broker_actor.zig");
 const conn_actr = @import("../http/connection_actor.zig");
-const shared_models = @import("shared_models");
 const date_utils = @import("../utils/date_utils.zig");
-const OHLCActorMessage = shared_models.OHLCActor;
-const OHLCList = shared_models.OHLCList;
-const BrokerActorMessage = shared_models.BrokerActor;
-const OHLC = shared_models.OHLC;
-const ConnectionActorMessage = shared_models.ConnectionActor;
+const OHLCList = @import("../trading/types/ohlc_list.zig").OHLCList;
+const OHLCUpdate = @import("../trading/types/ohlc_update.zig").OHLCUpdate;
+const OHLC = @import("../trading/types/ohlc.zig").OHLC;
 const BrokerType = brkr_impl.BrokerType;
 const BrokerActor = brkr_actr.BrokerActor;
-const ManagedString = shared_models.ManagedString;
 
 pub const OHLCActorProxy = struct {
     pub const is_proxy = true;
@@ -67,7 +62,7 @@ pub const OHLCActorProxy = struct {
             .method_id = 0,
             .params = params_str.items,
         };
-        return self.ctx.dispatchMethodCall(self.ctx.actor_id, method_call);    }
+        return self.ctx.enqueueMethodCall(self.ctx.actor_id, method_call);    }
 
     pub inline fn update(self: *Self, u: OHLCUpdate) !void {
         var params_str = std.ArrayList(u8).init(self.allocator);
@@ -77,9 +72,9 @@ pub const OHLCActorProxy = struct {
             .method_id = 1,
             .params = params_str.items,
         };
-        return self.ctx.dispatchMethodCall(self.ctx.actor_id, method_call);    }
+        return self.ctx.enqueueMethodCall(self.ctx.actor_id, method_call);    }
 
-    pub inline fn dispatchMethod(self: *Self, method_call: MethodCall) !void {
+    pub inline fn enqueueMethodCall(self: *Self, method_call: MethodCall) !void {
         return switch (method_call.method_id) {            0 => methodWrapper0(self, method_call.params),
             1 => methodWrapper1(self, method_call.params),
             else => error.UnknownMethod,

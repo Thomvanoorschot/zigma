@@ -6,19 +6,17 @@ const zborParse = backstage.zborParse;
 const zborStringify = backstage.zborStringify;
 const zborDataItem = backstage.zborDataItem;
 const BrokerActor = @import("../trading/broker_actor.zig").BrokerActor;
-const BrokerType = @import("../trading/broker_actor.zig").BrokerType;
-const MarketDataType = @import("../trading/broker_actor.zig").MarketDataType;
-const krkn = @import("../kraken/broker.zig");
+const krkn = @import("../trading/exchanges/kraken/broker.zig");
 const brkr_impl = @import("../trading/broker_impl.zig");
 const orderbook_actor = @import("../trading/orderbook_actor.zig");
 const ohlc_actor = @import("../trading/ohlc_actor.zig");
-const shared_models = @import("shared_models");
 const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCast;
+const OrderbookUpdate = @import("../trading/types/orderbook_update.zig").OrderbookUpdate;
+const OHLCUpdate = @import("../trading/types/ohlc_update.zig").OHLCUpdate;
 const BrokerImpl = brkr_impl.BrokerImpl;
 const BrokerPayload = brkr_impl.BrokerPayload;
-const BrokerActorMessage = shared_models.BrokerActor;
-const OrderbookActorMessage = shared_models.OrderbookActor;
-const OHLCActorMessage = shared_models.OHLCActor;
+const BrokerType = brkr_impl.BrokerType;
+const MarketDataType = brkr_impl.MarketDataType;
 
 pub const BrokerActorProxy = struct {
     pub const is_proxy = true;
@@ -64,12 +62,15 @@ pub const BrokerActorProxy = struct {
     pub inline fn setup(self: *Self, broker_type: BrokerType) !void {
         var params_str = std.ArrayList(u8).init(self.allocator);
         defer params_str.deinit();
-        try zborStringify(broker_type, .{}, params_str.writer());
+        try zborStringify(broker_type, .{
+            .allocator = self.allocator,
+            .array_serialization_type = .ArrayIndefinite,
+        }, params_str.writer());
         const method_call = MethodCall{
             .method_id = 0,
             .params = params_str.items,
         };
-        return self.ctx.dispatchMethodCall(self.ctx.actor_id, method_call);    }
+        return self.ctx.enqueueMethodCall(self.ctx.actor_id, method_call);    }
 
     pub inline fn start(self: *Self, ticker: []const u8, market_data_type: MarketDataType) !void {
         var params_str = std.ArrayList(u8).init(self.allocator);
@@ -79,9 +80,9 @@ pub const BrokerActorProxy = struct {
             .method_id = 1,
             .params = params_str.items,
         };
-        return self.ctx.dispatchMethodCall(self.ctx.actor_id, method_call);    }
+        return self.ctx.enqueueMethodCall(self.ctx.actor_id, method_call);    }
 
-    pub inline fn dispatchMethod(self: *Self, method_call: MethodCall) !void {
+    pub inline fn enqueueMethodCall(self: *Self, method_call: MethodCall) !void {
         return switch (method_call.method_id) {            0 => methodWrapper0(self, method_call.params),
             1 => methodWrapper1(self, method_call.params),
             else => error.UnknownMethod,

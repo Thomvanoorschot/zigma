@@ -1,13 +1,20 @@
 const std = @import("std");
-const krkn = @import("../kraken/broker.zig");
+const krkn = @import("exchanges/kraken/broker.zig");
 const backstage = @import("backstage");
-const shared_models = @import("shared_models");
+const OrderbookUpdate = @import("types/orderbook_update.zig").OrderbookUpdate;
+const OHLCUpdate = @import("types/ohlc_update.zig").OHLCUpdate;
 
 const Loop = backstage.xev.Loop;
 const Context = backstage.Context;
-const BrokerType = shared_models.BrokerType;
-const OrderbookUpdate = shared_models.OrderbookUpdate;
-const OHLCUpdate = shared_models.OHLCUpdate;
+
+pub const BrokerType = enum {
+    KRAKEN,
+};
+
+pub const MarketDataType = enum {
+    ORDERBOOK,
+    OHLC,
+};
 
 pub const BrokerPayloadType = enum {
     orderbook_update,
@@ -39,7 +46,6 @@ pub const BrokerImpl = union(BrokerType) {
                     read_callback,
                 ) };
             },
-            else => return error.UnsupportedBroker,
         }
     }
 

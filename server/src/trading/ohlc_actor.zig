@@ -3,14 +3,12 @@ const backstage = @import("backstage");
 const brkr_impl = @import("broker_impl.zig");
 const brkr_actr = @import("broker_actor.zig");
 const conn_actr = @import("../http/connection_actor.zig");
-const shared_models = @import("shared_models");
 const date_utils = @import("../utils/date_utils.zig");
-
-const OHLCActorMessage = shared_models.OHLCActor;
-const OHLCList = shared_models.OHLCList;
-const BrokerActorMessage = shared_models.BrokerActor;
-const OHLC = shared_models.OHLC;
-const ConnectionActorMessage = shared_models.ConnectionActor;
+const BrokerActorProxy = @import("../generated/broker_actor_proxy.gen.zig").BrokerActorProxy;
+const OHLCActorProxy = @import("../generated/ohlc_actor_proxy.gen.zig").OHLCActorProxy;
+const OHLCList = @import("types/ohlc_list.zig").OHLCList;
+const OHLCUpdate = @import("types/ohlc_update.zig").OHLCUpdate;
+const OHLC = @import("types/ohlc.zig").OHLC;
 
 const xev = backstage.xev;
 const ActorInterface = backstage.ActorInterface;
@@ -19,7 +17,7 @@ const Context = backstage.Context;
 const BrokerType = brkr_impl.BrokerType;
 const BrokerActor = brkr_actr.BrokerActor;
 const Envelope = backstage.Envelope;
-const ManagedString = shared_models.ManagedString;
+const newSubscriber = backstage.newSubscriber;
 
 // @generate-proxy
 pub const OHLCActor = struct {
@@ -45,26 +43,23 @@ pub const OHLCActor = struct {
 
     pub fn deinit(self: *Self) !void {
         self.arena_state.deinit();
+        self.ohlc_list.ohlc.deinit();
     }
 
     pub fn start(self: *Self, ticker: []const u8) !void {
-        try self.ctx.send("kraken_broker_actor", BrokerActorMessage{
-            .message = .{
-                .start = .{
-                    .ticker = ticker,
-                    .market_data = .OHLC,
-                },
-            },
-        });
+        const broker_actor = try self.ctx.getActor(BrokerActorProxy, "kraken_broker_actor");
+        try broker_actor.start(ticker, .OHLC);
+
         var topic_buf: [40]u8 = undefined;
-        const topic = try std.fmt.bufPrintZ(&topic_buf, "ohlc_updates_{s}", .{ticker});
-        try self.ctx.subscribeToActorTopic("kraken_broker_actor", topic);
+        const stream_id = try std.fmt.bufPrintZ(&topic_buf, "ohlc_updates_{s}", .{ticker});
+        const stream = try self.ctx.getStream(OHLCUpdate, stream_id);
+        try stream.subscribe(newSubscriber(self.ctx.actor_id, OHLCActorProxy.Method.update));
+        // try self.ctx.subscribeToActorTopic("kraken_broker_actor", stream_id);
     }
 
     pub fn update(self: *Self, u: OHLCUpdate) !void {
         const timestamp_unix = try date_utils.DateTime.parse(u.timestamp, .rfc3339);
         const ohlc = OHLC{
-            .ticker = u.ticker,
             .open = u.open,
             .high = u.high,
             .low = u.low,
@@ -86,20 +81,9 @@ pub const OHLCActor = struct {
         } else {
             try self.ohlc_list.ohlc.append(ohlc);
         }
-        try self.ctx.publish(
-            ConnectionActorMessage{ .message = .{ .ohlc_update = self.ohlc_list } },
-        );
+        var stream_buf: [40]u8 = undefined;
+        const stream_id = try std.fmt.bufPrintZ(&stream_buf, "{s}_ohlc_actor", .{self.ohlc_list.ticker});
+        const stream = try self.ctx.getStream(OHLCList, stream_id);
+        try stream.next(self.ohlc_list);
     }
-};
-
-pub const OHLCUpdate = struct {
-    ticker: []const u8,
-    open: f64,
-    high: f64,
-    low: f64,
-    close: f64,
-    trades: u64,
-    volume: f64,
-    interval: u64,
-    timestamp: []const u8,
 };

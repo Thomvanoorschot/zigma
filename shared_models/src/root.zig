@@ -30,14 +30,6 @@ pub const BrokerType = broker.BrokerType;
 pub const BrokerInitRequest = broker.BrokerInitRequest;
 pub const BrokerSubscribeRequest = broker.BrokerSubscribeRequest;
 
-// Actor message types
-const actor_message = @import("actor_message.pb.zig");
-pub const OrderbookActor = actor_message.OrderbookActor;
-pub const BrokerActor = actor_message.BrokerActor;
-pub const OHLCActor = actor_message.OHLCActor;
-pub const ServerActor = actor_message.ServerActor;
-pub const ConnectionActor = actor_message.ConnectionActor;
-
 // Connection types
 const connection = @import("connection.pb.zig");
 pub const SubscribeRequest = connection.SubscribeRequest;

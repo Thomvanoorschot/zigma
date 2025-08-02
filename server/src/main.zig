@@ -5,23 +5,22 @@ const brkr_impl = @import("trading/broker_impl.zig");
 const ob_actr = @import("trading/orderbook_actor.zig");
 const ohlc_actr = @import("trading/ohlc_actor.zig");
 const server_actr = @import("http/server_actor.zig");
-const shared_models = @import("shared_models");
 const broker_message = @import("trading/broker_actor.zig");
 const type_utils = @import("utils/type_utils.zig");
 
-const ManagedString = shared_models.ManagedString;
+const BrokerActorProxy = @import("generated/broker_actor_proxy.gen.zig").BrokerActorProxy;
+// const ServerActorProxy = @import("generated/server_actor_proxy.gen.zig").ServerActorProxy;
+const OrderbookActorProxy = @import("generated/orderbook_actor_proxy.gen.zig").OrderbookActorProxy;
+const OHLCActorProxy = @import("generated/ohlc_actor_proxy.gen.zig").OHLCActorProxy;
+
 const xev = backstage.xev;
 const Timer = xev.Timer;
 const BrokerActor = brkr_actr.BrokerActor;
 const BrokerType = brkr_impl.BrokerType;
 const Engine = backstage.Engine;
 const OrderbookActor = ob_actr.OrderbookActor;
-const OrderbookActorMessage = shared_models.OrderbookActor;
 const ServerActor = server_actr.ServerActor;
-const ServerActorMessage = shared_models.ServerActor;
 const OHLCActor = ohlc_actr.OHLCActor;
-const OHLCActorMessage = shared_models.OHLCActor;
-const BrokerActorMessage = shared_models.BrokerActor;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
 pub fn main() !void {
@@ -37,55 +36,32 @@ pub fn main() !void {
     var engine = try Engine.init(allocator);
     defer engine.deinit();
 
-    const broker_actor = try engine.spawnActor(BrokerActor, .{
-        .id = "kraken_broker_actor",
-    });
-    try engine.send(
-        broker_actor.ctx.actor_id,
-        BrokerActorMessage{ .message = .{ .init = .{ .broker = .KRAKEN } } },
-    );
+    const broker_actor = try engine.getActor(BrokerActorProxy, "kraken_broker_actor");
+    try broker_actor.setup(.KRAKEN);
 
-    const server_actor = try engine.spawnActor(ServerActor, .{
-        .id = "server_actor",
-    });
-
-    try engine.send(
-        server_actor.ctx.actor_id,
-        ServerActorMessage{ .message = .{ .init = .{
-            .host = ManagedString.static("0.0.0.0"),
-            .port = 8081,
-            .max_connections = 1024,
-        } } },
-    );
-
-    try engine.send(
-        server_actor.ctx.actor_id,
-        ServerActorMessage{ .message = .{ .accept = .{} } },
-    );
+    // const server_actor = try engine.getActor(ServerActorProxy, "server_actor");
+    // try server_actor.setup(
+    //     "0.0.0.0",
+    //     8081,
+    //     1024,
+    // );
+    // try server_actor.accept();
 
     const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
     for (tickers) |ticker| {
         // Orderbook
-        const orderbook_actor = try engine.spawnActor(OrderbookActor, .{
-            .id = try std.fmt.allocPrintZ(allocator, "{s}_orderbook_actor", .{ticker}),
-        });
-        try engine.send(
-            orderbook_actor.ctx.actor_id,
-            OrderbookActorMessage{
-                .message = .{ .start = .{ .ticker = try ManagedString.copy(ticker, allocator) } },
-            },
+        const orderbook_actor = try engine.getActor(
+            OrderbookActorProxy,
+            try std.fmt.allocPrintZ(allocator, "{s}_orderbook_actor", .{ticker}),
         );
+        try orderbook_actor.start(ticker);
 
         // OHLC
-        const ohlc_actor = try engine.spawnActor(OHLCActor, .{
-            .id = try std.fmt.allocPrintZ(allocator, "{s}_ohlc_actor", .{ticker}),
-        });
-        try engine.send(
-            ohlc_actor.ctx.actor_id,
-            OHLCActorMessage{
-                .message = .{ .start = .{ .ticker = try ManagedString.copy(ticker, allocator) } },
-            },
+        const ohlc_actor = try engine.getActor(
+            OHLCActorProxy,
+            try std.fmt.allocPrintZ(allocator, "{s}_ohlc_actor", .{ticker}),
         );
+        try ohlc_actor.start(ticker);
     }
 
     try engine.run();

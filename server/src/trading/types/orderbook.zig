@@ -66,4 +66,49 @@ pub const Orderbook = struct {
     fn priceAscending(_: void, a: OrderbookLevel, b: OrderbookLevel) bool {
         return a.price < b.price;
     }
+
+    pub fn print(self: *const Self) void {
+        std.debug.print("\n=== ORDERBOOK ===\n", .{});
+        std.debug.print("Exchange: {s}\n", .{self.exchange});
+        std.debug.print("Ticker: {s}\n", .{self.ticker});
+        std.debug.print("Max Depth: {d}\n\n", .{self.max_depth});
+
+        const max_levels = @max(self.bids.items.len, self.asks.items.len);
+
+        if (max_levels == 0) {
+            std.debug.print("No orderbook data available\n", .{});
+            return;
+        }
+
+        std.debug.print("{s:>12} {s:>12} | {s:>12} {s:>12}\n", .{ "BID QTY", "BID PRICE", "ASK PRICE", "ASK QTY" });
+        std.debug.print("{s:-<12} {s:-<12}-+-{s:-<12} {s:-<12}\n", .{ "", "", "", "" });
+
+        var i: usize = 0;
+        while (i < max_levels) : (i += 1) {
+            if (i < self.bids.items.len and i < self.asks.items.len) {
+                std.debug.print("{d:>12.6} {d:>12.2} | {d:>12.2} {d:>12.6}\n", .{
+                    self.bids.items[i].qty,
+                    self.bids.items[i].price,
+                    self.asks.items[i].price,
+                    self.asks.items[i].qty,
+                });
+            } else if (i < self.bids.items.len) {
+                std.debug.print("{d:>12.6} {d:>12.2} | {s:>12} {s:>12}\n", .{
+                    self.bids.items[i].qty,
+                    self.bids.items[i].price,
+                    "",
+                    "",
+                });
+            } else if (i < self.asks.items.len) {
+                std.debug.print("{s:>12} {s:>12} | {d:>12.2} {d:>12.6}\n", .{
+                    "",
+                    "",
+                    self.asks.items[i].price,
+                    self.asks.items[i].qty,
+                });
+            }
+        }
+
+        std.debug.print("\n", .{});
+    }
 };

@@ -4,19 +4,15 @@
     .version = "0.0.1",
     .minimum_zig_version = "0.15.0-dev.483+837e0f9c3",
     .dependencies = .{
-        // .backstage = .{
-        //     .path = "../../backstage",
-        // },
         .backstage = .{
-            .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
-            .hash = "backstage-0.1.0-Lti6bIsHAQDuJGvDQmRTE18N-t6BwQ30ss-O9XJ55qov",
+            .path = "../../backstage",
         },
-        .async_zocket = .{
-            .path = "../../async_zocket",
-        },
+        // .backstage = .{
+        //     .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
+        //     .hash = "backstage-0.1.0-Lti6bIsHAQDuJGvDQmRTE18N-t6BwQ30ss-O9XJ55qov",
+        // },
         // .async_zocket = .{
-        //     .url = "https://github.com/Thomvanoorschot/async_zocket/archive/main.tar.gz",
-        //     .hash = "async_zocket-0.0.1-jsk1Jsp4AADz3Th0qSuQXKz7RPzFjhI_H9PfeNou3M8a",
+        //     .path = "../../async_zocket",
         // },
 
         .shared_models = .{
@@ -36,6 +32,10 @@
         .protobuf = .{
             .url = "https://github.com/Arwalk/zig-protobuf/archive/master.tar.gz",
             .hash = "protobuf-2.0.0-0e82akObGwBZQtrB7Qb6CTWSrwYKRPJ0M4L0CuTJmJ9G",
+        },
+        .async_zocket = .{
+            .url = "https://github.com/Thomvanoorschot/async_zocket/archive/main.tar.gz",
+            .hash = "async_zocket-0.0.1-iGwsl2oYAQA6a-rQiDbaQcJJZEZK9QzacZ6zUhuPZ1HP",
         },
     },
     .paths = .{

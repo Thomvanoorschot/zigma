@@ -20,6 +20,7 @@ const Orderbook = shared_models.Orderbook;
 const ManagedString = shared_models.ManagedString;
 const OrderbookActorMessage = shared_models.OrderbookActor;
 
+// @generate-proxy
 pub const OrderbookActor = struct {
     allocator: Allocator,
     arena_state: std.heap.ArenaAllocator,
@@ -47,50 +48,36 @@ pub const OrderbookActor = struct {
         }
     }
 
-    pub fn receive(self: *Self, envelope: Envelope) !void {
-        const orderbook_msg: OrderbookActorMessage = try OrderbookActorMessage.decode(envelope.message, self.allocator);
-        defer orderbook_msg.deinit();
-        if (orderbook_msg.message == null) {
-            return error.InvalidMessage;
-        }
-        switch (orderbook_msg.message.?) {
-            .start => |m| {
-                const bids = std.ArrayList(shared_models.OrderbookLevel).init(self.arena_state.allocator());
-                const asks = std.ArrayList(shared_models.OrderbookLevel).init(self.arena_state.allocator());
-                self.orderbook = Orderbook{
-                    .bids = bids,
-                    .asks = asks,
-                    .max_depth = 10,
-                    .exchange = ManagedString.static("kraken"),
-                    .ticker = try m.ticker.dupe(self.allocator),
-                };
-                errdefer bids.deinit();
-                errdefer asks.deinit();
+    pub fn start(self: *Self, ticker: []const u8) !void {
+        const bids = std.ArrayList(shared_models.OrderbookLevel).init(self.arena_state.allocator());
+        const asks = std.ArrayList(shared_models.OrderbookLevel).init(self.arena_state.allocator());
+        self.orderbook = Orderbook{
+            .bids = bids,
+            .asks = asks,
+            .max_depth = 10,
+            .exchange = ManagedString.static("kraken"),
+            .ticker = ticker,
+        };
+        errdefer bids.deinit();
+        errdefer asks.deinit();
 
-                try self.ctx.send("kraken_broker_actor", BrokerActorMessage{
-                    .message = .{ .start = .{
-                        .ticker = self.orderbook.?.ticker,
-                        .market_data = .ORDERBOOK,
-                    } },
-                });
+        try self.ctx.send("kraken_broker_actor", BrokerActorMessage{
+            .message = .{ .start = .{
+                .ticker = ticker,
+                .market_data = .ORDERBOOK,
+            } },
+        });
 
-                var topic_buf: [40]u8 = undefined;
-                const topic = try std.fmt.bufPrintZ(&topic_buf, "orderbook_updates_{s}", .{self.orderbook.?.ticker.Owned.str});
-                try self.ctx.subscribeToActorTopic("kraken_broker_actor", topic);
-                // try self.ctx.runRecurring(
-                //     Self,
-                //     notify_subscribers,
-                //     self,
-                //     5,
-                // );
-            },
-            .update => |m| {
-                try processLevelUpdates(&self.orderbook.?, m.bids, m.asks);
-                try self.ctx.publish(
-                    ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } },
-                );
-            },
-        }
+        var topic_buf: [40]u8 = undefined;
+        const topic = try std.fmt.bufPrintZ(&topic_buf, "orderbook_updates_{s}", .{self.orderbook.?.ticker.Owned.str});
+        try self.ctx.subscribeToActorTopic("kraken_broker_actor", topic);
+    }
+
+    pub fn update(self: *Self, u: OrderbookUpdate) !void {
+        try processLevelUpdates(&self.orderbook.?, u.bids, u.asks);
+        try self.ctx.publish(
+            ConnectionActorMessage{ .message = .{ .orderbook_update = self.orderbook.? } },
+        );
     }
 
     fn notify_subscribers(self_: *anyopaque) !void {

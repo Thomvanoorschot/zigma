@@ -16,6 +16,7 @@ const ClientConnection = async_zocket.ClientConnection;
 const ConnectionActorMessage = shared_models.ConnectionActor.message_union;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
+// @generate-proxy
 pub const ServerActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context,
@@ -35,33 +36,25 @@ pub const ServerActor = struct {
 
     pub fn deinit(_: *Self) !void {}
 
-    pub fn receive(self: *Self, envelope: Envelope) !void {
-        const server_msg: ServerActorMessage = try ServerActorMessage.decode(envelope.message, self.allocator);
-        defer server_msg.deinit();
-        if (server_msg.message == null) {
-            return error.InvalidMessage;
-        }
-        switch (server_msg.message.?) {
-            .init => |m| {
-                self.server = try Server.init(
-                    self.allocator,
-                    self.ctx.getLoop(),
-                    .{
-                        .host = m.host.Owned.str,
-                        .port = @intCast(m.port),
-                        .max_connections = @intCast(m.max_connections),
-                        .use_tls = true,
-                        .cert_file = "server.crt",
-                        .key_file = "server.key",
-                    },
-                    self,
-                    acceptCallback,
-                );
+    pub fn setup(self: *Self, host: []const u8, port: u32, max_connections: u32) !void {
+        self.server = try Server.init(
+            self.allocator,
+            self.ctx.getLoop(),
+            .{
+                .host = host,
+                .port = port,
+                .max_connections = max_connections,
+                .use_tls = true,
+                .cert_file = "server.crt",
+                .key_file = "server.key",
             },
-            .accept => |_| {
-                self.server.accept();
-            },
-        }
+            self,
+            acceptCallback,
+        );
+    }
+
+    pub fn accept(self: *Self) !void {
+        self.server.accept();
     }
 
     fn acceptCallback(

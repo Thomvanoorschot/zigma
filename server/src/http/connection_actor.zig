@@ -17,6 +17,7 @@ const OHLCActorMessage = shared_models.OHLCActor;
 const ClientConnection = async_zocket.ClientConnection;
 const unsafeAnyOpaqueCast = type_utils.unsafeAnyOpaqueCast;
 
+// @generate-proxy
 pub const ConnectionActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context = undefined,
@@ -45,28 +46,20 @@ pub const ConnectionActor = struct {
         try self.ctx.poisonPill();
     }
 
-    pub fn receive(self: *Self, envelope: Envelope) !void {
-        const connection_msg: ConnectionActorMessage = try ConnectionActorMessage.decode(envelope.message, self.allocator);
-        defer connection_msg.deinit();
-        if (connection_msg.message == null) {
-            return error.InvalidMessage;
-        }
-        switch (connection_msg.message.?) {
-            .orderbook_update => |m| {
-                const str = try ServerMessage.encode(ServerMessage{
-                    .message = .{ .orderbook = m },
-                }, self.allocator);
-                defer self.allocator.free(str);
-                try self.write(str);
-            },
-            .ohlc_update => |m| {
-                const str = try ServerMessage.encode(ServerMessage{
-                    .message = .{ .ohlc = m },
-                }, self.allocator);
-                defer self.allocator.free(str);
-                try self.write(str);
-            },
-        }
+    pub fn orderbookUpdated(self: *Self, orderbook: Orderbook) !void {
+        const str = try ServerMessage.encode(ServerMessage{
+            .message = .{ .orderbook = orderbook },
+        }, self.allocator);
+        defer self.allocator.free(str);
+        try self.write(str);
+    }
+
+    pub fn ohlcUpdated(self: *Self, ohlc: OHLCActorMessage) !void {
+        const str = try ServerMessage.encode(ServerMessage{
+            .message = .{ .ohlc = ohlc },
+        }, self.allocator);
+        defer self.allocator.free(str);
+        try self.write(str);
     }
 
     fn readCallback(

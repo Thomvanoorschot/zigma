@@ -10,7 +10,6 @@ const unsafeAnyOpaqueCast = @import("../utils/type_utils.zig").unsafeAnyOpaqueCa
 const xev = backstage.xev;
 const Context = backstage.Context;
 const BrokerImpl = brkr_impl.BrokerImpl;
-const BrokerType = brkr_impl.BrokerType;
 const BrokerPayload = brkr_impl.BrokerPayload;
 const Envelope = backstage.Envelope;
 const ActorInterface = backstage.ActorInterface;
@@ -18,6 +17,16 @@ const BrokerActorMessage = shared_models.BrokerActor;
 const OrderbookActorMessage = shared_models.OrderbookActor;
 const OHLCActorMessage = shared_models.OHLCActor;
 
+pub const BrokerType = enum {
+    KRAKEN,
+};
+
+pub const MarketDataType = enum {
+    ORDERBOOK,
+    OHLC,
+};
+
+// @generate-proxy
 pub const BrokerActor = struct {
     allocator: std.mem.Allocator,
     ctx: *Context,
@@ -43,29 +52,21 @@ pub const BrokerActor = struct {
         }
     }
 
-    pub fn receive(self: *Self, envelope: Envelope) !void {
-        const broker_msg: BrokerActorMessage = try BrokerActorMessage.decode(envelope.message, self.allocator);
-        defer broker_msg.deinit();
-        if (broker_msg.message == null) {
-            return error.InvalidMessage;
-        }
-        switch (broker_msg.message.?) {
-            .init => |m| {
-                self.broker = try BrokerImpl.init(
-                    self.allocator,
-                    self.ctx.getLoop(),
-                    m.broker,
-                    @ptrCast(self),
-                    readMessage,
-                );
-            },
-            .start => |m| {
-                switch (m.market_data) {
-                    .ORDERBOOK => try self.broker.?.subscribeToOrderbook(m.ticker.Owned.str),
-                    .OHLC => try self.broker.?.subscribeToOHLC(m.ticker.Owned.str),
-                    else => return error.UnsupportedMarketData,
-                }
-            },
+    pub fn setup(self: *Self, broker_type: BrokerType) void {
+        self.broker = try BrokerImpl.init(
+            self.allocator,
+            self.ctx.getLoop(),
+            broker_type,
+            @ptrCast(self),
+            readMessage,
+        );
+    }
+
+    pub fn start(self: *Self, ticker: []const u8, market_data_type: MarketDataType) !void {
+        switch (market_data_type) {
+            .ORDERBOOK => try self.broker.?.subscribeToOrderbook(ticker),
+            .OHLC => try self.broker.?.subscribeToOHLC(ticker),
+            else => return error.UnsupportedMarketData,
         }
     }
 

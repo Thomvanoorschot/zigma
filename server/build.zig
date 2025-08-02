@@ -12,7 +12,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .enable_inspector = enable_inspector,
+        .generate_proxies = true,
     });
+    generateActorProxies(b, backstage_dep);
+
     if (enable_inspector) {
         const inspector = backstage_dep.artifact("inspector");
         b.installArtifact(inspector);
@@ -31,6 +34,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    // TODO Protobuf is probably no longer needed, want to move the encoding logic to the backstage module
     // Handle shared protobuf dependency -- This is pretty annoying but I don't know how to do it better
     const protobuf_dep = b.dependency("protobuf", .{
         .target = target,
@@ -82,4 +86,17 @@ pub fn build(b: *std.Build) void {
     const run_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_tests.step);
+}
+
+fn generateActorProxies(b: *std.Build, backstage_dep: *std.Build.Dependency) void {
+    const generator = backstage_dep.artifact("generator");
+    b.installArtifact(generator);
+    const run_generator = b.addRunArtifact(generator);
+    run_generator.addArg("src/generated");
+    run_generator.addArg("src/http");
+    run_generator.addArg("src/trading");
+
+    const gen_proxies = b.step("gen-proxies", "Generate actor proxies");
+    gen_proxies.dependOn(&run_generator.step);
+    b.getInstallStep().dependOn(gen_proxies);
 }

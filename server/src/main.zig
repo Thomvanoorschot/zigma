@@ -9,7 +9,7 @@ const broker_message = @import("trading/broker_actor.zig");
 const type_utils = @import("utils/type_utils.zig");
 
 const BrokerActorProxy = @import("generated/broker_actor_proxy.gen.zig").BrokerActorProxy;
-// const ServerActorProxy = @import("generated/server_actor_proxy.gen.zig").ServerActorProxy;
+const ServerActorProxy = @import("generated/server_actor_proxy.gen.zig").ServerActorProxy;
 const OrderbookActorProxy = @import("generated/orderbook_actor_proxy.gen.zig").OrderbookActorProxy;
 const OHLCActorProxy = @import("generated/ohlc_actor_proxy.gen.zig").OHLCActorProxy;
 
@@ -39,13 +39,13 @@ pub fn main() !void {
     const broker_actor = try engine.getActor(BrokerActorProxy, "kraken_broker_actor");
     try broker_actor.setup(.KRAKEN);
 
-    // const server_actor = try engine.getActor(ServerActorProxy, "server_actor");
-    // try server_actor.setup(
-    //     "0.0.0.0",
-    //     8081,
-    //     1024,
-    // );
-    // try server_actor.accept();
+    const server_actor = try engine.getActor(ServerActorProxy, "server_actor");
+    try server_actor.setup(
+        "0.0.0.0",
+        8081,
+        1024,
+    );
+    try server_actor.accept();
 
     const tickers = [_][]const u8{ "ETH/USD", "BTC/USD", "XRP/USD", "DOGE/USD", "SUI/USD", "USDC/USD", "SOL/USD", "PEPE/USD", "ADA/USD", "WIF/USD", "EUR/USD", "FARTCOIN/USD", "AVAX/USD", "LTC/USD", "XLM/USD", "TRUMP/USD" };
     for (tickers) |ticker| {

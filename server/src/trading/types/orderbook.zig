@@ -1,5 +1,7 @@
 const std = @import("std");
 const OrderbookLevel = @import("orderbook_level.zig").OrderbookLevel;
+const backstage = @import("backstage");
+const zbor = backstage.zbor;
 
 pub const Orderbook = struct {
     bids: std.ArrayList(OrderbookLevel),
@@ -110,5 +112,58 @@ pub const Orderbook = struct {
         }
 
         std.debug.print("\n", .{});
+    }
+
+    pub fn cborStringify(self: Self, o: zbor.Options, out: anytype) !void {
+        try zbor.builder.writeMap(out, 5);
+
+        try zbor.builder.writeTextString(out, "bids");
+        try zbor.stringify(self.bids.items, .{ .allocator = o.allocator }, out);
+
+        try zbor.builder.writeTextString(out, "asks");
+        try zbor.stringify(self.asks.items, .{ .allocator = o.allocator }, out);
+
+        try zbor.builder.writeTextString(out, "max_depth");
+        try zbor.stringify(self.max_depth, .{}, out);
+
+        try zbor.builder.writeTextString(out, "exchange");
+        try zbor.builder.writeTextString(out, self.exchange);
+
+        try zbor.builder.writeTextString(out, "ticker");
+        try zbor.builder.writeTextString(out, self.ticker);
+    }
+
+    pub fn cborParse(item: anytype, options: zbor.Options) !Self {
+        var map = if (item.map()) |m| m else return error.UnexpectedItem;
+
+        const allocator = options.allocator orelse return error.AllocatorRequired;
+        var result = Self{
+            .bids = std.ArrayList(OrderbookLevel).init(allocator),
+            .asks = std.ArrayList(OrderbookLevel).init(allocator),
+            .max_depth = 0,
+            .exchange = "",
+            .ticker = "",
+        };
+
+        while (map.next()) |kv| {
+            const key_str = if (kv.key.string()) |s| s else continue;
+            if (std.mem.eql(u8, key_str, "bids")) {
+                const bids_slice = try zbor.parse([]const OrderbookLevel, kv.value, options);
+                try result.bids.appendSlice(bids_slice);
+                allocator.free(bids_slice);
+            } else if (std.mem.eql(u8, key_str, "asks")) {
+                const asks_slice = try zbor.parse([]const OrderbookLevel, kv.value, options);
+                try result.asks.appendSlice(asks_slice);
+                allocator.free(asks_slice);
+            } else if (std.mem.eql(u8, key_str, "max_depth")) {
+                result.max_depth = try zbor.parse(u32, kv.value, options);
+            } else if (std.mem.eql(u8, key_str, "exchange")) {
+                result.exchange = try zbor.parse([]const u8, kv.value, options);
+            } else if (std.mem.eql(u8, key_str, "ticker")) {
+                result.ticker = try zbor.parse([]const u8, kv.value, options);
+            }
+        }
+
+        return result;
     }
 };

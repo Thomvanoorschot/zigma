@@ -8,7 +8,6 @@ const zborDataItem = backstage.zborDataItem;
 const OrderbookActor = @import("../trading/orderbook_actor.zig").OrderbookActor;
 const brkr_impl = @import("../trading/broker_impl.zig");
 const brkr_actr = @import("../trading/broker_actor.zig");
-const conn_actr = @import("../http/connection_actor.zig");
 const OrderbookUpdate = @import("../trading/types/orderbook_update.zig").OrderbookUpdate;
 const Orderbook = @import("../trading/types/orderbook.zig").Orderbook;
 const OrderbookLevel = @import("../trading/types/orderbook_level.zig").OrderbookLevel;

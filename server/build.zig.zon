@@ -4,27 +4,16 @@
     .version = "0.0.1",
     .minimum_zig_version = "0.15.0-dev.483+837e0f9c3",
     .dependencies = .{
-        .backstage = .{
-            .path = "../../backstage",
-        },
         // .backstage = .{
-        //     .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
-        //     .hash = "backstage-0.1.0-Lti6bIsHAQDuJGvDQmRTE18N-t6BwQ30ss-O9XJ55qov",
+        //     .path = "../../backstage",
         // },
-        // .async_zocket = .{
-        //     .path = "../../async_zocket",
-        // },
-
+        .backstage = .{
+            .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
+            .hash = "backstage-0.1.0-Lti6bADUAQC2Z2b4P-kuxuQIXh0LZBxEGBljSvxDE4Qu",
+        },
         .shared_models = .{
             .path = "../shared_models",
         },
-        // .wire = .{
-        //     .path = "../../wire",
-        // },
-        // .wire = .{
-        //     .url = "https://github.com/Thomvanoorschot/wire/archive/main.tar.gz",
-        //     .hash = "wire-0.0.1-kK_aNfZYAACoUpVGAcf3QkiBPu935rh2PtvnJntLDdQX",
-        // },
         .zbor = .{
             .url = "https://github.com/r4gus/zbor/archive/master.tar.gz",
             .hash = "zbor-0.17.3-kr-CoJQkAwDLIuC9SILI7Mw5BpLqoO6Xhxkg_Tnb7lCZ",

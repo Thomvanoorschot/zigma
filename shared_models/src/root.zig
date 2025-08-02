@@ -34,6 +34,7 @@ pub const BrokerSubscribeRequest = broker.BrokerSubscribeRequest;
 const connection = @import("connection.pb.zig");
 pub const SubscribeRequest = connection.SubscribeRequest;
 pub const UnsubscribeRequest = connection.UnsubscribeRequest;
+pub const SubscriptionType = connection.SubscriptionType;
 
 // Server types
 const server = @import("server.pb.zig");

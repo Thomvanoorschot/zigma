@@ -8,7 +8,6 @@ const zborDataItem = backstage.zborDataItem;
 const OHLCActor = @import("../trading/ohlc_actor.zig").OHLCActor;
 const brkr_impl = @import("../trading/broker_impl.zig");
 const brkr_actr = @import("../trading/broker_actor.zig");
-const conn_actr = @import("../http/connection_actor.zig");
 const date_utils = @import("../utils/date_utils.zig");
 const OHLCList = @import("../trading/types/ohlc_list.zig").OHLCList;
 const OHLCUpdate = @import("../trading/types/ohlc_update.zig").OHLCUpdate;

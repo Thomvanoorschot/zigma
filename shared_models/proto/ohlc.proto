@@ -22,13 +22,6 @@ message OHLC {
     required uint64 timestamp_unix = 10;
 }
 
-message OHLCInitRequest {
-    required broker.BrokerType broker = 1;
-}
-
-message OHLCStartRequest {
-    required string ticker = 1;
-}
 
 message OHLCUpdate {
     required string ticker = 1;

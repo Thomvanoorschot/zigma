@@ -2,7 +2,6 @@ const std = @import("std");
 const backstage = @import("backstage");
 const brkr_impl = @import("broker_impl.zig");
 const brkr_actr = @import("broker_actor.zig");
-const conn_actr = @import("../http/connection_actor.zig");
 const BrokerActorProxy = @import("../generated/broker_actor_proxy.gen.zig").BrokerActorProxy;
 const OrderbookActorProxy = @import("../generated/orderbook_actor_proxy.gen.zig").OrderbookActorProxy;
 const OrderbookUpdate = @import("types/orderbook_update.zig").OrderbookUpdate;

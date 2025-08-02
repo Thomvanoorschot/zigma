@@ -1,9 +1,0 @@
-syntax = "proto2";
-
-package server;
-
-message InitMessage {
-    required string host = 1;
-    required uint32 port = 2;
-    required uint32 max_connections = 3;
-}

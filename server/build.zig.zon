@@ -8,7 +8,7 @@
         //     .path = "../../backstage",
         // },
         .backstage = .{
-            .url = "https://github.com/Thomvanoorschot/backstage/archive/main.tar.gz",
+            .url = "https://github.com/Thomvanoorschot/backstage/archive/refs/heads/82422e57d9d7a11f6e705b9ee595a0e06f288020.tar.gz",
             .hash = "backstage-0.1.0-Lti6bADUAQC2Z2b4P-kuxuQIXh0LZBxEGBljSvxDE4Qu",
         },
         .shared_models = .{
@@ -33,3 +33,4 @@
         "build.zig.zon",
     },
 }
+// https://github.com/Thomvanoorschot/backstage/archive/82422e57d9d7a11f6e705b9ee595a0e06f288020.zip
